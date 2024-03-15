@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	codeSpecVersion101, _ = os.ReadFile("./testdata/gosemble_node_template_101.wasm")
+	// TODO: move and check the error
+	codeSpecVersion101, _ = os.ReadFile("../../../testdata/gosemble_node_template_101.wasm")
 )
 
 func Test_SetCode_Success(t *testing.T) {

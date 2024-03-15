@@ -29,9 +29,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-const POLKADOT_RUNTIME = "../build/polkadot_runtime-v9400.compact.compressed.wasm"
-const NODE_TEMPLATE_RUNTIME = "../build/node_template_runtime.wasm"
-const WASM_RUNTIME = "../build/runtime.wasm"
+const WASM_RUNTIME = "../../../build/runtime.wasm"
 
 var (
 	keySystemHash, _             = common.Twox128Hash([]byte("System"))

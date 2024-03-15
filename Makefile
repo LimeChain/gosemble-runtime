@@ -1,12 +1,18 @@
 CURRENT_DIR = $(shell pwd)
-SRC_DIR = /src/examples/wasm/gosemble
-BUILD_PATH = build/runtime.wasm
+
+# tinygo compiler env variables
+VERSION = 0.31.0-dev
 TARGET = polkawasm
 GC = extalloc # (extalloc, extalloc_leaking)
-VERSION = 0.31.0-dev
+WASMOPT_PATH = /tinygo/lib/binaryen/bin/wasm-opt
+
+# docker env variables
+SRC_DIR = /src/examples/wasm/gosemble
 IMAGE = tinygo/${TARGET}
 
-WASMOPT_PATH = /tinygo/lib/binaryen/bin/wasm-opt
+# runtime configuration env variables
+BUILD_PATH = build/runtime.wasm
+RUNTIME_TEMPLATE_DIR = runtime/templates/poa
 
 DOCKER_BUILD_TINYGO = docker build --tag $(IMAGE):$(VERSION)-$(GC) -f tinygo/Dockerfile.$(TARGET) tinygo
 DOCKER_RUN_TINYGO = docker run --rm -v $(CURRENT_DIR):$(SRC_DIR) -w $(SRC_DIR) $(IMAGE):$(VERSION)-$(GC) /bin/bash -c
@@ -78,15 +84,15 @@ build-tinygo:
 
 build-release: build-tinygo
 	@echo "Building \"runtime.wasm\" (no-debug)"; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH) runtime/runtime.go
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 build-dev: build-tinygo
 	@echo "Building \"runtime.wasm\""; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(BUILD_PATH) runtime/runtime.go
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 build-benchmarking: build-tinygo
 	@echo "Building \"runtime.wasm\" (no-debug)"; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH) runtime/runtime.go
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 start-network:
 	cp build/runtime.wasm polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
@@ -95,21 +101,21 @@ start-network:
 	cd ../../../..; \
 	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
 
+test-coverage:
+	@set -e; \
+	./scripts/coverage.sh
+
 test: test-unit test-integration
 
 test-unit:
 	@go test --tags "nonwasmenv" -cover -v `go list ./... | grep -v runtime`
 
 test-integration:
-	@go test --tags="nonwasmenv" -v ./runtime/...
+	@go test --tags="nonwasmenv" -v -count=1 ./$(RUNTIME_TEMPLATE_DIR)/...
 
-test-coverage:
-	@set -e; \
-	./scripts/coverage.sh
-
-GENERATE_WEIGHT_FILES=true
+GENERATE_WEIGHT_FILES = true
 benchmark: build-benchmarking
-	@go test --tags="nonwasmenv" -bench=. ./runtime/... -run=XXX -benchtime=1x \
+	@go test --tags="nonwasmenv" -bench=. ./$(RUNTIME_TEMPLATE_DIR)/... -run=XXX -benchtime=1x \
 	-steps=50 \
 	-repeat=20 \
 	-heap-pages=4096 \
