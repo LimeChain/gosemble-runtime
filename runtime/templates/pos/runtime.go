@@ -3,7 +3,7 @@ package main
 import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/api/account_nonce"
-	apiAura "github.com/LimeChain/gosemble/api/aura"
+	apiBabe "github.com/LimeChain/gosemble/api/babe"
 	"github.com/LimeChain/gosemble/api/benchmarking"
 	blockbuilder "github.com/LimeChain/gosemble/api/block_builder"
 	"github.com/LimeChain/gosemble/api/core"
@@ -18,12 +18,10 @@ import (
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/execution/extrinsic"
 	"github.com/LimeChain/gosemble/execution/types"
-	"github.com/LimeChain/gosemble/frame/aura"
+	babe "github.com/LimeChain/gosemble/frame/babe"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"
-	"github.com/LimeChain/gosemble/frame/session"
-	"github.com/LimeChain/gosemble/frame/sudo"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
 	tm "github.com/LimeChain/gosemble/frame/testable"
@@ -36,24 +34,12 @@ import (
 )
 
 const (
-	AuraMaxAuthorities = 100
-)
-
-const (
 	BalancesMaxLocks    = 50
 	BalancesMaxReserves = 50
 )
 
 const (
 	TimestampMinimumPeriod = 1 * 1_000 // 1 second
-)
-
-const (
-	MilliSecsPerBlock = 2_000
-	SlotDuration      = MilliSecsPerBlock
-	Minutes           = 60_000 / MilliSecsPerBlock
-	Hours             = Minutes * 60
-	Days              = Hours * 24
 )
 
 var (
@@ -70,24 +56,24 @@ var (
 	LengthToFee              primitives.WeightToFee = primitives.IdentityFee{}
 )
 
-var (
-	Period sc.U64 = 6 * Hours
-	Offset sc.U64 = 0
-)
-
 const (
 	SystemIndex sc.U8 = iota
 	TimestampIndex
-	SessionIndex
-	AuraIndex
+	BabeIndex
 	GrandpaIndex
 	BalancesIndex
 	TxPaymentsIndex
-	SudoIndex
 	TestableIndex = 255
 )
 
+const (
+	MaxAuthorities sc.U32 = 100
+)
+
 var (
+	// Block default values used in module initialization.
+	blockWeights, blockLength = initializeBlockDefaults()
+
 	// RuntimeVersion contains the version identifiers of the Runtime.
 	RuntimeVersion = &primitives.RuntimeVersion{
 		SpecName:           sc.Str(constants.SpecName),
@@ -99,10 +85,13 @@ var (
 		StateVersion:       sc.U8(constants.StateVersion),
 	}
 
-	// Block default values used in module initialization.
-	blockWeights, blockLength = initializeBlockDefaults()
+	// The BABE epoch configuration at genesis.
+	BabeGenesisEpochConfig = babe.BabeEpochConfiguration{
+		C:            constants.PrimaryProbability,
+		AllowedSlots: babe.NewPrimaryAndSecondaryPlainSlots(),
+	}
 
-	maxConsumers sc.U32 = 16
+	EpochDuration = constants.EpochDurationInSlots
 )
 
 var (
@@ -111,7 +100,7 @@ var (
 	// Modules contains all the modules used by the runtime.
 	modules = initializeModules()
 	extra   = newSignedExtra()
-	decoder = types.NewRuntimeDecoder(modules, extra, SudoIndex, logger)
+	decoder = types.NewRuntimeDecoder(modules, extra, logger)
 )
 
 func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength) {
@@ -128,46 +117,34 @@ func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength)
 	return weights, length
 }
 
+// Construct runtime modules
+
 func initializeModules() []primitives.Module {
 	systemModule := system.New(
 		SystemIndex,
-		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion, maxConsumers),
+		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion),
 		mdGenerator,
 		logger,
 	)
 
-	auraModule := aura.New(
-		AuraIndex,
-		aura.NewConfig(
+	babeModule := babe.New(
+		BabeIndex,
+		babe.NewConfig(
 			primitives.PublicKeySr25519,
-			DbWeight,
+			BabeGenesisEpochConfig,
+			EpochDuration,
 			TimestampMinimumPeriod,
-			AuraMaxAuthorities,
-			false,
-			systemModule.StorageDigest,
-			systemModule,
-			nil,
+			MaxAuthorities,
 		),
-		mdGenerator,
-		logger,
 	)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
-		timestamp.NewConfig(auraModule, DbWeight, TimestampMinimumPeriod),
+		timestamp.NewConfig(babeModule, DbWeight, TimestampMinimumPeriod),
 		mdGenerator,
 	)
 
 	grandpaModule := grandpa.New(GrandpaIndex, logger, mdGenerator)
-
-	handler := session.NewHandler([]session.OneSessionHandler{auraModule})
-
-	periodicSession := session.NewPeriodicSessions(Period, Offset)
-	sessionModule := session.New(
-		SessionIndex,
-		session.NewConfig(DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
-		mdGenerator,
-		logger)
 
 	balancesModule := balances.New(
 		BalancesIndex,
@@ -182,19 +159,15 @@ func initializeModules() []primitives.Module {
 		mdGenerator,
 	)
 
-	sudoModule := sudo.New(SudoIndex, sudo.NewConfig(DbWeight, systemModule), mdGenerator, logger)
-
 	testableModule := tm.New(TestableIndex, mdGenerator)
 
 	return []primitives.Module{
 		systemModule,
 		timestampModule,
-		sessionModule,
-		auraModule,
+		babeModule,
 		grandpaModule,
 		balancesModule,
 		tpmModule,
-		sudoModule,
 		testableModule,
 	}
 }
@@ -221,7 +194,7 @@ func newSignedExtra() primitives.SignedExtra {
 func runtimeApi() types.RuntimeApi {
 	runtimeExtrinsic := extrinsic.New(modules, extra, mdGenerator, logger)
 	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
-	auraModule := primitives.MustGetModule(AuraIndex, modules).(aura.Module)
+	babeModule := primitives.MustGetModule(BabeIndex, modules).(babe.Module)
 	grandpaModule := primitives.MustGetModule(GrandpaIndex, modules).(grandpa.Module)
 	txPaymentsModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
 
@@ -233,20 +206,21 @@ func runtimeApi() types.RuntimeApi {
 	)
 
 	sessions := []primitives.Session{
-		auraModule,
+		babeModule,
 		grandpaModule,
 	}
 
 	coreApi := core.New(executiveModule, decoder, RuntimeVersion, mdGenerator, logger)
 	blockBuilderApi := blockbuilder.New(runtimeExtrinsic, executiveModule, decoder, mdGenerator, logger)
 	taggedTxQueueApi := taggedtransactionqueue.New(executiveModule, decoder, mdGenerator, logger)
-	auraApi := apiAura.New(auraModule, logger)
+	babeApi := apiBabe.New(babeModule, logger)
 	grandpaApi := apiGrandpa.New(grandpaModule, logger)
 	accountNonceApi := account_nonce.New(systemModule, logger)
 	txPaymentsApi := apiTxPayments.New(decoder, txPaymentsModule, logger)
 	txPaymentsCallApi := apiTxPaymentsCall.New(decoder, txPaymentsModule, logger)
 	sessionKeysApi := session_keys.New(sessions, logger)
 	offchainWorkerApi := offchain_worker.New(executiveModule, logger)
+
 	genesisBuilderApi := genesisbuilder.New(modules, logger)
 
 	metadataApi := metadata.New(
@@ -255,7 +229,7 @@ func runtimeApi() types.RuntimeApi {
 			coreApi,
 			blockBuilderApi,
 			taggedTxQueueApi,
-			auraApi,
+			babeApi,
 			grandpaApi,
 			accountNonceApi,
 			txPaymentsApi,
@@ -272,7 +246,7 @@ func runtimeApi() types.RuntimeApi {
 		blockBuilderApi,
 		taggedTxQueueApi,
 		metadataApi,
-		auraApi,
+		babeApi,
 		grandpaApi,
 		accountNonceApi,
 		txPaymentsApi,
@@ -288,6 +262,8 @@ func runtimeApi() types.RuntimeApi {
 
 	return runtimeApi
 }
+
+// Implement runtime APIs
 
 //go:export Core_version
 func CoreVersion(_ int32, _ int32) int64 {
@@ -348,18 +324,46 @@ func TaggedTransactionQueueValidateTransaction(dataPtr int32, dataLen int32) int
 		ValidateTransaction(dataPtr, dataLen)
 }
 
-//go:export AuraApi_slot_duration
-func AuraApiSlotDuration(_, _ int32) int64 {
+//go:export BabeApi_configuration
+func BabeApiConfiguration(_, _ int32) int64 {
 	return runtimeApi().
-		Module(apiAura.ApiModuleName).(apiAura.Module).
-		SlotDuration()
+		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+		Configuration()
 }
 
-//go:export AuraApi_authorities
-func AuraApiAuthorities(_, _ int32) int64 {
+//go:export BabeApi_current_epoch_start
+func BabeApiCurrentEpochStart(_, _ int32) int64 {
 	return runtimeApi().
-		Module(apiAura.ApiModuleName).(apiAura.Module).
-		Authorities()
+		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+		CurrentEpochStart()
+}
+
+//go:export BabeApi_current_epoch
+func BabeApiCurrentEpoch(_, _ int32) int64 {
+	return runtimeApi().
+		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+		CurrentEpoch()
+}
+
+//go:export BabeApi_next_epoch
+func BabeApiNextEpoch(_, _ int32) int64 {
+	return runtimeApi().
+		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+		NextEpoch()
+}
+
+//go:export BabeApi_generate_key_ownership_proof
+func BabeApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+		GenerateKeyOwnershipProof(dataPtr, dataLen)
+}
+
+//go:export BabeApi_submit_report_equivocation_unsigned_extrinsic
+func BabeApiSubmitReportEquivocationUnsignedExtrinsic(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+		SubmitReportEquivocationUnsignedExtrinsic(dataPtr, dataLen)
 }
 
 //go:export AccountNonceApi_account_nonce
