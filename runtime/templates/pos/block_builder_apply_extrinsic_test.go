@@ -10,7 +10,7 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/frame/aura"
+	"github.com/LimeChain/gosemble/frame/babe"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
@@ -22,28 +22,35 @@ import (
 func Test_ApplyExtrinsic_Timestamp(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 
-	bytesSlotDuration, err := rt.Exec("AuraApi_slot_duration", []byte{})
-	assert.NoError(t, err)
-
 	idata := gossamertypes.NewInherentData()
 	time := time.Now().UnixMilli()
 
-	buffer := &bytes.Buffer{}
-	buffer.Write(bytesSlotDuration)
+	babeConfigurationBytes, err := rt.Exec("BabeApi_configuration", []byte{})
+	assert.NoError(t, err)
 
-	slotDuration, err := sc.DecodeU64(buffer)
-	assert.Nil(t, err)
-	buffer.Reset()
+	buffer := bytes.NewBuffer(babeConfigurationBytes)
 
-	slot := sc.U64(time) / slotDuration
+	babeConfiguration, err := babe.DecodeBabeConfiguration(buffer)
+	assert.NoError(t, err)
 
-	preRuntimeDigest := gossamertypes.PreRuntimeDigest{
-		ConsensusEngineID: aura.EngineId,
-		Data:              slot.Bytes(),
-	}
+	slot := sc.U64(time) / babeConfiguration.SlotDuration
+
+	// preRuntimeDigest := gossamertypes.PreRuntimeDigest{
+	// 	ConsensusEngineID: babe.EngineId,
+	// 	Data:              slot.Bytes(),
+	// }
+	// assert.NoError(t, digest.Add(preRuntimeDigest))
+
+	babeHeader := gossamertypes.NewBabeDigest()
+	err = babeHeader.SetValue(*gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{}))
+	assert.NoError(t, err)
+	data, err := scale.Marshal(babeHeader)
+	assert.NoError(t, err)
+	preDigest := gossamertypes.NewBABEPreRuntimeDigest(data)
 
 	digest := gossamertypes.NewDigest()
-	assert.NoError(t, digest.Add(preRuntimeDigest))
+	err = digest.Add(*preDigest)
+	assert.NoError(t, err)
 
 	header := gossamertypes.NewHeader(testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), digest)
 	encodedHeader, err := scale.Marshal(*header)
@@ -71,7 +78,7 @@ func Test_ApplyExtrinsic_Timestamp(t *testing.T) {
 	assert.Equal(t, []byte{1}, (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampDidUpdateHash...)))
 	assert.Equal(t, sc.U64(time).Bytes(), (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampNowHash...)))
 
-	assert.Equal(t, slot.Bytes(), (*storage).Get(append(testhelpers.KeyAuraHash, testhelpers.KeyCurrentSlotHash...)))
+	assert.Equal(t, slot.Bytes(), (*storage).Get(append(testhelpers.KeyBabeHash, testhelpers.KeyCurrentSlotHash...)))
 }
 
 func Test_ApplyExtrinsic_DispatchError_BadProofError(t *testing.T) {

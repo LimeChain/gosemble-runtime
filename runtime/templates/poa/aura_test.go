@@ -6,11 +6,12 @@ import (
 
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+	"github.com/LimeChain/gosemble/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_Aura_Authorities_Empty(t *testing.T) {
-	rt, _ := newTestRuntime(t)
+	rt, _ := testhelpers.NewRuntimeInstance(t)
 
 	result, err := rt.Exec("AuraApi_authorities", []byte{})
 	assert.NoError(t, err)
@@ -40,9 +41,9 @@ func Test_Aura_Authorities(t *testing.T) {
 	bytesAuthorities, err := scale.Marshal(authorities)
 	assert.NoError(t, err)
 
-	rt, storage := newTestRuntime(t)
+	rt, storage := testhelpers.NewRuntimeInstance(t)
 
-	err = (*storage).Put(append(keyAuraHash, keyAuthoritiesHash...), bytesAuthorities)
+	err = (*storage).Put(append(testhelpers.KeyAuraHash, testhelpers.KeyAuthoritiesHash...), bytesAuthorities)
 	assert.NoError(t, err)
 
 	result, err := rt.Exec("AuraApi_authorities", []byte{})

@@ -10,7 +10,7 @@ import (
 )
 
 func BenchmarkSystemSetHeapPages(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/system/call_set_heap_pages_weight.go", func(i *benchmarking.Instance) {
+	benchmarking.RunDispatchCall(b, "../../../frame/system/call_set_heap_pages_weight.go", func(i *benchmarking.Instance) {
 		pages := sc.U64(0)
 
 		err := i.ExecuteExtrinsic(

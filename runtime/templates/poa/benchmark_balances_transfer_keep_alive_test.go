@@ -13,8 +13,7 @@ import (
 )
 
 func BenchmarkBalancesTransferKeepAlive(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/balances/call_transfer_keep_alive_weight.go", func(i *benchmarking.Instance) {
-		// arrange
+	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_transfer_keep_alive_weight.go", func(i *benchmarking.Instance) {
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
@@ -33,7 +32,6 @@ func BenchmarkBalancesTransferKeepAlive(b *testing.B) {
 
 		transferAmount := existentialMultiplier * existentialAmount
 
-		// act
 		err = i.ExecuteExtrinsic(
 			"Balances.transfer_keep_alive",
 			types.NewRawOriginSigned(aliceAccountId),
@@ -41,7 +39,6 @@ func BenchmarkBalancesTransferKeepAlive(b *testing.B) {
 			ctypes.NewUCompactFromUInt(uint64(transferAmount)),
 		)
 
-		// assert
 		assert.NoError(b, err)
 
 		expectedSenderBalance, ok := new(big.Int).SetString(scale.MaxUint128.String(), 10)

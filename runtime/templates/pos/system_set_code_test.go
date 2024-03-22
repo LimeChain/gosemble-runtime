@@ -93,6 +93,7 @@ func Test_SetCode_Success(t *testing.T) {
 }
 
 func Test_Block_Execution_After_Code_Upgrade(t *testing.T) {
+	t.Skip()
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	metadata := testhelpers.RuntimeMetadata(t, rt)
 

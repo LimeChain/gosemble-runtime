@@ -12,7 +12,7 @@ func BenchmarkSystemKillPrefix(b *testing.B) {
 	limit, err := benchmarking.NewLinear("size", 0, uint32(1000))
 	assert.NoError(b, err)
 
-	benchmarking.RunDispatchCall(b, "../frame/system/call_kill_prefix_weight.go", func(i *benchmarking.Instance) {
+	benchmarking.RunDispatchCall(b, "../../../frame/system/call_kill_prefix_weight.go", func(i *benchmarking.Instance) {
 		keys := make([][]byte, limit.Value())
 		for j := range keys {
 			keys[j] = buildBytes("testkey", j)

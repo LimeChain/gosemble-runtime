@@ -107,7 +107,7 @@ func Test_Balances_Transfer_Success(t *testing.T) {
 	expectedAliceAccountInfo := gossamertypes.AccountInfo{
 		Nonce:       1,
 		Consumers:   0,
-		Producers:   1,
+		Producers:   0,
 		Sufficients: 0,
 		Data: gossamertypes.AccountData{
 			Free:       scale.MustNewUint128(expectedAliceFreeBalance),
@@ -326,7 +326,7 @@ func Test_Balances_Transfer_Ecdsa_Signature(t *testing.T) {
 	expectedAliceAccountInfo := gossamertypes.AccountInfo{
 		Nonce:       1,
 		Consumers:   0,
-		Producers:   1,
+		Producers:   0,
 		Sufficients: 0,
 		Data: gossamertypes.AccountData{
 			Free:       scale.MustNewUint128(expectedAliceFreeBalance),

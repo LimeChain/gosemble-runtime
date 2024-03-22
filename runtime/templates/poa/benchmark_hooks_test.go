@@ -7,6 +7,7 @@ import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,13 +25,13 @@ func BenchmarkOnInitialize(b *testing.B) {
 	})
 
 	setup := func(storage *runtime.Storage) {
-		(*storage).Put(append(keySystemHash, keyDigestHash...), digest.Bytes())
-		(*storage).Put(append(keyAuraHash, keyCurrentSlotHash...), auraCurrentSlot.Bytes())
-		(*storage).Put(append(keyAuraHash, keyAuthoritiesHash...), auraAuthorities.Bytes())
+		(*storage).Put(append(testhelpers.KeySystemHash, testhelpers.KeyDigestHash...), digest.Bytes())
+		(*storage).Put(append(testhelpers.KeyAuraHash, testhelpers.KeyCurrentSlotHash...), auraCurrentSlot.Bytes())
+		(*storage).Put(append(testhelpers.KeyAuraHash, testhelpers.KeyAuthoritiesHash...), auraAuthorities.Bytes())
 	}
 
 	validate := func(storage *runtime.Storage) {
-		assert.Equal(b, sc.U64(2).Bytes(), (*storage).Get(append(keyAuraHash, keyCurrentSlotHash...)))
+		assert.Equal(b, sc.U64(2).Bytes(), (*storage).Get(append(testhelpers.KeyAuraHash, testhelpers.KeyCurrentSlotHash...)))
 	}
 
 	benchmarking.RunHook(b, "on_initialize", setup, validate)
@@ -44,7 +45,7 @@ func BenchmarkOnRuntimeUpgrade(b *testing.B) {
 }
 
 func BenchmarkOnFinalize(b *testing.B) {
-	key := append(keyTimestampHash, keyTimestampDidUpdateHash...)
+	key := append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampDidUpdateHash...)
 
 	setup := func(storage *runtime.Storage) {
 		(*storage).Put(key, sc.Bool(true).Bytes())

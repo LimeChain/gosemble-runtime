@@ -16,16 +16,15 @@ var value = uint64(existentialMultiplier * existentialAmount)
 
 // Coming from ROOT account. This always creates an account.
 func BenchmarkBalancesSetBalanceCreating(b *testing.B) {
-	benchmarkBalancesSetBalance(b, "../frame/balances/call_set_balance_creating_weight.go", value, value)
+	benchmarkBalancesSetBalance(b, "../../../frame/balances/call_set_balance_creating_weight.go", value, value)
 }
 
 func BenchmarkBalancesSetBalanceKilling(b *testing.B) {
-	benchmarkBalancesSetBalance(b, "../frame/balances/call_set_balance_killing_weight.go", value, 0)
+	benchmarkBalancesSetBalance(b, "../../../frame/balances/call_set_balance_killing_weight.go", value, 0)
 }
 
 func benchmarkBalancesSetBalance(b *testing.B, outputPath string, balance, amount uint64) {
 	benchmarking.RunDispatchCall(b, outputPath, func(i *benchmarking.Instance) {
-		// arrange
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
@@ -41,7 +40,6 @@ func benchmarkBalancesSetBalance(b *testing.B, outputPath string, balance, amoun
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
 		assert.NoError(b, err)
 
-		// act
 		err = i.ExecuteExtrinsic(
 			"Balances.set_balance",
 			types.NewRawOriginRoot(),
@@ -50,7 +48,6 @@ func benchmarkBalancesSetBalance(b *testing.B, outputPath string, balance, amoun
 			ctypes.NewUCompactFromUInt(amount),
 		)
 
-		// assert
 		assert.NoError(b, err)
 
 		senderInfo, err := i.GetAccountInfo(aliceAccountIdBytes)

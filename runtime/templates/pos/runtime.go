@@ -135,7 +135,10 @@ func initializeModules() []primitives.Module {
 			EpochDuration,
 			TimestampMinimumPeriod,
 			MaxAuthorities,
+			systemModule.StorageDigest,
 		),
+		systemModule,
+		logger,
 	)
 
 	timestampModule := timestamp.New(

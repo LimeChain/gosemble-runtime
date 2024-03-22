@@ -1,13 +1,16 @@
-package main
+package testhelpers
 
 import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/LimeChain/gosemble/frame/session"
-	"github.com/LimeChain/gosemble/frame/sudo"
 	"math/big"
 	"testing"
+
+	"github.com/LimeChain/gosemble/frame/session"
+	"github.com/LimeChain/gosemble/frame/sudo"
+
+	"github.com/LimeChain/gosemble/frame/session"
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
@@ -29,37 +32,52 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-const WASM_RUNTIME = "../../../build/runtime.wasm"
+// tests are executed from "/runtime/templates/(other|poa|pos)/tests/"
+const RuntimeWasm = "../../../build/runtime.wasm"
+const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_spec_version_101.wasm"
 
+const (
+	SystemIndex sc.U8 = iota
+	TimestampIndex
+	SessionIndex
+	ConsensusAuthoringIndex
+	ConsensusFinalizationIndex
+	BalancesIndex
+	TxPaymentsIndex
+	TestableIndex = 255
+)
+
+// keys from all the modules
 var (
-	keySystemHash, _             = common.Twox128Hash([]byte("System"))
-	keyAccountHash, _            = common.Twox128Hash([]byte("Account"))
-	keyAllExtrinsicsLenHash, _   = common.Twox128Hash([]byte("AllExtrinsicsLen"))
-	keyAuraHash, _               = common.Twox128Hash([]byte("Aura"))
-	keyAuthoritiesHash, _        = common.Twox128Hash([]byte("Authorities"))
-	keyAuthorizedUpgradeHash, _  = common.Twox128Hash([]byte("AuthorizedUpgrade"))
-	keyBlockHash, _              = common.Twox128Hash([]byte("BlockHash"))
-	keyCurrentSlotHash, _        = common.Twox128Hash([]byte("CurrentSlot"))
-	keyDigestHash, _             = common.Twox128Hash([]byte("Digest"))
-	keyEventsHash, _             = common.Twox128Hash([]byte("Events"))
-	keyEventCountHash, _         = common.Twox128Hash([]byte("EventCount"))
-	keyExecutionPhaseHash, _     = common.Twox128Hash([]byte("ExecutionPhase"))
-	keyExtrinsicCountHash, _     = common.Twox128Hash([]byte("ExtrinsicCount"))
-	keyExtrinsicIndex            = []byte(":extrinsic_index")
-	keyHeapPages                 = []byte(":heappages")
-	keyExtrinsicDataHash, _      = common.Twox128Hash([]byte("ExtrinsicData"))
-	keyLastRuntimeHash, _        = common.Twox128Hash([]byte("LastRuntimeUpgrade"))
-	keyNumberHash, _             = common.Twox128Hash([]byte("Number"))
-	keyParentHash, _             = common.Twox128Hash([]byte("ParentHash"))
-	keyTimestampHash, _          = common.Twox128Hash([]byte("Timestamp"))
-	keyTimestampNowHash, _       = common.Twox128Hash([]byte("Now"))
-	keyTimestampDidUpdateHash, _ = common.Twox128Hash([]byte("DidUpdate"))
-	keyBlockWeightHash, _        = common.Twox128Hash([]byte("BlockWeight"))
-	keyGrandpaAuthorities        = []byte(":grandpa_authorities")
-	keyBalancesHash, _           = common.Twox128Hash([]byte("Balances"))
-	keyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
-	keyTransactionPaymentHash, _ = common.Twox128Hash([]byte("TransactionPayment"))
-	keyNextFeeMultiplierHash, _  = common.Twox128Hash([]byte("NextFeeMultiplier"))
+	KeySystemHash, _             = common.Twox128Hash([]byte("System"))
+	KeyAccountHash, _            = common.Twox128Hash([]byte("Account"))
+	KeyAllExtrinsicsLenHash, _   = common.Twox128Hash([]byte("AllExtrinsicsLen"))
+	KeyAuraHash, _               = common.Twox128Hash([]byte("Aura"))
+	KeyAuthoritiesHash, _        = common.Twox128Hash([]byte("Authorities"))
+	KeyAuthorizedUpgradeHash, _  = common.Twox128Hash([]byte("AuthorizedUpgrade"))
+	KeyBabeHash, _               = common.Twox128Hash([]byte("Babe"))
+	KeyBlockHash, _              = common.Twox128Hash([]byte("BlockHash"))
+	KeyCurrentSlotHash, _        = common.Twox128Hash([]byte("CurrentSlot"))
+	KeyDigestHash, _             = common.Twox128Hash([]byte("Digest"))
+	KeyEventsHash, _             = common.Twox128Hash([]byte("Events"))
+	KeyEventCountHash, _         = common.Twox128Hash([]byte("EventCount"))
+	KeyExecutionPhaseHash, _     = common.Twox128Hash([]byte("ExecutionPhase"))
+	KeyExtrinsicCountHash, _     = common.Twox128Hash([]byte("ExtrinsicCount"))
+	KeyExtrinsicIndex            = []byte(":extrinsic_index")
+	KeyHeapPages                 = []byte(":heappages")
+	KeyExtrinsicDataHash, _      = common.Twox128Hash([]byte("ExtrinsicData"))
+	KeyLastRuntimeHash, _        = common.Twox128Hash([]byte("LastRuntimeUpgrade"))
+	KeyNumberHash, _             = common.Twox128Hash([]byte("Number"))
+	KeyParentHash, _             = common.Twox128Hash([]byte("ParentHash"))
+	KeyTimestampHash, _          = common.Twox128Hash([]byte("Timestamp"))
+	KeyTimestampNowHash, _       = common.Twox128Hash([]byte("Now"))
+	KeyTimestampDidUpdateHash, _ = common.Twox128Hash([]byte("DidUpdate"))
+	KeyBlockWeightHash, _        = common.Twox128Hash([]byte("BlockWeight"))
+	KeyGrandpaAuthorities        = []byte(":grandpa_authorities")
+	KeyBalancesHash, _           = common.Twox128Hash([]byte("Balances"))
+	KeyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
+	KeyTransactionPaymentHash, _ = common.Twox128Hash([]byte("TransactionPayment"))
+	KeyNextFeeMultiplierHash, _  = common.Twox128Hash([]byte("NextFeeMultiplier"))
 )
 
 // Session storage keys
@@ -76,11 +94,11 @@ var (
 )
 
 var (
-	parentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
-	stateRoot      = common.MustHexToHash("0xd9e8bf89bda43fb46914321c371add19b81ff92ad6923e8f189b52578074b073")
-	extrinsicsRoot = common.MustHexToHash("0x105165e71964828f2b8d1fd89904602cfb9b8930951d87eb249aa2d7c4b51ee7")
-	blockNumber    = uint64(1)
-	sealDigest     = gossamertypes.SealDigest{
+	ParentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
+	StateRoot      = common.MustHexToHash("0xd9e8bf89bda43fb46914321c371add19b81ff92ad6923e8f189b52578074b073")
+	ExtrinsicsRoot = common.MustHexToHash("0x105165e71964828f2b8d1fd89904602cfb9b8930951d87eb249aa2d7c4b51ee7")
+	BlockNumber    = uint64(1)
+	SealDigest     = gossamertypes.SealDigest{
 		ConsensusEngineID: gossamertypes.BabeEngineID,
 		// bytes for SealDigest that was created in setupHeaderFile function
 		Data: []byte{158, 127, 40, 221, 220, 242, 124, 30, 107, 50, 141, 86, 148, 195, 104, 213, 178, 236, 93, 190,
@@ -100,12 +118,12 @@ var (
 )
 
 var (
-	transactionValidityResultCallErr, _                = primitives.NewTransactionValidityResult(invalidTransactionCallErr.(primitives.TransactionValidityError))
-	transactionValidityResultStaleErr, _               = primitives.NewTransactionValidityResult(invalidTransactionStaleErr.(primitives.TransactionValidityError))
-	transactionValidityResultFutureErr, _              = primitives.NewTransactionValidityResult(invalidTransactionFutureErr.(primitives.TransactionValidityError))
-	transactionValidityResultExhaustsResourcesErr, _   = primitives.NewTransactionValidityResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
-	transactionValidityResultNoUnsignedValidatorErr, _ = primitives.NewTransactionValidityResult(unknownTransactionNoUnsignedValidator.(primitives.TransactionValidityError))
-	transactionValidityResultMandatoryValidationErr, _ = primitives.NewTransactionValidityResult(invalidTransactionMandatoryValidation.(primitives.TransactionValidityError))
+	TransactionValidityResultCallErr, _                = primitives.NewTransactionValidityResult(invalidTransactionCallErr.(primitives.TransactionValidityError))
+	TransactionValidityResultStaleErr, _               = primitives.NewTransactionValidityResult(invalidTransactionStaleErr.(primitives.TransactionValidityError))
+	TransactionValidityResultFutureErr, _              = primitives.NewTransactionValidityResult(invalidTransactionFutureErr.(primitives.TransactionValidityError))
+	TransactionValidityResultExhaustsResourcesErr, _   = primitives.NewTransactionValidityResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
+	TransactionValidityResultNoUnsignedValidatorErr, _ = primitives.NewTransactionValidityResult(unknownTransactionNoUnsignedValidator.(primitives.TransactionValidityError))
+	TransactionValidityResultMandatoryValidationErr, _ = primitives.NewTransactionValidityResult(invalidTransactionMandatoryValidation.(primitives.TransactionValidityError))
 
 	dispatchOutcome, _             = primitives.NewDispatchOutcome(nil)
 	dispatchOutcomeBadOriginErr, _ = primitives.NewDispatchOutcome(primitives.NewDispatchErrorBadOrigin())
@@ -145,24 +163,29 @@ var (
 				Err:   sc.U32(sudo.ErrorRequireSudo),
 			}))
 
-	applyExtrinsicResultOutcome, _               = primitives.NewApplyExtrinsicResult(dispatchOutcome)
-	applyExtrinsicResultExhaustsResourcesErr, _  = primitives.NewApplyExtrinsicResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
-	applyExtrinsicResultBadOriginErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeBadOriginErr)
-	applyExtrinsicResultBadProofErr, _           = primitives.NewApplyExtrinsicResult(invalidTransactionBadProofErr.(primitives.TransactionValidityError))
-	applyExtrinsicResultCustomModuleErr, _       = primitives.NewApplyExtrinsicResult(dispatchOutcomeCustomModuleErr)
-	applyExtrinsicResultExistentialDepositErr, _ = primitives.NewApplyExtrinsicResult(dispatchOutcomeExistentialDepositErr)
-	applyExtrinsicResultKeepAliveErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeKeepAliveErr)
-	applyExtrinsicResultSessionNoKeysErr, _      = primitives.NewApplyExtrinsicResult(dispatchOutcomeSessionNoKeysErr)
-	applyExtrinsicResultSudoRequireSudoErr, _    = primitives.NewApplyExtrinsicResult(dispatchOutcomeSudoRequireSudoErr)
+	ApplyExtrinsicResultOutcome, _               = primitives.NewApplyExtrinsicResult(dispatchOutcome)
+	ApplyExtrinsicResultExhaustsResourcesErr, _  = primitives.NewApplyExtrinsicResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
+	ApplyExtrinsicResultBadOriginErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeBadOriginErr)
+	ApplyExtrinsicResultBadProofErr, _           = primitives.NewApplyExtrinsicResult(invalidTransactionBadProofErr.(primitives.TransactionValidityError))
+	ApplyExtrinsicResultCustomModuleErr, _       = primitives.NewApplyExtrinsicResult(dispatchOutcomeCustomModuleErr)
+	ApplyExtrinsicResultExistentialDepositErr, _ = primitives.NewApplyExtrinsicResult(dispatchOutcomeExistentialDepositErr)
+	ApplyExtrinsicResultKeepAliveErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeKeepAliveErr)
+	ApplyExtrinsicResultSessionNoKeysErr, _      = primitives.NewApplyExtrinsicResult(dispatchOutcomeSessionNoKeysErr)
+	ApplyExtrinsicResultSudoRequireSudoErr, _    = primitives.NewApplyExtrinsicResult(dispatchOutcomeSudoRequireSudoErr)
 )
 
-func newTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
+// TODO:
+// implement "Client" type with the helpers functions
+// there is also separate "Instance" type for benchmarking that we might get rid of
+// and use the "Client" type instead
+
+func NewRuntimeInstance(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
 	tt := trie.NewEmptyTrie()
-	runtime := wazero_runtime.NewTestInstance(t, WASM_RUNTIME, wazero_runtime.TestWithTrie(tt))
+	runtime := wazero_runtime.NewTestInstance(t, RuntimeWasm, wazero_runtime.TestWithTrie(tt))
 	return runtime, &runtime.Context.Storage
 }
 
-func newTestRuntimeFromCode(t *testing.T, parentRuntime *wazero_runtime.Instance, code []byte) (*wazero_runtime.Instance, *runtime.Storage) {
+func NewRuntimeInstanceFromCode(t *testing.T, parentRuntime *wazero_runtime.Instance, code []byte) (*wazero_runtime.Instance, *runtime.Storage) {
 	cfg := wazero_runtime.Config{
 		Storage: parentRuntime.Context.Storage,
 	}
@@ -171,7 +194,7 @@ func newTestRuntimeFromCode(t *testing.T, parentRuntime *wazero_runtime.Instance
 	return runtime, &runtime.Context.Storage
 }
 
-func runtimeMetadata(t assert.TestingT, instance *wazero_runtime.Instance) *ctypes.Metadata {
+func RuntimeMetadata(t assert.TestingT, instance *wazero_runtime.Instance) *ctypes.Metadata {
 	bMetadata, err := instance.Metadata()
 	assert.NoError(t, err)
 
@@ -186,11 +209,7 @@ func runtimeMetadata(t assert.TestingT, instance *wazero_runtime.Instance) *ctyp
 	return metadata
 }
 
-func initializeBlock(t *testing.T,
-	rt *wazero_runtime.Instance,
-	parentHash, stateRoot, extrinsicsRoot common.Hash,
-	blockNumber uint64,
-) {
+func InitializeBlock(t *testing.T, rt *wazero_runtime.Instance, parentHash, stateRoot, extrinsicsRoot common.Hash, blockNumber uint64) {
 	digest := gossamertypes.NewDigest()
 	header := gossamertypes.NewHeader(parentHash, stateRoot, extrinsicsRoot, uint(blockNumber), digest)
 	encodedHeader, err := scale.Marshal(*header)
@@ -200,15 +219,15 @@ func initializeBlock(t *testing.T,
 	assert.NoError(t, err)
 }
 
-func assertStorageSystemEventCount(t assert.TestingT, storage *runtime.Storage, expected uint32) {
+func AssertStorageSystemEventCount(t assert.TestingT, storage *runtime.Storage, expected uint32) {
 	buffer := &bytes.Buffer{}
-	buffer.Write((*storage).Get(append(keySystemHash, keyEventCountHash...)))
+	buffer.Write((*storage).Get(append(KeySystemHash, KeyEventCountHash...)))
 	storageEventCount, err := sc.DecodeU32(buffer)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, uint32(storageEventCount))
 }
 
-func assertEmittedBalancesEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
+func AssertEmittedBalancesEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
 	var emitted bool
 	eventRecord, err := types.DecodeEventRecord(BalancesIndex, balances.DecodeEvent, buffer)
 	assert.NoError(t, err)
@@ -218,7 +237,7 @@ func assertEmittedBalancesEvent(t assert.TestingT, event sc.U8, buffer *bytes.Bu
 	assert.True(t, emitted)
 }
 
-func assertEmittedSystemEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
+func AssertEmittedSystemEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
 	var emitted bool
 	eventRecord, err := types.DecodeEventRecord(SystemIndex, system.DecodeEvent, buffer)
 	assert.NoError(t, err)
@@ -228,7 +247,7 @@ func assertEmittedSystemEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buff
 	assert.True(t, emitted)
 }
 
-func assertEmittedTransactionPaymentEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
+func AssertEmittedTransactionPaymentEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
 	var emitted bool
 	eventRecord, err := types.DecodeEventRecord(TxPaymentsIndex, transaction_payment.DecodeEvent, buffer)
 	assert.NoError(t, err)
@@ -238,8 +257,8 @@ func assertEmittedTransactionPaymentEvent(t assert.TestingT, event sc.U8, buffer
 	assert.True(t, emitted)
 }
 
-func assertStorageDigestItem(t *testing.T, storage *runtime.Storage, digestItem sc.U8) {
-	buffer := bytes.NewBuffer((*storage).Get(append(keySystemHash, keyDigestHash...)))
+func AssertStorageDigestItem(t *testing.T, storage *runtime.Storage, digestItem sc.U8) {
+	buffer := bytes.NewBuffer((*storage).Get(append(KeySystemHash, KeyDigestHash...)))
 	decodeDigest, err := types.DecodeDigest(buffer)
 	assert.NoError(t, err)
 	assert.Len(t, decodeDigest.Sequence, 1)
@@ -248,7 +267,7 @@ func assertStorageDigestItem(t *testing.T, storage *runtime.Storage, digestItem 
 	}
 }
 
-func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byte, freeBalance *big.Int, nonce uint32) (storageKey []byte, info gossamertypes.AccountInfo) {
+func SetStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byte, freeBalance *big.Int, nonce uint32) (storageKey []byte, info gossamertypes.AccountInfo) {
 	accountInfo := gossamertypes.AccountInfo{
 		Nonce:       nonce,
 		Consumers:   0,
@@ -263,7 +282,7 @@ func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byt
 	}
 
 	aliceHash, _ := common.Blake2b128(account)
-	keyStorageAccount := append(keySystemHash, keyAccountHash...)
+	keyStorageAccount := append(KeySystemHash, KeyAccountHash...)
 	keyStorageAccount = append(keyStorageAccount, aliceHash...)
 	keyStorageAccount = append(keyStorageAccount, account...)
 
@@ -276,7 +295,7 @@ func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byt
 	return keyStorageAccount, accountInfo
 }
 
-func getQueryInfo(t *testing.T, runtime *wazero_runtime.Instance, extrinsic []byte) primitives.RuntimeDispatchInfo {
+func GetQueryInfo(t *testing.T, runtime *wazero_runtime.Instance, extrinsic []byte) primitives.RuntimeDispatchInfo {
 	buffer := &bytes.Buffer{}
 
 	buffer.Write(extrinsic)
@@ -295,7 +314,7 @@ func getQueryInfo(t *testing.T, runtime *wazero_runtime.Instance, extrinsic []by
 	return dispatchInfo
 }
 
-func timestampExtrinsicBytes(t assert.TestingT, metadata *ctypes.Metadata, time uint64) []byte {
+func TimestampExtrinsicBytes(t assert.TestingT, metadata *ctypes.Metadata, time uint64) []byte {
 	call, err := ctypes.NewCall(metadata, "Timestamp.set", ctypes.NewUCompactFromUInt(time))
 	assert.NoError(t, err)
 
@@ -309,7 +328,7 @@ func timestampExtrinsicBytes(t assert.TestingT, metadata *ctypes.Metadata, time 
 	return extEnc.Bytes()
 }
 
-func signExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyPair *secp256k1.Keypair) error {
+func SignExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyPair *secp256k1.Keypair) error {
 	if e.Type() != ctypes.ExtrinsicVersion4 {
 		return fmt.Errorf("unsupported extrinsic version: %v (isSigned: %v, type: %v)", e.Version, e.IsSigned(), e.Type())
 	}

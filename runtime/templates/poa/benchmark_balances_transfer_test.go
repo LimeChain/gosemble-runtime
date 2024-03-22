@@ -16,8 +16,7 @@ import (
 // * Transfer will kill the sender account.
 // * Transfer will create the recipient account.
 func BenchmarkBalancesTransferAllowDeath(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/balances/call_transfer_weight.go", func(i *benchmarking.Instance) {
-		// arrange
+	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_transfer_weight.go", func(i *benchmarking.Instance) {
 		balance := existentialMultiplier * existentialAmount
 		transferAmount := existentialAmount*(existentialMultiplier-1) + 1
 
@@ -37,7 +36,6 @@ func BenchmarkBalancesTransferAllowDeath(b *testing.B) {
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
 		assert.NoError(b, err)
 
-		// act
 		err = i.ExecuteExtrinsic(
 			"Balances.transfer",
 			types.NewRawOriginSigned(aliceAccountId),
@@ -45,7 +43,6 @@ func BenchmarkBalancesTransferAllowDeath(b *testing.B) {
 			ctypes.NewUCompact(big.NewInt(transferAmount)),
 		)
 
-		// assert
 		assert.NoError(b, err)
 
 		senderInfo, err := i.GetAccountInfo(aliceAccountIdBytes)

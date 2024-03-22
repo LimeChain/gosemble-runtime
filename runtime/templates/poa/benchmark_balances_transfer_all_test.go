@@ -16,8 +16,7 @@ import (
 // * The recipient account is created
 // * The sender is killed
 func BenchmarkBalancesTransferAllAllowDeath(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/balances/call_transfer_all_weight.go", func(i *benchmarking.Instance) {
-		// arrange
+	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_transfer_all_weight.go", func(i *benchmarking.Instance) {
 		balance := existentialMultiplier * existentialAmount
 
 		accountInfo := gossamertypes.AccountInfo{
@@ -36,7 +35,6 @@ func BenchmarkBalancesTransferAllAllowDeath(b *testing.B) {
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
 		assert.NoError(b, err)
 
-		// act
 		err = i.ExecuteExtrinsic(
 			"Balances.transfer_all",
 			types.NewRawOriginSigned(aliceAccountId),
@@ -44,7 +42,6 @@ func BenchmarkBalancesTransferAllAllowDeath(b *testing.B) {
 			ctypes.NewBool(false),
 		)
 
-		// assert
 		assert.NoError(b, err)
 
 		senderInfo, err := i.GetAccountInfo(aliceAccountIdBytes)

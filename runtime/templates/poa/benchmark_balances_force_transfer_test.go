@@ -16,8 +16,7 @@ import (
 // * Transfer will kill the sender account.
 // * Transfer will create the recipient account.
 func BenchmarkBalancesForceTransfer(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/balances/call_force_transfer_weight.go", func(i *benchmarking.Instance) {
-		// arrange
+	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_force_transfer_weight.go", func(i *benchmarking.Instance) {
 		balance := existentialMultiplier * existentialAmount
 		transferAmount := uint64(existentialAmount*(existentialMultiplier-1) + 1)
 
@@ -37,7 +36,6 @@ func BenchmarkBalancesForceTransfer(b *testing.B) {
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
 		assert.NoError(b, err)
 
-		// act
 		err = i.ExecuteExtrinsic(
 			"Balances.force_transfer",
 			types.NewRawOriginRoot(),
@@ -46,7 +44,6 @@ func BenchmarkBalancesForceTransfer(b *testing.B) {
 			ctypes.NewUCompactFromUInt(transferAmount),
 		)
 
-		// assert
 		assert.NoError(b, err)
 
 		senderInfo, err := i.GetAccountInfo(aliceAccountIdBytes)
