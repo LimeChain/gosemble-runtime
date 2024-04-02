@@ -108,7 +108,7 @@ test-coverage:
 	./scripts/coverage.sh
 
 GENERATE_WEIGHT_FILES=true
-benchmark:
+benchmark: build-benchmarking
 	@go test --tags="nonwasmenv" -bench=. ./runtime/... -run=XXX -benchtime=1x \
 	-steps=50 \
 	-repeat=20 \
