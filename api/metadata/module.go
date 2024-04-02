@@ -285,6 +285,8 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesFixedSequence32U8, "[u8; 32]")},
 		)),
 
+		primitives.NewMetadataType(metadata.TypesSequenceAddress32, "[]Address32", primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.TypesAddress32))),
+
 		primitives.NewMetadataTypeWithPath(metadata.TypesKeyTypeId, "KeyTypeId", sc.Sequence[sc.Str]{"sp_core", "crypto", "KeyTypeId"}, primitives.NewMetadataTypeDefinitionComposite(
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesFixedSequence4U8, "[u8; 4]")},
 		)),

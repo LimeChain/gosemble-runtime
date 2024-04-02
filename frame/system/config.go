@@ -1,6 +1,7 @@
 package system
 
 import (
+	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -10,6 +11,7 @@ type Config struct {
 	BlockLength    types.BlockLength
 	DbWeight       types.RuntimeDbWeight
 	Version        *types.RuntimeVersion
+	MaxConsumers   sc.U32
 }
 
 func NewConfig(
@@ -18,6 +20,7 @@ func NewConfig(
 	blockLength types.BlockLength,
 	dbWeight types.RuntimeDbWeight,
 	version *types.RuntimeVersion,
+	maxConsumers sc.U32,
 ) *Config {
 	return &Config{
 		blockHashCount,
@@ -25,5 +28,6 @@ func NewConfig(
 		blockLength,
 		dbWeight,
 		version,
+		maxConsumers,
 	}
 }

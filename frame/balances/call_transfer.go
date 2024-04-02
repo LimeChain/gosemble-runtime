@@ -128,7 +128,7 @@ func (t transfer) transfer(origin types.RawOrigin, dest types.MultiAddress, valu
 	}
 
 	transactor, originErr := origin.AsSigned()
-	if err != nil {
+	if originErr != nil {
 		return primitives.NewDispatchErrorOther(sc.Str(originErr.Error()))
 	}
 

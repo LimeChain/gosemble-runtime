@@ -71,20 +71,5 @@ func (m Module) BuildConfig(config []byte) error {
 		return nil
 	}
 
-	totalAuthorities, err := m.storage.Authorities.DecodeLen()
-	if err != nil {
-		return err
-	}
-
-	if totalAuthorities.HasValue {
-		return errAuthoritiesAlreadyInitialized
-	}
-
-	if len(gc.Authorities) > int(m.config.MaxAuthorities) {
-		return errAuthoritiesExceedMaxAuthorities
-	}
-
-	m.storage.Authorities.Put(gc.Authorities)
-
-	return nil
+	return m.initializeAuthorities(gc.Authorities)
 }

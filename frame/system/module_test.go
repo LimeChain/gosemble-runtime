@@ -23,8 +23,9 @@ const (
 )
 
 var (
-	blockNum   = sc.U64(1)
-	eventCount = sc.U32(1)
+	blockNum     = sc.U64(1)
+	eventCount   = sc.U32(1)
+	maxConsumers = sc.U32(16)
 
 	accountInfo = primitives.AccountInfo{
 		Nonce:       1,
@@ -2187,7 +2188,7 @@ func Test_DoApplyAuthorizeUpgrade_Success(t *testing.T) {
 }
 
 func setupModule() module {
-	config := NewConfig(primitives.BlockHashCount{U32: sc.U32(blockHashCount)}, blockWeights, blockLength, dbWeight, &version)
+	config := NewConfig(primitives.BlockHashCount{U32: sc.U32(blockHashCount)}, blockWeights, blockLength, dbWeight, &version, maxConsumers)
 
 	target := New(moduleId, config, mdGenerator, log.NewLogger()).(module)
 

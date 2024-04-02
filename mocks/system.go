@@ -184,6 +184,51 @@ func (m *SystemModule) AccountTryMutateExists(who primitives.AccountId, f func(w
 	return args[0].(sc.Encodable), args[1].(error)
 }
 
+func (m *SystemModule) CanIncConsumer(who primitives.AccountId) (bool, error) {
+	args := m.Called(who)
+	if args[1] == nil {
+		return args[0].(bool), nil
+	}
+
+	return args[0].(bool), args[1].(error)
+}
+
+func (m *SystemModule) DecConsumers(who primitives.AccountId) (sc.Encodable, error) {
+	args := m.Called(who)
+	if args[1] == nil {
+		return args[0].(sc.Encodable), nil
+	}
+
+	return args[0].(sc.Encodable), args[1].(error)
+}
+
+func (m *SystemModule) IncConsumers(who primitives.AccountId) (sc.Encodable, error) {
+	args := m.Called(who)
+	if args[1] == nil {
+		return args[0].(sc.Encodable), nil
+	}
+
+	return args[0].(sc.Encodable), args[1].(error)
+}
+
+func (m *SystemModule) IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable, error) {
+	args := m.Called(who)
+	if args[1] == nil {
+		return args[0].(sc.Encodable), nil
+	}
+
+	return args[0].(sc.Encodable), args[1].(error)
+}
+
+func (m *SystemModule) IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {
+	args := m.Called(who)
+	if args[1] == nil {
+		return args[0].(primitives.IncRefStatus), nil
+	}
+
+	return args[0].(primitives.IncRefStatus), args[1].(error)
+}
+
 func (m *SystemModule) Metadata() primitives.MetadataModule {
 	args := m.Called()
 	return args.Get(0).(primitives.MetadataModule)

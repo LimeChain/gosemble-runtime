@@ -11,8 +11,8 @@ WASMOPT_PATH = /tinygo/lib/binaryen/bin/wasm-opt
 DOCKER_BUILD_TINYGO = docker build --tag $(IMAGE):$(VERSION)-$(GC) -f tinygo/Dockerfile.$(TARGET) tinygo
 DOCKER_RUN_TINYGO = docker run --rm -v $(CURRENT_DIR):$(SRC_DIR) -w $(SRC_DIR) $(IMAGE):$(VERSION)-$(GC) /bin/bash -c
 
-TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -gc=$(GC) -target=$(TARGET)
-TINYGO_BUILD_COMMAND = tinygo build -gc=$(GC) -target=$(TARGET)
+TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -opt s -gc=$(GC) -target=$(TARGET)
+TINYGO_BUILD_COMMAND = tinygo build -gc=$(GC) -opt s -target=$(TARGET)
 
 RUNTIME_BUILD_NODEBUG = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
 RUNTIME_BUILD = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
@@ -125,4 +125,3 @@ benchmark-overhead: build-benchmarking
 	-target=$(TARGET) \
 	-tinygoversion=$(VERSION) \
 	-generate-weight-files=$(GENERATE_WEIGHT_FILES)
-

@@ -37,3 +37,11 @@ func DecodeAccountId(buffer *bytes.Buffer) (AccountId, error) {
 func (a AccountId) Bytes() []byte {
 	return sc.EncodedBytes(a.FixedSequence)
 }
+
+func DecodeSequenceAccountId(buffer *bytes.Buffer) (sc.Sequence[AccountId], error) {
+	return sc.DecodeSequenceWith[AccountId](buffer, DecodeAccountId)
+}
+
+func DecodeOptionalAccountId(buffer *bytes.Buffer) (sc.Option[AccountId], error) {
+	return sc.DecodeOptionWith(buffer, DecodeAccountId)
+}

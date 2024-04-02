@@ -21,9 +21,9 @@ func BenchmarkSystemAuthorizeUpgradeWithoutChecks(b *testing.B) {
 
 		assert.NoError(b, err)
 		upgradeAuthorizationBytes := (*i.Storage()).Get(append(keySystemHash, keyAuthorizedUpgradeHash...))
-		upgradeAuthorization, err := sc.DecodeOptionWith(bytes.NewBuffer(upgradeAuthorizationBytes), system.DecodeCodeUpgradeAuthorization)
+		upgradeAuthorization, err := system.DecodeCodeUpgradeAuthorization(bytes.NewBuffer(upgradeAuthorizationBytes))
 		assert.NoError(b, err)
 
-		assert.Equal(b, codeHash.ToBytes(), sc.FixedSequenceU8ToBytes(upgradeAuthorization.Value.CodeHash.FixedSequence))
+		assert.Equal(b, codeHash.ToBytes(), sc.FixedSequenceU8ToBytes(upgradeAuthorization.CodeHash.FixedSequence))
 	})
 }

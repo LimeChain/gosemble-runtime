@@ -52,6 +52,11 @@ type Module interface {
 	ResetEvents()
 	Get(key primitives.AccountId) (primitives.AccountInfo, error)
 	CanDecProviders(who primitives.AccountId) (bool, error)
+	CanIncConsumer(who primitives.AccountId) (bool, error)
+	DecConsumers(who primitives.AccountId) (sc.Encodable, error)
+	IncConsumers(who primitives.AccountId) (sc.Encodable, error)
+	IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable, error)
+	IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error)
 
 	TryMutateExists(who primitives.AccountId, f func(who *primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error)
 	Metadata() primitives.MetadataModule
@@ -100,11 +105,11 @@ type module struct {
 	ioStorage   io.Storage
 	ioMisc      io.Misc
 	ioHashing   io.Hashing
-	logger      log.WarnLogger
+	logger      log.Logger
 	mdGenerator *primitives.MetadataTypeGenerator
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.WarnLogger) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
 	functions := make(map[sc.U8]primitives.Call)
 	storage := newStorage()
 	constants := newConstants(config.BlockHashCount, config.BlockWeights, config.BlockLength, config.DbWeight, *config.Version)
@@ -458,7 +463,7 @@ func (m module) DepositEvent(event primitives.Event) {
 	m.depositEventIndexed([]primitives.H256{}, event)
 }
 
-// Deposits a log and ensures it matches the block's log data.
+// DepositLog deposits a log and ensures it matches the block's log data.
 func (m module) DepositLog(item primitives.DigestItem) {
 	m.storage.Digest.AppendItem(item)
 }
@@ -486,7 +491,7 @@ func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.Acc
 	isProviding := !reflect.DeepEqual(*someData, primitives.AccountData{})
 
 	if !wasProviding && isProviding {
-		_, err := m.incProviders(who)
+		_, err := m.IncProviders(who)
 		if err != nil {
 			return nil, err
 		}
@@ -513,7 +518,58 @@ func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.Acc
 	return result, nil
 }
 
-func (m module) incProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {
+func (m module) CanIncConsumer(who primitives.AccountId) (bool, error) {
+	acc, err := m.Get(who)
+	if err != nil {
+		return false, err
+	}
+
+	value, err := sc.CheckedAddU32(acc.Consumers, 1)
+	if err != nil {
+		return false, err
+	}
+
+	return value > 0 && value <= m.Config.MaxConsumers, nil
+}
+
+func (m module) DecConsumers(who primitives.AccountId) (sc.Encodable, error) {
+	return m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+		if account.Consumers > 0 {
+			account.Consumers -= 1
+			return nil, nil
+		}
+		m.logger.Critical("Unexpected underflow in reducing consumer.")
+		return nil, nil
+	})
+}
+
+func (m module) IncConsumers(who primitives.AccountId) (sc.Encodable, error) {
+	return m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+		if account.Providers > 0 {
+			if account.Consumers < m.Config.MaxConsumers {
+				account.Consumers = sc.SaturatingAddU32(account.Consumers, 1)
+				return nil, nil
+			}
+
+			return nil, primitives.NewDispatchErrorTooManyConsumers()
+		}
+
+		return nil, primitives.NewDispatchErrorNoProviders()
+	})
+}
+
+func (m module) IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable, error) {
+	return m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+		if account.Providers > 0 {
+			account.Consumers = sc.SaturatingAddU32(account.Consumers, 1)
+			return nil, nil
+		}
+
+		return nil, primitives.NewDispatchErrorNoProviders()
+	})
+}
+
+func (m module) IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {
 	result, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
 		return m.incrementProviders(who, account), nil
 	})

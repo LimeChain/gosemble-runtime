@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
+	"github.com/LimeChain/gosemble/frame/session"
 	"math/big"
 	"testing"
 
@@ -61,6 +63,13 @@ var (
 	keyNextFeeMultiplierHash, _  = common.Twox128Hash([]byte("NextFeeMultiplier"))
 )
 
+// Session storage keys
+var (
+	keySessionHash, _ = common.Twox128Hash([]byte("Session"))
+	keyNextKeys, _    = common.Twox128Hash([]byte("NextKeys"))
+	keyKeyOwner, _    = common.Twox128Hash([]byte("KeyOwner"))
+)
+
 var (
 	parentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
 	stateRoot      = common.MustHexToHash("0xd9e8bf89bda43fb46914321c371add19b81ff92ad6923e8f189b52578074b073")
@@ -117,6 +126,13 @@ var (
 				Err:   sc.U32(balances.ErrorKeepAlive),
 			}))
 
+	dispatchOutcomeSessionNoKeysErr, _ = primitives.NewDispatchOutcome(
+		primitives.NewDispatchErrorModule(
+			primitives.CustomModuleError{
+				Index: SessionIndex,
+				Err:   sc.U32(session.ErrorNoKeys),
+			}))
+
 	applyExtrinsicResultOutcome, _               = primitives.NewApplyExtrinsicResult(dispatchOutcome)
 	applyExtrinsicResultExhaustsResourcesErr, _  = primitives.NewApplyExtrinsicResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
 	applyExtrinsicResultBadOriginErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeBadOriginErr)
@@ -124,6 +140,7 @@ var (
 	applyExtrinsicResultCustomModuleErr, _       = primitives.NewApplyExtrinsicResult(dispatchOutcomeCustomModuleErr)
 	applyExtrinsicResultExistentialDepositErr, _ = primitives.NewApplyExtrinsicResult(dispatchOutcomeExistentialDepositErr)
 	applyExtrinsicResultKeepAliveErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeKeepAliveErr)
+	applyExtrinsicResultSessionNoKeysErr, _      = primitives.NewApplyExtrinsicResult(dispatchOutcomeSessionNoKeysErr)
 )
 
 func newTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
@@ -222,7 +239,7 @@ func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byt
 	accountInfo := gossamertypes.AccountInfo{
 		Nonce:       nonce,
 		Consumers:   0,
-		Producers:   0,
+		Producers:   1,
 		Sufficients: 0,
 		Data: gossamertypes.AccountData{
 			Free:       scale.MustNewUint128(freeBalance),
@@ -339,4 +356,59 @@ func signExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyP
 	e.Version |= ctypes.ExtrinsicBitSigned
 
 	return nil
+}
+
+func assertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account []byte, expectedKey []byte) {
+	accountHash, _ := common.Twox64(account)
+	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
+	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
+	keySessionNextKeys = append(keySessionNextKeys, account...)
+
+	assert.Equal(t, expectedKey, (*storage).Get(keySessionNextKeys))
+}
+
+func assertSessionKeyOwner(t assert.TestingT, storage *runtime.Storage, key primitives.SessionKey, expectedOwner []byte) {
+	keyOwnerBytes := key.Bytes()
+	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
+	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
+	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerHash...)
+	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerBytes...)
+
+	fmt.Println(hex.EncodeToString(keySessionKeyOwner))
+
+	assert.Equal(t, expectedOwner, (*storage).Get(keySessionKeyOwner))
+}
+
+func assertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
+	accountHash, _ := common.Twox64(account)
+	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
+	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
+	keySessionNextKeys = append(keySessionNextKeys, account...)
+
+	assert.Nil(t, (*storage).Get(keySessionNextKeys))
+
+	keyOwnerBytes := primitives.NewSessionKey(key, keyTypeId).Bytes()
+	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
+	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
+	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerHash...)
+	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerBytes...)
+
+	assert.Nil(t, (*storage).Get(keySessionKeyOwner))
+}
+
+func setSessionKeysStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
+	accountHash, _ := common.Twox64(account)
+	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
+	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
+	keySessionNextKeys = append(keySessionNextKeys, account...)
+
+	assert.Nil(t, (*storage).Put(keySessionNextKeys, key))
+
+	keyOwnerBytes := primitives.NewSessionKey(key, keyTypeId).Bytes()
+	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
+	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
+	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerHash...)
+	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerBytes...)
+
+	assert.Nil(t, (*storage).Put(keySessionKeyOwner, account))
 }

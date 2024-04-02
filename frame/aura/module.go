@@ -3,6 +3,8 @@ package aura
 import (
 	"bytes"
 	"errors"
+	"github.com/LimeChain/gosemble/frame/system"
+	"github.com/LimeChain/gosemble/primitives/log"
 	"reflect"
 
 	sc "github.com/LimeChain/goscale"
@@ -40,22 +42,28 @@ type AuraModule interface {
 type Module struct {
 	primitives.DefaultInherentProvider
 	hooks.DefaultDispatchModule
-	index       sc.U8
-	config      *Config
-	storage     *storage
-	constants   *consts
-	mdGenerator *primitives.MetadataTypeGenerator
+	index              sc.U8
+	config             *Config
+	storage            *storage
+	constants          *consts
+	mdGenerator        *primitives.MetadataTypeGenerator
+	logDepositor       system.LogDepositor
+	disabledValidators primitives.DisabledValidators
+	logger             log.Logger
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
 	storage := newStorage()
 
 	return Module{
-		index:       index,
-		config:      config,
-		storage:     storage,
-		constants:   newConstants(config.DbWeight, config.MinimumPeriod),
-		mdGenerator: mdGenerator,
+		index:              index,
+		config:             config,
+		storage:            storage,
+		constants:          newConstants(config.DbWeight, config.MinimumPeriod),
+		mdGenerator:        mdGenerator,
+		logDepositor:       config.LogDepositor,
+		disabledValidators: config.DisabledValidators,
+		logger:             logger,
 	}
 }
 
@@ -87,6 +95,15 @@ func (m Module) KeyTypeId() [4]byte {
 	return KeyTypeId
 }
 
+func (m Module) DecodeKey(buffer *bytes.Buffer) (primitives.Sr25519PublicKey, error) {
+	key, err := primitives.DecodeSr25519PublicKey(buffer)
+	if err != nil {
+		return primitives.Sr25519PublicKey{}, err
+	}
+
+	return key, nil
+}
+
 func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 	slot, err := m.currentSlotFromDigests()
 	if err != nil {
@@ -112,17 +129,11 @@ func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 			return primitives.Weight{}, err
 		}
 		if totalAuthorities.HasValue {
-			_ = currentSlot % totalAuthorities.Value
+			authorityIndex := currentSlot % totalAuthorities.Value
 
-			// TODO: implement once  Session module is added
-			/*
-				if T::DisabledValidators::is_disabled(authority_index as u32) {
-							panic!(
-								"Validator with index {:?} is disabled and should not be attempting to author blocks.",
-								authority_index,
-							);
-						}
-			*/
+			if m.disabledValidators != nil && m.disabledValidators.IsDisabled(sc.U32(authorityIndex)) {
+				m.logger.Criticalf("Validator with index [%d] is disabled and should not be attempting to author blocks.", authorityIndex)
+			}
 		}
 
 		return m.constants.DbWeight.ReadsWrites(2, 1), nil
@@ -147,6 +158,51 @@ func (m Module) OnTimestampSet(now sc.U64) error {
 		return errTimestampSlotMismatch
 	}
 	return nil
+}
+
+func (m Module) OnGenesisSession(validators sc.Sequence[primitives.Validator]) error {
+	authorities := sc.Sequence[primitives.Sr25519PublicKey]{}
+	for _, validator := range validators {
+		authorities = append(authorities, validator.AuthorityId)
+	}
+
+	if len(authorities) == 0 {
+		return nil
+	}
+
+	return m.initializeAuthorities(authorities)
+}
+
+func (m Module) OnNewSession(isChanged bool, validators sc.Sequence[primitives.Validator], _ sc.Sequence[primitives.Validator]) error {
+	if isChanged {
+		nextAuthorities := sc.Sequence[primitives.Sr25519PublicKey]{}
+		for _, validator := range validators {
+			nextAuthorities = append(nextAuthorities, validator.AuthorityId)
+		}
+		lastAuthorities, err := m.StorageAuthorities()
+		if err != nil {
+			return err
+		}
+
+		if !reflect.DeepEqual(nextAuthorities, lastAuthorities) {
+			if len(nextAuthorities) > int(m.config.MaxAuthorities) {
+				m.logger.Warnf("next authorities list larger than maximum [%d], truncating", m.config.MaxAuthorities)
+			}
+
+			return m.changeAuthorities(nextAuthorities[:len(lastAuthorities)])
+		}
+	}
+
+	return nil
+}
+
+func (m Module) OnBeforeSessionEnding() {}
+
+func (m Module) OnDisabled(validatorIndex sc.U32) {
+	message := NewConsensusLogOnDisabled(validatorIndex).Bytes()
+	log := primitives.NewDigestItemConsensusMessage(sc.BytesToFixedSequenceU8(KeyTypeId[:]), sc.BytesToSequenceU8(message))
+
+	m.logDepositor.DepositLog(log)
 }
 
 // FindAuthor finds the author from the pre-runtime digests.
@@ -311,6 +367,43 @@ func (m Module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 				"The current slot of this block.   This will be set in `on_initialize`."),
 		},
 	})
+}
+
+// initializeAuthorities initialises the authorities to the storage state.
+// Returns an error if authorities already exist in the storage.
+// Returns an error if new authorities are more than the maximum allowed.
+func (m Module) initializeAuthorities(authorities sc.Sequence[primitives.Sr25519PublicKey]) error {
+	totalAuthorities, err := m.storage.Authorities.DecodeLen()
+	if err != nil {
+		return err
+	}
+
+	if totalAuthorities.HasValue {
+		return errAuthoritiesAlreadyInitialized
+	}
+
+	if len(authorities) > int(m.config.MaxAuthorities) {
+		return errAuthoritiesExceedMaxAuthorities
+	}
+
+	m.storage.Authorities.Put(authorities)
+
+	return nil
+}
+
+func (m Module) changeAuthorities(authorities sc.Sequence[primitives.Sr25519PublicKey]) error {
+	if len(authorities) == 0 {
+		m.logger.Warn("Ignoring empty authority change.")
+		return nil
+	}
+
+	m.storage.Authorities.Put(authorities)
+
+	message := NewConsensusLogAuthoritiesChange(authorities).Bytes()
+	log := primitives.NewDigestItemConsensusMessage(sc.BytesToFixedSequenceU8(KeyTypeId[:]), sc.BytesToSequenceU8(message))
+
+	m.logDepositor.DepositLog(log)
+	return nil
 }
 
 func (m Module) currentSlotFromDigests() (sc.Option[slot], error) {

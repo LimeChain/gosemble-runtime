@@ -25,6 +25,7 @@ import (
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"
+	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
 	tm "github.com/LimeChain/gosemble/frame/testable"
@@ -49,6 +50,14 @@ const (
 	TimestampMinimumPeriod = 1 * 1_000 // 1 second
 )
 
+const (
+	MilliSecsPerBlock = 2_000
+	SlotDuration      = MilliSecsPerBlock
+	Minutes           = 60_000 / MilliSecsPerBlock
+	Hours             = Minutes * 60
+	Days              = Hours * 24
+)
+
 var (
 	BalancesExistentialDeposit = sc.NewU128(1 * constants.Dollar)
 )
@@ -63,9 +72,15 @@ var (
 	LengthToFee              primitives.WeightToFee = primitives.IdentityFee{}
 )
 
+var (
+	Period sc.U64 = 6 * Hours
+	Offset sc.U64 = 0
+)
+
 const (
 	SystemIndex sc.U8 = iota
 	TimestampIndex
+	SessionIndex
 	AuraIndex
 	GrandpaIndex
 	BalancesIndex
@@ -87,6 +102,8 @@ var (
 
 	// Block default values used in module initialization.
 	blockWeights, blockLength = initializeBlockDefaults()
+
+	maxConsumers sc.U32 = 16
 )
 
 var (
@@ -115,7 +132,7 @@ func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength)
 func initializeModules() []primitives.Module {
 	systemModule := system.New(
 		SystemIndex,
-		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion),
+		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion, maxConsumers),
 		mdGenerator,
 		logger,
 	)
@@ -129,8 +146,11 @@ func initializeModules() []primitives.Module {
 			AuraMaxAuthorities,
 			false,
 			systemModule.StorageDigest,
+			systemModule,
+			nil,
 		),
 		mdGenerator,
+		logger,
 	)
 
 	timestampModule := timestamp.New(
@@ -140,6 +160,15 @@ func initializeModules() []primitives.Module {
 	)
 
 	grandpaModule := grandpa.New(GrandpaIndex, logger, mdGenerator)
+
+	handler := session.NewHandler([]session.OneSessionHandler{auraModule})
+
+	periodicSession := session.NewPeriodicSessions(Period, Offset)
+	sessionModule := session.New(
+		SessionIndex,
+		session.NewConfig(DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
+		mdGenerator,
+		logger)
 
 	balancesModule := balances.New(
 		BalancesIndex,
@@ -159,6 +188,7 @@ func initializeModules() []primitives.Module {
 	return []primitives.Module{
 		systemModule,
 		timestampModule,
+		sessionModule,
 		auraModule,
 		grandpaModule,
 		balancesModule,

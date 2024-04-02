@@ -2,6 +2,7 @@ package aura
 
 import (
 	"errors"
+	"github.com/LimeChain/gosemble/primitives/log"
 	"io"
 	"testing"
 
@@ -44,6 +45,7 @@ var (
 		Write: 7 * weightRefTimePerNanos,
 	}
 	module                 Module
+	mockLogDepositor       *mocks.LogDepositor
 	mockStorageDigest      *mocks.StorageValue[types.Digest]
 	mockStorageCurrentSlot *mocks.StorageValue[sc.U64]
 	mockStorageAuthorities *mocks.StorageValue[sc.Sequence[types.Sr25519PublicKey]]
@@ -147,6 +149,7 @@ var (
 )
 
 func setup(minimumPeriod sc.U64) {
+	mockLogDepositor = new(mocks.LogDepositor)
 	mockStorageDigest = new(mocks.StorageValue[types.Digest])
 	mockStorageCurrentSlot = new(mocks.StorageValue[sc.U64])
 	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[types.Sr25519PublicKey]])
@@ -158,8 +161,10 @@ func setup(minimumPeriod sc.U64) {
 		maxAuthorities,
 		allowMultipleBlocksPerSlot,
 		mockStorageDigest.Get,
+		mockLogDepositor,
+		nil,
 	)
-	module = New(moduleId, config, mdGenerator)
+	module = New(moduleId, config, mdGenerator, log.NewLogger())
 	module.storage.CurrentSlot = mockStorageCurrentSlot
 	module.storage.Authorities = mockStorageAuthorities
 }

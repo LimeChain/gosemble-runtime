@@ -27,6 +27,7 @@ These modules provide features than can be useful for your blockchain and can be
 | [aura](https://github.com/limechain/gosemble/tree/develop/frame/aura)                               | Manages the AuRa (Authority Round) consensus mechanism.                       |
 | [balances](https://github.com/limechain/gosemble/tree/develop/frame/balances)                       | Provides functionality for handling accounts and balances of native currency. |
 | [grandpa](https://github.com/limechain/gosemble/tree/develop/frame/grandpa)                         | Manages the GRANDPA block finalization.                                       |
+| [session](https://github.com/limechain/gosemble/tree/develop/frame/session)                         | Allows validators to manage their session keys, handles session rotation.     |
 | [timestamp](https://github.com/limechain/gosemble/tree/develop/frame/timestamp)                     | Manages on-chain time.                                                        |
 | [transaction payment](https://github.com/limechain/gosemble/tree/develop/frame/transaction_payment) | Manages pre-dispatch execution fees.                                          |       
 
