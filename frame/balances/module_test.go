@@ -197,7 +197,7 @@ func Test_Module_Metadata(t *testing.T) {
 							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
 							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
 						},
-						functionSetBalanceIndex,
+						functionForceSetBalanceIndex,
 						"Set the balances of a given account.",
 					),
 					primitives.NewMetadataDefinitionVariant(

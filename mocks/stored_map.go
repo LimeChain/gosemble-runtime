@@ -41,20 +41,6 @@ func (m *StoredMap) CanDecProviders(who types.AccountId) (bool, error) {
 func (m *StoredMap) TryMutateExists(who types.AccountId, f func(who *types.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
 	args := m.Called(who, f)
 
-	if args.Get(1) == nil {
-		return args.Get(0).(sc.Encodable), nil
-	}
-
-	return args.Get(0).(sc.Encodable), args.Get(1).(error)
-}
-
-func (m *StoredMap) TryMutateExistsNew(who types.AccountId, f func(who *types.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
-	args := m.Called(who, f)
-
-	if args.Get(1) == nil {
-		return args.Get(0).(sc.Encodable), nil
-	}
-
 	return args.Get(0).(sc.Encodable), args.Get(1).(error)
 }
 
@@ -106,4 +92,8 @@ func (m *StoredMap) DecConsumers(who types.AccountId) error {
 		return nil
 	}
 	return args.Get(0).(error)
+}
+
+func (m *StoredMap) StorageAccountSet(key types.AccountId, value types.AccountInfo) {
+	m.Called(key, value)
 }

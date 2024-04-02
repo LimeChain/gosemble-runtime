@@ -81,6 +81,7 @@ func Test_GenesisConfig_BuildConfig(t *testing.T) {
 			target.storage.TotalIssuance = mockTotalIssuance
 
 			mockStoredMap.On("TryMutateExists", accId, mockTypeMutateAccountData).Return(tt.balance, tt.tryMutateExistsErr)
+			mockStoredMap.On("Get", accId).Return(types.AccountInfo{Data: types.AccountData{Free: tt.balance}}, tt.tryMutateExistsErr)
 			mockTotalIssuance.On("Put", tt.balance).Return()
 
 			err := target.BuildConfig([]byte(tt.gcJson))

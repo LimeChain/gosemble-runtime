@@ -35,8 +35,9 @@ func (m Module) tryMutateAccountNew(who primitives.AccountId, data primitives.Ac
 	if data.Free.Lt(m.constants.ExistentialDeposit) && data.Reserved.Eq(constants.Zero) {
 		dust = data.Free
 	} else {
-		if err := m.Config.StoredMap.TryMutateExistsNoClosure(who, data); err != nil {
-			return primitives.Balance{}, err // todo make sure we are returning dispatchErr
+		m.tryMutateExists(who, data)
+		if err != nil {
+			return primitives.Balance{}, err
 		}
 	}
 
@@ -92,9 +93,7 @@ func (m Module) ensureUpgraded(who primitives.AccountId) (bool, error) {
 		}
 	}
 
-	if err = m.Config.StoredMap.TryMutateExistsNoClosure(who, acc.Data); err != nil {
-		return false, err
-	}
+	m.tryMutateExists(who, acc.Data)
 
 	m.Config.StoredMap.DepositEvent(newEventUpgraded(m.Index, who))
 	return true, nil
@@ -139,3 +138,60 @@ func (m Module) updateProviders(who primitives.AccountId, acc primitives.Account
 	}
 	return nil
 }
+
+func (m Module) tryMutateExists(who primitives.AccountId, data primitives.AccountData) {
+	acc, err := m.Config.StoredMap.Get(who)
+	if err != nil {
+		m.logger.Warnf("failed to get account: %v", err)
+		return
+	}
+
+	if (data == primitives.AccountData{}) {
+		data = primitives.DefaultAccountData()
+	}
+
+	if acc.Providers > 0 || acc.Sufficients > 0 {
+		acc.Data = data
+		m.Config.StoredMap.StorageAccountSet(who, acc)
+	} else {
+		m.Config.StoredMap.StorageAccountSet(who, primitives.AccountInfo{})
+	}
+}
+
+// func (m module) TryMutateExistsNew(who primitives.AccountId, f func(*primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
+// 	account, err := m.Get(who)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	defaultAcc := primitives.DefaultAccountData()
+// 	var someData *primitives.AccountData
+// 	if !reflect.DeepEqual(account.Data, defaultAcc) {
+// 		someData = &account.Data
+// 	} else {
+// 		someData = &defaultAcc
+// 	}
+
+// 	result, err := f(someData)
+// 	if err != nil {
+// 		return result, err
+// 	}
+
+// 	accountAfter, err := m.Get(who)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if accountAfter.Providers > 0 || accountAfter.Sufficients > 0 {
+// 		_, err = m.storage.Account.Mutate(who, func(a *primitives.AccountInfo) (sc.Encodable, error) {
+// 			// mutateAccount(a, someData)
+// 			return nil, nil
+// 		})
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	} else {
+// 		m.storage.Account.Remove(who)
+// 	}
+
+// 	return result, nil

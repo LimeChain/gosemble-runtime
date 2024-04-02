@@ -15,7 +15,7 @@ import (
 
 const (
 	functionTransferAllowDeathIndex = iota
-	functionSetBalanceIndex
+	functionForceSetBalanceIndex
 	functionForceTransferIndex
 	functionTransferKeepAliveIndex
 	functionTransferAllIndex
@@ -54,7 +54,7 @@ func New(index sc.U8, config *Config, logger log.WarnLogger, mdGenerator *primit
 	}
 	functions := make(map[sc.U8]primitives.Call)
 	functions[functionTransferAllowDeathIndex] = newCallTransferAllowDeath(functionTransferAllowDeathIndex, module)
-	functions[functionSetBalanceIndex] = newCallSetBalance(index, functionSetBalanceIndex, config.StoredMap, constants, module, storage.TotalIssuance)
+	functions[functionForceSetBalanceIndex] = newCallForceSetBalance(functionForceSetBalanceIndex, module)
 	functions[functionForceTransferIndex] = newCallForceTransfer(functionForceTransferIndex, module)
 	functions[functionTransferKeepAliveIndex] = newCallTransferKeepAlive(functionTransferKeepAliveIndex, module)
 	functions[functionTransferAllIndex] = newCallTransferAll(functionTransferAllIndex, module)

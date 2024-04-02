@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Balances_SetBalance_BadOrigin(t *testing.T) {
+func Test_Balances_ForceSetBalance_BadOrigin(t *testing.T) {
 	rt, storage := newTestRuntime(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)

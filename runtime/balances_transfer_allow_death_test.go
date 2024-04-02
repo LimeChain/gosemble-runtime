@@ -82,7 +82,7 @@ func Test_Balances_TransferAllowDeath_Success(t *testing.T) {
 	assert.Equal(t, expectedBobAccountInfo, bobAccountInfo)
 
 	bytesAliceStorage := (*storage).Get(keyStorageAccountAlice)
-	assert.Empty(t, bytesAliceStorage)
+	assert.Equal(t, primitives.AccountInfo{}.Bytes(), bytesAliceStorage)
 }
 
 func Test_Balances_TransferAllowDeath_Invalid_InsufficientBalance(t *testing.T) {
@@ -94,7 +94,6 @@ func Test_Balances_TransferAllowDeath_Invalid_InsufficientBalance(t *testing.T) 
 
 	transferAmount := BalancesExistentialDeposit
 	balance := transferAmount.Sub(sc.NewU128(1))
-	// transferAmount := big.NewInt(0).SetUint64(constants.Dollar) // todo
 
 	call, err := ctypes.NewCall(metadata, "Balances.transfer_allow_death", bobAddress, ctypes.NewUCompact(transferAmount.ToBigInt()))
 	assert.NoError(t, err)

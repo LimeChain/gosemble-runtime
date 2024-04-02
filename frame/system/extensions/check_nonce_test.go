@@ -202,7 +202,7 @@ func Test_CheckNonce_PreDispatch_Success(t *testing.T) {
 	target.nonce = nonce
 
 	mockModule.On("StorageAccount", oneAccountId).Return(accountInfo, nil)
-	mockModule.On("StorageAccountSet", oneAccountId, expectAccountInfo).Return()
+	mockModule.On("StorageAccountSet", oneAccountId, expectAccountInfo)
 
 	result, err := target.PreDispatch(oneAccountId, nil, nil, sc.Compact{})
 

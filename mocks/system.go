@@ -335,16 +335,6 @@ func (m *SystemModule) StorageCodeSet(codeBlob sc.Sequence[sc.U8]) {
 	m.Called(codeBlob)
 }
 
-func (m *SystemModule) TryMutateExistsNew(who types.AccountId, f func(who *types.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
-	args := m.Called(who, f)
-
-	if args.Get(1) == nil {
-		return args.Get(0).(sc.Encodable), nil
-	}
-
-	return args.Get(0).(sc.Encodable), args.Get(1).(error)
-}
-
 func (m *SystemModule) IncProviders(who types.AccountId) (types.IncRefStatus, error) {
 	args := m.Called(who)
 	if args.Get(1) == nil {

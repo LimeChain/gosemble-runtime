@@ -18,7 +18,6 @@ var (
 	errInvalidAdjustmentDirectionType = errors.New("invalid adjustment direction type")
 )
 
-// todo test
 func DecodeAdjustmentDirection(buffer *bytes.Buffer) (sc.U8, error) {
 	value, err := sc.DecodeU8(buffer)
 	if err != nil {

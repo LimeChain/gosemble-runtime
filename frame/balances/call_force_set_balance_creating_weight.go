@@ -10,7 +10,7 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
-func callSetBalanceCreatingWeight(dbWeight primitives.RuntimeDbWeight) primitives.Weight {
+func callForceSetBalanceCreatingWeight(dbWeight primitives.RuntimeDbWeight) primitives.Weight {
 	return primitives.WeightFromParts(640000000, 0).
 		SaturatingAdd(dbWeight.Reads(2)).
 		SaturatingAdd(dbWeight.Writes(2))

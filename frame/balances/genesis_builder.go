@@ -102,7 +102,7 @@ func (m Module) BuildConfig(config []byte) error {
 
 		totalIssuance = totalIssuance.Add(b.Balance)
 
-		_, err := m.Config.StoredMap.TryMutateExists( // todo use TryMutateExistsNew?
+		_, err := m.Config.StoredMap.TryMutateExists(
 			b.AccountId,
 			func(maybeAccount *types.AccountData) (sc.Encodable, error) {
 				oldFree, oldReserved := updateAccount(maybeAccount, b.Balance, sc.NewU128(0))

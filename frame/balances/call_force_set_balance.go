@@ -5,35 +5,31 @@ import (
 	"errors"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/frame/support"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
-type callSetBalance struct {
+// Set the regular balance of a given account.
+//
+// The dispatch origin for this call is `root`.
+type callForceSetBalance struct {
 	types.Callable
-	constants      *consts
-	storedMap      types.StoredMap
-	accountMutator accountMutator
-	issuance       support.StorageValue[sc.U128]
+	module Module
 }
 
-func newCallSetBalance(moduleId sc.U8, functionId sc.U8, storedMap types.StoredMap, constants *consts, mutator accountMutator, issuance support.StorageValue[sc.U128]) types.Call {
-	call := callSetBalance{
+func newCallForceSetBalance(functionId sc.U8, module Module) callForceSetBalance {
+	call := callForceSetBalance{
 		Callable: types.Callable{
-			ModuleId:   moduleId,
+			ModuleId:   module.Index,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(types.MultiAddress{}, sc.Compact{Number: sc.U128{}}, sc.Compact{Number: sc.U128{}}),
 		},
-		constants:      constants,
-		storedMap:      storedMap,
-		accountMutator: mutator,
-		issuance:       issuance,
+		module: module,
 	}
 
 	return call
 }
 
-func (c callSetBalance) DecodeArgs(buffer *bytes.Buffer) (types.Call, error) {
+func (c callForceSetBalance) DecodeArgs(buffer *bytes.Buffer) (types.Call, error) {
 	targetAddress, err := types.DecodeMultiAddress(buffer)
 	if err != nil {
 		return nil, err
@@ -55,47 +51,31 @@ func (c callSetBalance) DecodeArgs(buffer *bytes.Buffer) (types.Call, error) {
 	return c, nil
 }
 
-func (c callSetBalance) Encode(buffer *bytes.Buffer) error {
-	return c.Callable.Encode(buffer)
+func (c callForceSetBalance) BaseWeight() types.Weight {
+	return callForceSetBalanceCreatingWeight(c.module.constants.DbWeight).Max(callForceSetBalanceKillingWeight(c.module.constants.DbWeight))
 }
 
-func (c callSetBalance) Bytes() []byte {
-	return c.Callable.Bytes()
-}
-
-func (c callSetBalance) ModuleIndex() sc.U8 {
-	return c.Callable.ModuleIndex()
-}
-
-func (c callSetBalance) FunctionIndex() sc.U8 {
-	return c.Callable.FunctionIndex()
-}
-
-func (c callSetBalance) Args() sc.VaryingData {
-	return c.Callable.Args()
-}
-
-func (c callSetBalance) BaseWeight() types.Weight {
-	return callSetBalanceCreatingWeight(c.constants.DbWeight).Max(callSetBalanceKillingWeight(c.constants.DbWeight))
-}
-
-func (_ callSetBalance) IsInherent() bool {
+func (_ callForceSetBalance) IsInherent() bool {
 	return false
 }
 
-func (_ callSetBalance) WeighData(baseWeight types.Weight) types.Weight {
+func (_ callForceSetBalance) WeighData(baseWeight types.Weight) types.Weight {
 	return types.WeightFromParts(baseWeight.RefTime, 0)
 }
 
-func (_ callSetBalance) ClassifyDispatch(baseWeight types.Weight) types.DispatchClass {
+func (_ callForceSetBalance) ClassifyDispatch(baseWeight types.Weight) types.DispatchClass {
 	return types.NewDispatchClassNormal()
 }
 
-func (_ callSetBalance) PaysFee(baseWeight types.Weight) types.Pays {
+func (_ callForceSetBalance) PaysFee(baseWeight types.Weight) types.Pays {
 	return types.PaysYes
 }
 
-func (c callSetBalance) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
+func (_ callForceSetBalance) Docs() string {
+	return "Set the balances of a given account."
+}
+
+func (c callForceSetBalance) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
 	compactFree, ok := args[1].(sc.Compact)
 	if !ok {
 		return types.PostDispatchInfo{}, errors.New("invalid free compact value when dispatching balance call set")
@@ -116,15 +96,11 @@ func (c callSetBalance) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData
 	return types.PostDispatchInfo{}, c.setBalance(origin, args[0].(types.MultiAddress), newFree, newReserved)
 }
 
-func (_ callSetBalance) Docs() string {
-	return "Set the balances of a given account."
-}
-
 // setBalance sets the balance of a given account.
 // Changes free and reserve balance of `who`,
 // including the total issuance.
 // Can only be called by ROOT.
-func (c callSetBalance) setBalance(origin types.RawOrigin, who types.MultiAddress, newFree sc.U128, newReserved sc.U128) error {
+func (c callForceSetBalance) setBalance(origin types.RawOrigin, who types.MultiAddress, newFree sc.U128, newReserved sc.U128) error {
 	if !origin.IsRootOrigin() {
 		return types.NewDispatchErrorBadOrigin()
 	}
@@ -136,43 +112,48 @@ func (c callSetBalance) setBalance(origin types.RawOrigin, who types.MultiAddres
 
 	sum := newFree.Add(newReserved)
 
-	if sum.Lt(c.constants.ExistentialDeposit) {
+	if sum.Lt(c.module.constants.ExistentialDeposit) {
 		newFree = sc.NewU128(0)
 		newReserved = sc.NewU128(0)
 	}
 
-	result, err := c.accountMutator.tryMutateAccount(
-		address,
-		func(account *types.AccountData, _ bool) (sc.Encodable, error) {
-			oldFree, oldReserved := updateAccount(account, newFree, newReserved)
-			return sc.NewVaryingData(oldFree, oldReserved), nil
-		},
-	)
+	// new code
+	account, err := c.module.Config.StoredMap.Get(address)
+	if err != nil {
+		return err
+	}
+	oldFree := account.Data.Free
+	oldReserved := account.Data.Reserved
+
+	account.Data.Free = newFree
+	account.Data.Reserved = newReserved
+	// old code
+	_, err = c.module.tryMutateAccountNew(address, account.Data)
 	if err != nil {
 		return err
 	}
 
-	parsedResult := result.(sc.VaryingData)
-	oldFree := parsedResult[0].(types.Balance)
-	oldReserved := parsedResult[1].(types.Balance)
+	// parsedResult := result.(sc.VaryingData)
+	// oldFree := parsedResult[0].(types.Balance)
+	// oldReserved := parsedResult[1].(types.Balance)
 
 	if newFree.Gt(oldFree) {
-		if err := newPositiveImbalance(newFree.Sub(oldFree), c.issuance).Drop(); err != nil {
+		if err := newPositiveImbalance(newFree.Sub(oldFree), c.module.storage.TotalIssuance).Drop(); err != nil {
 			return types.NewDispatchErrorOther(sc.Str(err.Error()))
 		}
 
 	} else if newFree.Lt(oldFree) {
-		if err := newNegativeImbalance(oldFree.Sub(newFree), c.issuance).Drop(); err != nil {
+		if err := newNegativeImbalance(oldFree.Sub(newFree), c.module.storage.TotalIssuance).Drop(); err != nil {
 			return types.NewDispatchErrorOther(sc.Str(err.Error()))
 		}
 	}
 
 	if newReserved.Gt(oldReserved) {
-		if err := newPositiveImbalance(newReserved.Sub(oldReserved), c.issuance).Drop(); err != nil {
+		if err := newPositiveImbalance(newReserved.Sub(oldReserved), c.module.storage.TotalIssuance).Drop(); err != nil {
 			return types.NewDispatchErrorOther(sc.Str(err.Error()))
 		}
 	} else if newReserved.Lt(oldReserved) {
-		if err := newNegativeImbalance(oldReserved.Sub(newReserved), c.issuance).Drop(); err != nil {
+		if err := newNegativeImbalance(oldReserved.Sub(newReserved), c.module.storage.TotalIssuance).Drop(); err != nil {
 			return types.NewDispatchErrorOther(sc.Str(err.Error()))
 		}
 
@@ -183,7 +164,7 @@ func (c callSetBalance) setBalance(origin types.RawOrigin, who types.MultiAddres
 		return types.NewDispatchErrorOther(sc.Str(errAccId.Error()))
 	}
 
-	c.storedMap.DepositEvent(
+	c.module.Config.StoredMap.DepositEvent(
 		newEventBalanceSet(
 			c.ModuleId,
 			whoAccountId,
