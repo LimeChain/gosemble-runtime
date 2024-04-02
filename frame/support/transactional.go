@@ -110,6 +110,7 @@ func (t transactional[T]) WithTransaction(fn func() types.TransactionOutcome) (o
 	t.transactionBroker.Start()
 
 	res := fn()
+	// t.logger.Warnf("WWWithTransaction, res = fn(): %v", res)
 
 	switch res[0] {
 	case types.TransactionOutcomeCommit:
@@ -133,7 +134,9 @@ func (t transactional[T]) WithTransaction(fn func() types.TransactionOutcome) (o
 func (t transactional[T]) WithStorageLayer(fn func() (T, error)) (T, error) {
 	return t.WithTransaction(
 		func() types.TransactionOutcome {
-			switch ok, err := fn(); typedErr := err.(type) {
+			ok, err := fn()
+			// t.logger.Warnf("WWWWithTransaction closure ok, err = fn(): %v,,, %v", ok, err)
+			switch typedErr := err.(type) {
 			case types.DispatchError:
 				return types.NewTransactionOutcomeRollback(typedErr)
 			case nil:

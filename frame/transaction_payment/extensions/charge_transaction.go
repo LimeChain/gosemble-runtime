@@ -26,6 +26,7 @@ func (ct chargeTransaction) WithdrawFee(who primitives.AccountId, call primitive
 		withdrawReasons = primitives.WithdrawReasonsTransactionPayment | primitives.WithdrawReasonsTip
 	}
 
+	// todo update - check diff with substrate
 	imbalance, err := ct.currencyAdapter.Withdraw(who, fee, sc.U8(withdrawReasons), primitives.ExistenceRequirementKeepAlive)
 	if err != nil {
 		return sc.NewOption[primitives.Balance](nil), primitives.NewTransactionValidityError(primitives.NewInvalidTransactionPayment())
@@ -39,6 +40,7 @@ func (ct chargeTransaction) CorrectAndDepositFee(who primitives.AccountId, corre
 		alreadyPaidNegativeImbalance := alreadyWithdrawn.Value
 		refundAmount := sc.SaturatingSubU128(alreadyPaidNegativeImbalance, correctedFee)
 
+		// todo update - check diff with substrate
 		refundPositiveImbalance, err := ct.currencyAdapter.DepositIntoExisting(who, refundAmount)
 		if err != nil {
 			return primitives.NewTransactionValidityError(primitives.NewInvalidTransactionPayment())

@@ -15,8 +15,8 @@ type benchmarkingConfig struct {
 func initBenchmarkingConfig() benchmarkingConfig {
 	cfg := benchmarkingConfig{}
 	cfg.WasmRuntime = "../build/runtime.wasm"
-	flag.IntVar(&cfg.Steps, "steps", 50, "Select how many samples we should take across the variable components.")
-	flag.IntVar(&cfg.Repeat, "repeat", 20, "Select how many repetitions of this benchmark should run from within the wasm.")
+	flag.IntVar(&cfg.Steps, "steps", 2, "Select how many samples we should take across the variable components.")
+	flag.IntVar(&cfg.Repeat, "repeat", 1, "Select how many repetitions of this benchmark should run from within the wasm.")
 	flag.IntVar(&cfg.HeapPages, "heap-pages", 4096, "Cache heap allocation pages.")
 	flag.IntVar(&cfg.DbCache, "db-cache", 1024, "Limit the memory the database cache can use.")
 	flag.StringVar(&cfg.GC, "gc", "", "GC flag used for building the runtime.")

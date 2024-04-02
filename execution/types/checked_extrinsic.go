@@ -69,7 +69,8 @@ func (c checkedExtrinsic) Apply(validator primitives.UnsignedValidator, info *pr
 
 	postInfo, err := c.transactional.WithStorageLayer(
 		func() (primitives.PostDispatchInfo, error) {
-			return c.dispatch(maybeWho)
+			res, err := c.dispatch(maybeWho)
+			return res, err
 		},
 	)
 

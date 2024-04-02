@@ -134,6 +134,7 @@ func (m module) ApplyExtrinsic(uxt primitives.UncheckedExtrinsic) error {
 	m.logger.Tracef("get_dispatch_info: weight ref time %d", dispatchInfo.Weight.RefTime)
 	unsignedValidator := extrinsic.NewUnsignedValidatorForChecked(m.runtimeExtrinsic)
 	res, err := checked.Apply(unsignedValidator, &dispatchInfo, encodedLen)
+
 	if err != nil {
 		_, isDispatchErr := err.(primitives.DispatchError)
 		if !isDispatchErr {

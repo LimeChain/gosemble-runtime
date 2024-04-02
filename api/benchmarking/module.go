@@ -63,6 +63,7 @@ func (m Module) BenchmarkDispatch(dataPtr int32, dataLen int32) int64 {
 
 	config, err := benchmarking.DecodeBenchmarkConfig(buffer)
 	if err != nil {
+
 		m.logger.Critical(err.Error())
 	}
 
@@ -80,7 +81,9 @@ func (m Module) BenchmarkDispatch(dataPtr int32, dataLen int32) int64 {
 		start = benchmarking.CurrentTime()
 		_, err := m.transactional.WithStorageLayer(
 			func() (primitives.PostDispatchInfo, error) {
-				return function.Dispatch(origin, args)
+				res, err := function.Dispatch(origin, args)
+				return res, err
+
 			},
 		)
 		end = benchmarking.CurrentTime()

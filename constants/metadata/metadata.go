@@ -175,4 +175,6 @@ const (
 	TypesSequenceKeyValue
 
 	TypesCodeUpgradeAuthorization
+
+	TypesExtraFlags
 )

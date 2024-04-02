@@ -1,8 +1,8 @@
 // THIS FILE WAS GENERATED USING GOSEMBLE BENCHMARKING PACKAGE
-// DATE: `2024-03-11 12:29:47.11569 +0200 EET m=+1.121679876`, STEPS: `50`, REPEAT: `20`, DBCACHE: `1024`, HEAPPAGES: `4096`, HOSTNAME: `Rados-MBP.lan`, CPU: `Apple M1 Pro(8 cores, 3228 mhz)`, GC: ``, TINYGO VERSION: ``, TARGET: ``
+// DATE: `2024-04-02 04:58:30.627757 +0300 EEST m=+2.152853084`, STEPS: `2`, REPEAT: `1`, DBCACHE: `1024`, HEAPPAGES: `4096`, HOSTNAME: `MacBook-Pro.local`, CPU: `Apple M2 Pro(10 cores, 3504 mhz)`, GC: ``, TINYGO VERSION: ``, TARGET: ``
 
 // Summary:
-// BaseExtrinsicTime: 2083900000, BaseReads: 1, BaseWrites: 1, SlopesExtrinsicTime: [], SlopesReads: [], SlopesWrites: [], MinExtrinsicTime: 2083900, MinReads: 1, MinWrites: 1
+// BaseExtrinsicTime: 1885000000, BaseReads: 2, BaseWrites: 1, SlopesExtrinsicTime: [], SlopesReads: [], SlopesWrites: [], MinExtrinsicTime: 1815000, MinReads: 2, MinWrites: 1
 
 package balances
 
@@ -11,7 +11,7 @@ import (
 )
 
 func callTransferAllWeight(dbWeight primitives.RuntimeDbWeight) primitives.Weight {
-	return primitives.WeightFromParts(2083900000, 0).
-		SaturatingAdd(dbWeight.Reads(1)).
+	return primitives.WeightFromParts(1885000000, 0).
+		SaturatingAdd(dbWeight.Reads(2)).
 		SaturatingAdd(dbWeight.Writes(1))
 }

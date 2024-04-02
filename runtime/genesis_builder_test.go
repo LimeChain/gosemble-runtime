@@ -82,7 +82,7 @@ func Test_BuildConfig(t *testing.T) {
 	assert.Equal(t, expectedAccInfo.Bytes(), accInfo)
 
 	// assert total issuance
-	totalIssuance := (*storage).Get(append(keyBalancesHash, keyTotalIssuanceHash...))
+	totalIssuance := (*storage).Get(keyStorageTotalIssuance)
 	assert.Equal(t, expectedBalance.Bytes(), totalIssuance)
 
 	// assert next fee multiplier

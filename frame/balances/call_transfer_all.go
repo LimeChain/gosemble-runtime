@@ -4,26 +4,39 @@ import (
 	"bytes"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/primitives/log"
+	balancestypes "github.com/LimeChain/gosemble/frame/balances/types"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
+// Transfer the entire transferable balance from the caller account.
+//
+// NOTE: This function only attempts to transfer _transferable_ balances. This means that
+// any locked, reserved, or existential deposits (when `keep_alive` is `true`), will not be
+// transferred by this function. To ensure that this function results in a killed account,
+// you might need to prepare the account by removing any reference counters, storage
+// deposits, etc...
+//
+// The dispatch origin of this call must be Signed.
+//
+//   - `dest`: The recipient of the transfer.
+//   - `keep_alive`: A boolean to determine if the `transfer_all` operation should send all
+//     of the funds the account has, causing the sender account to be killed (false), or
+//     transfer everything except at least the existential deposit, which will guarantee to
+//     keep the sender account alive (true).
 type callTransferAll struct {
 	primitives.Callable
-	transfer
-	logger log.DebugLogger
+	module Module
 }
 
-func newCallTransferAll(moduleId sc.U8, functionId sc.U8, storedMap primitives.StoredMap, constants *consts, mutator accountMutator, logger log.DebugLogger) primitives.Call {
+func newCallTransferAll(functionId sc.U8, module Module) callTransferAll {
 	call := callTransferAll{
 		Callable: primitives.Callable{
-			ModuleId:   moduleId,
+			ModuleId:   module.Index,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(types.MultiAddress{}, sc.Bool(true)),
 		},
-		transfer: newTransfer(moduleId, storedMap, constants, mutator),
-		logger:   logger,
+		module: module,
 	}
 
 	return call
@@ -45,28 +58,8 @@ func (c callTransferAll) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, erro
 	return c, nil
 }
 
-func (c callTransferAll) Encode(buffer *bytes.Buffer) error {
-	return c.Callable.Encode(buffer)
-}
-
-func (c callTransferAll) Bytes() []byte {
-	return c.Callable.Bytes()
-}
-
-func (c callTransferAll) ModuleIndex() sc.U8 {
-	return c.Callable.ModuleIndex()
-}
-
-func (c callTransferAll) FunctionIndex() sc.U8 {
-	return c.Callable.FunctionIndex()
-}
-
-func (c callTransferAll) Args() sc.VaryingData {
-	return c.Callable.Args()
-}
-
 func (c callTransferAll) BaseWeight() types.Weight {
-	return callTransferAllWeight(c.constants.DbWeight)
+	return callTransferAllWeight(c.module.dbWeight())
 }
 
 func (_ callTransferAll) WeighData(baseWeight types.Weight) types.Weight {
@@ -81,10 +74,6 @@ func (_ callTransferAll) PaysFee(baseWeight types.Weight) types.Pays {
 	return types.PaysYes
 }
 
-func (c callTransferAll) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
-	return types.PostDispatchInfo{}, c.transferAll(origin, args[0].(types.MultiAddress), bool(args[1].(sc.Bool)))
-}
-
 func (_ callTransferAll) Docs() string {
 	return "Transfer the entire transferable balance from the caller account."
 }
@@ -95,31 +84,44 @@ func (_ callTransferAll) Docs() string {
 // the funds the account has, causing the sender account to be killed (false), or
 // transfer everything except at least the existential deposit, which will guarantee to
 // keep the sender account alive (true).
-func (c callTransferAll) transferAll(origin types.RawOrigin, dest types.MultiAddress, keepAlive bool) error {
+func (c callTransferAll) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
 	if !origin.IsSignedOrigin() {
-		return types.NewDispatchErrorBadOrigin()
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorBadOrigin()
 	}
 
-	transactor, err := origin.AsSigned()
+	from, err := origin.AsSigned()
 	if err != nil {
-		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	reducibleBalance, err := c.reducibleBalance(transactor, keepAlive)
+	dest, ok := args[0].(types.MultiAddress)
+	if !ok {
+		return primitives.PostDispatchInfo{}, types.NewDispatchErrorCannotLookup()
+	}
+
+	keepAliveArg, ok := args[1].(sc.Bool)
+	if !ok {
+		return primitives.PostDispatchInfo{}, types.NewDispatchErrorOther(sc.Str("Failed to decode keepAlive"))
+	}
+
+	keepAlive := balancestypes.PreservationExpendable
+	if keepAliveArg {
+		keepAlive = balancestypes.PreservationPreserve
+	}
+
+	reducibleBalance, err := c.module.reducibleBalance(from, keepAlive, false)
 	if err != nil {
-		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	to, errLookup := types.Lookup(dest)
-	if errLookup != nil {
-		c.logger.Debugf("Failed to lookup [%s]", dest.Bytes())
-		return types.NewDispatchErrorCannotLookup()
+	to, err := types.Lookup(dest)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, types.NewDispatchErrorCannotLookup()
 	}
 
-	keep := types.ExistenceRequirementKeepAlive
-	if !keepAlive {
-		keep = types.ExistenceRequirementAllowDeath
+	if err := c.module.transfer(from, to, reducibleBalance, keepAlive); err != nil {
+		return types.PostDispatchInfo{}, err
 	}
 
-	return c.transfer.trans(transactor, to, reducibleBalance, keep)
+	return types.PostDispatchInfo{}, nil
 }

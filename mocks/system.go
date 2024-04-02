@@ -334,3 +334,63 @@ func (m *SystemModule) StorageAllExtrinsicsLenSet(value sc.U32) {
 func (m *SystemModule) StorageCodeSet(codeBlob sc.Sequence[sc.U8]) {
 	m.Called(codeBlob)
 }
+
+func (m *SystemModule) TryMutateExistsNew(who types.AccountId, f func(who *types.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
+	args := m.Called(who, f)
+
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.Encodable), nil
+	}
+
+	return args.Get(0).(sc.Encodable), args.Get(1).(error)
+}
+
+func (m *SystemModule) IncProviders(who types.AccountId) (types.IncRefStatus, error) {
+	args := m.Called(who)
+	if args.Get(1) == nil {
+		return args.Get(0).(types.IncRefStatus), nil
+	}
+	return args.Get(0).(types.IncRefStatus), args.Get(1).(error)
+}
+
+func (m *SystemModule) DecProviders(who types.AccountId) (types.DecRefStatus, error) {
+	args := m.Called(who)
+	if args.Get(1) == nil {
+		return args.Get(0).(types.DecRefStatus), nil
+	}
+	return args.Get(0).(types.DecRefStatus), args.Get(1).(error)
+}
+
+func (m *SystemModule) IncConsumers(who types.AccountId) error {
+	args := m.Called(who)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(error)
+}
+
+func (m *SystemModule) IncConsumersWithoutLimit(who types.AccountId) error {
+	args := m.Called(who)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(error)
+}
+
+func (m *SystemModule) DecConsumers(who types.AccountId) error {
+	args := m.Called(who)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(error)
+}
+
+func (m *SystemModule) TryMutateExistsNoClosure(who types.AccountId, data types.AccountData) error {
+	args := m.Called(who, data)
+
+	if args.Get(0) == nil {
+		return nil
+	}
+
+	return args.Get(0).(error)
+}

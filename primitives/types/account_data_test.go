@@ -12,16 +12,16 @@ import (
 
 var (
 	expectedAccountDataBytes, _ = hex.DecodeString(
-		"01000000000000000000000000000000020000000000000000000000000000000300000000000000000000000000000004000000000000000000000000000000",
+		"01000000000000000000000000000000020000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000080",
 	)
 )
 
 var (
 	targetAccountData = AccountData{
-		Free:       sc.NewU128(1),
-		Reserved:   sc.NewU128(2),
-		MiscFrozen: sc.NewU128(3),
-		FeeFrozen:  sc.NewU128(4),
+		Free:     sc.NewU128(1),
+		Reserved: sc.NewU128(2),
+		Frozen:   sc.NewU128(4),
+		Flags:    DefaultExtraFlags(),
 	}
 )
 
@@ -43,6 +43,7 @@ func Test_DecodeAccountData(t *testing.T) {
 
 	result, err := DecodeAccountData(buffer)
 	assert.NoError(t, err)
+	assert.Equal(t, hex.EncodeToString(expectedAccountDataBytes), hex.EncodeToString(targetAccountData.Bytes()))
 
 	assert.Equal(t, targetAccountData, result)
 }

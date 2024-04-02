@@ -25,10 +25,11 @@ func Test_ValidateTransaction_Success(t *testing.T) {
 	metadata := runtimeMetadata(t, rt)
 
 	// Set Account Info balance otherwise tx payment check will fail.
-	balance, e := big.NewInt(0).SetString("500000000000000", 10)
-	assert.True(t, e)
+	balanceBigInt, ok := big.NewInt(0).SetString("500000000000000", 10)
+	assert.True(t, ok)
+	balance := sc.NewU128(balanceBigInt)
 
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0, 0, 0)
 
 	digest := gossamertypes.NewDigest()
 
@@ -142,7 +143,7 @@ func Test_ValidateTransaction_StaleError_InvalidNonce(t *testing.T) {
 
 	metadata := runtimeMetadata(t, rt)
 
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, big.NewInt(5), 3)
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, sc.NewU128(5), 0, 0, 3)
 
 	digest := gossamertypes.NewDigest()
 
@@ -201,7 +202,7 @@ func Test_ValidateTransaction_ExhaustsResourcesError(t *testing.T) {
 
 	metadata := runtimeMetadata(t, rt)
 
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, big.NewInt(5), 0)
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, sc.NewU128(5), 0, 0, 0)
 
 	digest := gossamertypes.NewDigest()
 
@@ -264,10 +265,11 @@ func Test_ValidateTransaction_Era(t *testing.T) {
 	metadata := runtimeMetadata(t, rt)
 
 	// Set Account info due to check tx payment
-	balance, e := big.NewInt(0).SetString("500000000000000", 10)
-	assert.True(t, e)
+	balanceBigInt, ok := big.NewInt(0).SetString("500000000000000", 10)
+	assert.True(t, ok)
+	balance := sc.NewU128(balanceBigInt)
 
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0, 0, 0)
 
 	digest := gossamertypes.NewDigest()
 
@@ -344,9 +346,6 @@ func Test_ValidateTransaction_NoUnsignedValidator(t *testing.T) {
 	txSource := primitives.NewTransactionSourceExternal()
 	blockHash := sc.BytesToFixedSequenceU8(parentHash.ToBytes())
 
-	alice, err := ctypes.NewMultiAddressFromAccountID(signature.TestKeyringPairAlice.PublicKey)
-	assert.NoError(t, err)
-
 	amount := ctypes.NewUCompactFromUInt(constants.Dollar)
 
 	var tests = []struct {
@@ -358,28 +357,28 @@ func Test_ValidateTransaction_NoUnsignedValidator(t *testing.T) {
 			args:     []any{[]byte{}},
 		},
 		{
-			callName: "Balances.transfer",
-			args:     []any{alice, amount},
+			callName: "Balances.transfer_allow_death",
+			args:     []any{aliceAddress, amount},
 		},
 		{
 			callName: "Balances.set_balance",
-			args:     []any{alice, amount, amount},
+			args:     []any{aliceAddress, amount, amount},
 		},
 		{
 			callName: "Balances.force_transfer",
-			args:     []any{alice, alice, amount},
+			args:     []any{aliceAddress, aliceAddress, amount},
 		},
 		{
 			callName: "Balances.transfer_keep_alive",
-			args:     []any{alice, amount},
+			args:     []any{aliceAddress, amount},
 		},
 		{
 			callName: "Balances.transfer_all",
-			args:     []any{alice, ctypes.NewBool(false)},
+			args:     []any{aliceAddress, ctypes.NewBool(false)},
 		},
 		{
-			callName: "Balances.force_free",
-			args:     []any{alice, ctypes.NewU128(*big.NewInt(amount.Int64()))},
+			callName: "Balances.force_unreserve",
+			args:     []any{aliceAddress, ctypes.NewU128(*big.NewInt(amount.Int64()))},
 		},
 	}
 
@@ -401,6 +400,7 @@ func Test_ValidateTransaction_NoUnsignedValidator(t *testing.T) {
 			res, err := rt.Exec("TaggedTransactionQueue_validate_transaction", buffer.Bytes())
 
 			assert.NoError(t, err)
+			// todo fix
 			assert.Equal(t, transactionValidityResultNoUnsignedValidatorErr.Bytes(), res)
 		})
 	}

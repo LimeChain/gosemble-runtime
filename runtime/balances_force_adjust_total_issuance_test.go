@@ -7,25 +7,24 @@ import (
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+
+	sc "github.com/LimeChain/goscale"
+	balancestypes "github.com/LimeChain/gosemble/frame/balances/types"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Balances_ForceFree_BadOrigin(t *testing.T) {
+func Test_Balances_ForceAdjustTotalIssuance_BadOrigin(t *testing.T) {
 	rt, storage := newTestRuntime(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
 
 	metadata := runtimeMetadata(t, rt)
-
-	alice, err := ctypes.NewMultiAddressFromAccountID(signature.TestKeyringPairAlice.PublicKey)
-
-	call, err := ctypes.NewCall(metadata, "Balances.force_free", alice, ctypes.NewU128(*big.NewInt(10000000000)))
+	call, err := ctypes.NewCall(metadata, "Balances.force_adjust_total_issuance", balancestypes.AdjustmentDirectionIncrease, ctypes.NewUCompactFromUInt(5))
 	assert.NoError(t, err)
 
-	// Create the extrinsic
 	ext := ctypes.NewExtrinsic(call)
 	o := ctypes.SignatureOptions{
 		BlockHash:          ctypes.Hash(parentHash),
@@ -37,13 +36,12 @@ func Test_Balances_ForceFree_BadOrigin(t *testing.T) {
 		TransactionVersion: ctypes.U32(runtimeVersion.TransactionVersion),
 	}
 
-	// Set Account Info
-	balance, ok := big.NewInt(0).SetString("500000000000000", 10)
+	balanceBigInt, ok := big.NewInt(0).SetString("500000000000000", 10)
 	assert.True(t, ok)
+	balance := sc.NewU128(balanceBigInt)
 
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	_, _ = setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0, 0, 0)
 
-	// Sign the transaction using Alice's default account
 	err = ext.Sign(signature.TestKeyringPairAlice, o)
 	assert.NoError(t, err)
 
@@ -61,6 +59,5 @@ func Test_Balances_ForceFree_BadOrigin(t *testing.T) {
 
 	res, err := rt.Exec("BlockBuilder_apply_extrinsic", extEnc.Bytes())
 	assert.NoError(t, err)
-
 	assert.Equal(t, applyExtrinsicResultBadOriginErr.Bytes(), res)
 }

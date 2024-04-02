@@ -94,7 +94,8 @@ func (c callTransfer) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) 
 	return types.PostDispatchInfo{}, c.transfer.transfer(origin, args[0].(types.MultiAddress), value)
 }
 
-func (_ transfer) Docs() string {
+func (_ callTransfer) Docs() string {
+	// func (_ transfer) Docs() string {
 	return "Transfer some liquid free balance to another account."
 }
 
@@ -217,7 +218,7 @@ func (t transfer) reducibleBalance(who types.AccountId, keepAlive bool) (types.B
 	}
 	accountData := account.Data
 
-	liquid := sc.SaturatingSubU128(accountData.Free, sc.Max128(accountData.FeeFrozen, accountData.MiscFrozen))
+	liquid := sc.SaturatingSubU128(accountData.Free, accountData.Frozen)
 	canDecProviders, err := t.storedMap.CanDecProviders(who)
 	if err != nil {
 		return types.Balance{}, err

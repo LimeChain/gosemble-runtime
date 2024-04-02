@@ -295,6 +295,8 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "reserved", "Balance"),
 				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "misc_frozen", "Balance"),
 				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "fee_frozen", "Balance"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesExtraFlags, "flags", "ExtraFlags"),
+				// todo Flags
 			},
 		)),
 		primitives.NewMetadataTypeWithPath(metadata.TypesAccountInfo, "AccountInfo", sc.Sequence[sc.Str]{"frame_system", "AccountInfo"}, primitives.NewMetadataTypeDefinitionComposite(
@@ -600,6 +602,7 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 					primitives.ArithmeticErrorDivisionByZero,
 					"ArithmeticError.DivisionByZero"),
 			})),
+		// TODO i guess register all new errors?
 		primitives.NewMetadataTypeWithPath(metadata.TypesTransactionalError, "TransactionalError", sc.Sequence[sc.Str]{"sp_runtime", "TransactionalError"}, primitives.NewMetadataTypeDefinitionVariant(
 			sc.Sequence[primitives.MetadataDefinitionVariant]{
 				primitives.NewMetadataDefinitionVariant(
@@ -837,6 +840,39 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 				},
 			),
 		),
+		// primitives.NewMetadataType(
+		// 	metadata.TypesSequenceAccountId,
+		// 	"Vec<AccountId>",
+		// 	primitives.NewMetadataTypeDefinitionSequence(
+		// 		sc.ToCompact(metadata.TypesAddress32),
+		// 	),
+		// ),
+
+		// primitives.NewMetadataTypeWithParam(
+		// 	metadata.TypesSequenceAccountId,
+		// 	"Vec<T::AccountId>",
+		// 	sc.Sequence[sc.Str]{"frame_system", "AccountId"},
+		// 	primitives.NewMetadataTypeDefinitionSequence(
+		// 		sc.ToCompact(metadata.TypesAddress32),
+		// 	),
+		// 	primitives.NewMetadataTypeParameter(metadata.TypesAddress32, "T"),
+		// ),
+		// primitives.NewMetadataTypeWithParams(
+		// 	metadata.TypesAuraStorageAuthorities,
+		// 	"BoundedVec<T::AuthorityId, T::MaxAuthorities>",
+		// 	sc.Sequence[sc.Str]{"bounded_collection", "bounded_vec", "BoundedVec"},
+
+		// 	primitives.NewMetadataTypeDefinitionComposite(
+		// 		sc.Sequence[primitives.MetadataTypeDefinitionField]{
+		// 			primitives.NewMetadataTypeDefinitionField(metadata.TypesSequencePubKeys),
+		// 		},
+		// 	),
+
+		// 	sc.Sequence[primitives.MetadataTypeParameter]{
+		// 		primitives.NewMetadataTypeParameter(metadata.TypesAuthorityId, "T"),
+		// 		primitives.NewMetadataEmptyTypeParameter("S"),
+		// 	},
+		// ),
 	}
 }
 

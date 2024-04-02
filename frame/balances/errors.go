@@ -12,4 +12,6 @@ const (
 	ErrorExistingVestingSchedule
 	ErrorDeadAccount
 	ErrorTooManyReserves
+	IssuanceDeactivated
+	ErrorDeltaZero
 )

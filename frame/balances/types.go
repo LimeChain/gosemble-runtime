@@ -8,11 +8,12 @@ import (
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
-type accountMutator interface {
-	ensureCanWithdraw(who types.AccountId, amount sc.U128, reasons types.Reasons, newBalance sc.U128) error
-	tryMutateAccountWithDust(who types.AccountId, f func(who *types.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error)
-	tryMutateAccount(who types.AccountId, f func(who *types.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error)
-}
+// type accountMutator interface {
+// 	ensureCanWithdraw(who types.AccountId, amount sc.U128, reasons types.Reasons, newBalance sc.U128) error
+// 	tryMutateAccountWithDust(who types.AccountId, f func(who *types.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error)
+// 	tryMutateAccount(who types.AccountId, f func(who *types.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error)
+// 	ensureUpgraded(who types.AccountId) (bool, error)
+// }
 
 type negativeImbalance struct {
 	types.Balance

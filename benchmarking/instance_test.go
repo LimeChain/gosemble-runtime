@@ -74,6 +74,6 @@ func TestInstance(t *testing.T) {
 		err = instance.ExecuteExtrinsic("Invalid.invalid", primitives.NewRawOriginNone())
 		assert.Equal(t, errors.New("failed to create new call: module Invalid not found in metadata for call Invalid.invalid"), err)
 
-		assert.Equal(t, testAccStorageKey, accountStorageKey([]byte("test")))
+		assert.Equal(t, testAccStorageKey, keyStorageAccount([]byte("test")))
 	})
 }

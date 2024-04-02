@@ -148,6 +148,7 @@ func (e signedExtra) PostDispatch(pre sc.Option[sc.Sequence[Pre]], info *Dispatc
 		}
 	} else {
 		for _, extra := range e.extras {
+
 			err := extra.PostDispatch(sc.NewOption[Pre](nil), info, postInfo, length, dispatchErr)
 			if err != nil {
 				return err

@@ -1,6 +1,7 @@
 package balances
 
 import (
+	"errors"
 	"testing"
 
 	sc "github.com/LimeChain/goscale"
@@ -19,6 +20,7 @@ var (
 
 var (
 	unknownTransactionNoUnsignedValidator = primitives.NewTransactionValidityError(primitives.NewUnknownTransactionNoUnsignedValidator())
+	expectedErr                           = primitives.NewDispatchErrorOther(sc.Str(errors.New("Some unknown error occurred").Error()))
 )
 
 var (
@@ -34,13 +36,13 @@ func Test_Module_Functions(t *testing.T) {
 	target := setupModule()
 	functions := target.Functions()
 
-	assert.Equal(t, 6, len(functions))
+	assert.Equal(t, 8, len(functions))
 }
 
 func Test_Module_PreDispatch(t *testing.T) {
 	target := setupModule()
 
-	result, err := target.PreDispatch(setupCallTransfer())
+	result, err := target.PreDispatch(setupCallTransferAllowDeath())
 
 	assert.Nil(t, err)
 	assert.Equal(t, sc.Empty{}, result)
@@ -49,7 +51,7 @@ func Test_Module_PreDispatch(t *testing.T) {
 func Test_Module_ValidateUnsigned(t *testing.T) {
 	target := setupModule()
 
-	result, err := target.ValidateUnsigned(primitives.TransactionSource{}, setupCallTransfer())
+	result, err := target.ValidateUnsigned(primitives.TransactionSource{}, setupCallTransferAllowDeath())
 
 	assert.Equal(t, unknownTransactionNoUnsignedValidator, err)
 	assert.Equal(t, primitives.ValidTransaction{}, result)
@@ -164,377 +166,6 @@ func Test_Module_Withdraw_TryMutateAccount_Fails(t *testing.T) {
 	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
 }
 
-func Test_Module_ensureCanWithdraw_Success(t *testing.T) {
-	target := setupModule()
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("Get", fromAddressId).Return(accountInfo, nil)
-
-	result := target.ensureCanWithdraw(fromAddressId, targetValue, primitives.ReasonsFee, sc.NewU128(5))
-
-	assert.Nil(t, result)
-	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-}
-
-func Test_Module_ensureCanWithdraw_ZeroAmount(t *testing.T) {
-	target := setupModule()
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	result := target.ensureCanWithdraw(fromAddressId, sc.NewU128(0), primitives.ReasonsFee, sc.NewU128(5))
-
-	assert.Nil(t, result)
-	mockStoredMap.AssertNotCalled(t, "Get", fromAddressId)
-}
-
-func Test_Module_ensureCanWithdraw_LiquidityRestrictions(t *testing.T) {
-	target := setupModule()
-	expected := primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-		Index:   moduleId,
-		Err:     sc.U32(ErrorLiquidityRestrictions),
-		Message: sc.NewOption[sc.Str](nil),
-	})
-	frozenAccountInfo := primitives.AccountInfo{
-		Data: primitives.AccountData{
-			MiscFrozen: sc.NewU128(10),
-			FeeFrozen:  sc.NewU128(11),
-		},
-	}
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("Get", fromAddressId).Return(frozenAccountInfo, nil)
-
-	result := target.ensureCanWithdraw(fromAddressId, targetValue, primitives.ReasonsFee, sc.NewU128(5))
-
-	assert.Equal(t, expected, result)
-	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-}
-
-func Test_Module_tryMutateAccount_Success(t *testing.T) {
-	target := setupModule()
-	mockTotalIssuance := new(mocks.StorageValue[sc.U128])
-	target.storage.TotalIssuance = mockTotalIssuance
-
-	tryMutateResult := sc.NewVaryingData(sc.NewOption[sc.U128](nil), sc.NewOption[negativeImbalance](nil), sc.U128{})
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("TryMutateExists", fromAddressId, mockTypeMutateAccountData).Return(tryMutateResult, nil)
-
-	_, err = target.tryMutateAccount(fromAddressId, func(who *primitives.AccountData, _ bool) (sc.Encodable, error) { return nil, nil })
-
-	assert.NoError(t, err)
-	mockStoredMap.AssertCalled(t, "TryMutateExists", fromAddressId, mockTypeMutateAccountData)
-}
-
-func Test_Module_tryMutateAccount_TryMutateAccountWithDust_Fails(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorCannotLookup()
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("TryMutateExists", fromAddressId, mockTypeMutateAccountData).Return(sc.NewU128(0), expectedErr)
-
-	_, err = target.tryMutateAccount(fromAddressId, func(who *primitives.AccountData, _ bool) (sc.Encodable, error) { return nil, nil })
-
-	assert.Equal(t, expectedErr, err)
-	mockStoredMap.AssertCalled(t, "TryMutateExists", fromAddressId, mockTypeMutateAccountData)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
-func Test_Module_tryMutateAccountWithDust_Success(t *testing.T) {
-	target := setupModule()
-	mockTotalIssuance := new(mocks.StorageValue[sc.U128])
-	target.storage.TotalIssuance = mockTotalIssuance
-
-	tryMutateResult := sc.NewVaryingData(sc.NewOption[sc.U128](nil), sc.NewOption[negativeImbalance](nil), sc.NewOption[sc.U128](nil))
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	expectedResult := sc.NewVaryingData(sc.NewOption[sc.U128](nil), newDustCleaner(moduleId, fromAddressId, sc.NewOption[negativeImbalance](nil), mockStoredMap))
-
-	mockStoredMap.On("TryMutateExists", fromAddressId, mockTypeMutateAccountData).Return(tryMutateResult, nil)
-
-	result, err := target.tryMutateAccountWithDust(fromAddressId, func(who *primitives.AccountData, _ bool) (sc.Encodable, error) { return nil, nil })
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedResult, result)
-	mockStoredMap.AssertCalled(t, "TryMutateExists", fromAddressId, mockTypeMutateAccountData)
-}
-
-func Test_Module_tryMutateAccountWithDust_Success_Endowed(t *testing.T) {
-	target := setupModule()
-	mockTotalIssuance := new(mocks.StorageValue[sc.U128])
-	target.storage.TotalIssuance = mockTotalIssuance
-
-	tryMutateResult := sc.NewVaryingData(sc.NewOption[sc.U128](targetValue), sc.NewOption[negativeImbalance](nil), sc.NewOption[sc.U128](targetValue))
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	expectedResult := sc.NewVaryingData(sc.NewOption[sc.U128](targetValue), newDustCleaner(moduleId, fromAddressId, sc.NewOption[negativeImbalance](nil), mockStoredMap))
-
-	mockStoredMap.On("TryMutateExists", fromAddressId, mockTypeMutateAccountData).Return(tryMutateResult, nil)
-	mockStoredMap.On("DepositEvent", newEventEndowed(moduleId, fromAddressId, targetValue))
-
-	result, err := target.tryMutateAccountWithDust(fromAddressId, func(who *primitives.AccountData, _ bool) (sc.Encodable, error) { return nil, nil })
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedResult, result)
-	mockStoredMap.AssertCalled(t, "TryMutateExists", fromAddressId, mockTypeMutateAccountData)
-	mockStoredMap.AssertCalled(t, "DepositEvent", newEventEndowed(moduleId, fromAddressId, targetValue))
-}
-
-func Test_Module_tryMutateAccountWithDust_TryMutateExists_Fail(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorCannotLookup()
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("TryMutateExists", fromAddressId, mockTypeMutateAccountData).Return(sc.NewU128(1), expectedErr)
-
-	_, err = target.tryMutateAccountWithDust(fromAddressId, func(who *primitives.AccountData, _ bool) (sc.Encodable, error) { return nil, nil })
-
-	assert.Equal(t, expectedErr, err)
-	mockStoredMap.AssertCalled(t, "TryMutateExists", fromAddressId, mockTypeMutateAccountData)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
-func Test_Module_mutateAccount_Success(t *testing.T) {
-	target := setupModule()
-	target.storage.TotalIssuance = new(mocks.StorageValue[sc.U128])
-	maybeAccount := &primitives.AccountData{}
-	expectedResult := sc.NewVaryingData(sc.NewOption[sc.U128](sc.NewU128(0)), sc.NewOption[negativeImbalance](nil), sc.U128{})
-
-	result, err := target.
-		mutateAccount(
-			maybeAccount,
-			func(who *primitives.AccountData, _ bool) (sc.Encodable, error) {
-				return sc.U128{}, nil
-			},
-		)
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedResult, result)
-}
-
-func Test_Module_mutateAccount_f_result(t *testing.T) {
-	target := setupModule()
-	target.storage.TotalIssuance = new(mocks.StorageValue[sc.U128])
-	maybeAccount := &primitives.AccountData{
-		Free: sc.NewU128(2),
-	}
-	expectedErr := primitives.NewDispatchErrorBadOrigin()
-
-	_, err := target.
-		mutateAccount(
-			maybeAccount,
-			func(who *primitives.AccountData, _ bool) (sc.Encodable, error) {
-				return nil, expectedErr
-			},
-		)
-
-	assert.Equal(t, expectedErr, err)
-}
-
-func Test_Module_mutateAccount_Success_NotNewAccount(t *testing.T) {
-	target := setupModule()
-	target.storage.TotalIssuance = new(mocks.StorageValue[sc.U128])
-	maybeAccount := &primitives.AccountData{
-		Free: sc.NewU128(2),
-	}
-	expectedResult := sc.NewVaryingData(sc.NewOption[sc.U128](nil), sc.NewOption[negativeImbalance](nil), sc.U128{})
-
-	result, err := target.
-		mutateAccount(
-			maybeAccount,
-			func(who *primitives.AccountData, _ bool) (sc.Encodable, error) {
-				return sc.U128{}, nil
-			},
-		)
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedResult, result)
-}
-
-func Test_Module_postMutation_Success(t *testing.T) {
-	target := setupModule()
-
-	accOption, imbalance := target.postMutation(*fromAccountData)
-
-	assert.Equal(t, sc.NewOption[primitives.AccountData](*fromAccountData), accOption)
-	assert.Equal(t, sc.NewOption[negativeImbalance](nil), imbalance)
-}
-
-func Test_Module_postMutation_ZeroTotal(t *testing.T) {
-	target := setupModule()
-
-	fromAccountData.Free = sc.NewU128(0)
-
-	accOption, imbalance := target.postMutation(*fromAccountData)
-
-	assert.Equal(t, sc.NewOption[primitives.AccountData](nil), accOption)
-	assert.Equal(t, sc.NewOption[negativeImbalance](nil), imbalance)
-}
-
-func Test_Module_postMutation_LessExistentialDeposit(t *testing.T) {
-	target := setupModule()
-	mockTotalIssuance := new(mocks.StorageValue[sc.U128])
-	target.storage.TotalIssuance = mockTotalIssuance
-	target.constants.ExistentialDeposit = sc.NewU128(6)
-
-	accOption, imbalance := target.postMutation(*fromAccountData)
-
-	assert.Equal(t, sc.NewOption[primitives.AccountData](nil), accOption)
-	assert.Equal(t, sc.NewOption[negativeImbalance](newNegativeImbalance(fromAccountData.Total(), target.storage.TotalIssuance)), imbalance)
-}
-
-func Test_Module_withdraw_Success(t *testing.T) {
-	target := setupModule()
-	value := sc.NewU128(3)
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("Get", fromAddressId).Return(accountInfo, nil)
-	mockStoredMap.On("DepositEvent", newEventWithdraw(moduleId, fromAddressId, value))
-
-	result, err := target.withdraw(fromAddressId, value, fromAccountData, sc.U8(primitives.ReasonsFee), primitives.ExistenceRequirementKeepAlive)
-
-	assert.NoError(t, err)
-	assert.Equal(t, value, result)
-	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-	assert.Equal(t, sc.NewU128(2), fromAccountData.Free)
-	mockStoredMap.AssertCalled(t, "DepositEvent", newEventWithdraw(moduleId, fromAddressId, value))
-}
-
-func Test_Module_withdraw_InsufficientBalance(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-		Index:   moduleId,
-		Err:     sc.U32(ErrorInsufficientBalance),
-		Message: sc.NewOption[sc.Str](nil),
-	})
-	value := sc.NewU128(10)
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	_, err = target.withdraw(fromAddressId, value, fromAccountData, sc.U8(primitives.ReasonsFee), primitives.ExistenceRequirementKeepAlive)
-
-	assert.Equal(t, expectedErr, err)
-	mockStoredMap.AssertNotCalled(t, "Get", mock.Anything)
-	assert.Equal(t, sc.NewU128(5), fromAccountData.Free)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
-func Test_Module_withdraw_KeepAlive(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-		Index:   moduleId,
-		Err:     sc.U32(ErrorKeepAlive),
-		Message: sc.NewOption[sc.Str](nil),
-	})
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	_, err = target.withdraw(fromAddressId, targetValue, fromAccountData, sc.U8(primitives.ReasonsFee), primitives.ExistenceRequirementKeepAlive)
-
-	assert.Equal(t, expectedErr, err)
-	mockStoredMap.AssertNotCalled(t, "Get", mock.Anything)
-	assert.Equal(t, sc.NewU128(5), fromAccountData.Free)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
-func Test_Module_withdraw_CannotWithdraw(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-		Index:   moduleId,
-		Err:     sc.U32(ErrorLiquidityRestrictions),
-		Message: sc.NewOption[sc.Str](nil),
-	})
-	value := sc.NewU128(3)
-
-	frozenAccountInfo := primitives.AccountInfo{
-		Data: primitives.AccountData{
-			MiscFrozen: sc.NewU128(10),
-			FeeFrozen:  sc.NewU128(11),
-		},
-	}
-
-	fromAddressId, err := fromAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("Get", fromAddressId).Return(frozenAccountInfo, nil)
-
-	_, err = target.withdraw(fromAddressId, value, fromAccountData, sc.U8(primitives.ReasonsFee), primitives.ExistenceRequirementKeepAlive)
-
-	assert.Equal(t, expectedErr, err)
-	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-	assert.Equal(t, sc.NewU128(5), fromAccountData.Free)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
-func Test_Module_deposit_Success(t *testing.T) {
-	target := setupModule()
-
-	expectedResult := targetValue
-	toAddressId, err := toAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	mockStoredMap.On("DepositEvent", newEventDeposit(moduleId, toAddressId, targetValue))
-
-	result, err := target.deposit(toAddressId, toAccountData, false, targetValue)
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedResult, result)
-	assert.Equal(t, sc.NewU128(6), toAccountData.Free)
-	mockStoredMap.AssertCalled(t, "DepositEvent", newEventDeposit(moduleId, toAddressId, targetValue))
-}
-
-func Test_Module_deposit_DeadAccount(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-		Index:   moduleId,
-		Err:     sc.U32(ErrorDeadAccount),
-		Message: sc.NewOption[sc.Str](nil),
-	})
-
-	toAddressId, err := toAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	_, err = target.deposit(toAddressId, toAccountData, true, targetValue)
-
-	assert.Equal(t, expectedErr, err)
-	assert.Equal(t, sc.NewU128(1), toAccountData.Free)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
-func Test_Module_deposit_ArithmeticOverflow(t *testing.T) {
-	target := setupModule()
-	expectedErr := primitives.NewDispatchErrorArithmetic(primitives.NewArithmeticErrorOverflow())
-	toAccountData.Free = sc.MaxU128()
-
-	toAddressId, err := toAddress.AsAccountId()
-	assert.Nil(t, err)
-
-	_, err = target.deposit(toAddressId, toAccountData, false, targetValue)
-
-	assert.Equal(t, expectedErr, err)
-	assert.Equal(t, sc.MaxU128(), toAccountData.Free)
-	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
-}
-
 func Test_Module_Metadata(t *testing.T) {
 	target := setupModule()
 
@@ -544,64 +175,93 @@ func Test_Module_Metadata(t *testing.T) {
 
 	expectMetadataTypes := sc.Sequence[primitives.MetadataType]{
 		primitives.NewMetadataType(expectedCompactU128TypeId, "CompactU128", primitives.NewMetadataTypeDefinitionCompact(sc.ToCompact(metadata.PrimitiveTypesU128))),
-		primitives.NewMetadataTypeWithParams(expectedBalancesCallsMetadataId, "Balances calls", sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Call"}, primitives.NewMetadataTypeDefinitionVariant(
-			sc.Sequence[primitives.MetadataDefinitionVariant]{
-				primitives.NewMetadataDefinitionVariant(
-					"transfer",
-					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
-					},
-					functionTransferIndex,
-					"Transfer some liquid free balance to another account."),
-				primitives.NewMetadataDefinitionVariant(
-					"set_balance",
-					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
-						primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
-					},
-					functionSetBalanceIndex,
-					"Set the balances of a given account."),
-				primitives.NewMetadataDefinitionVariant(
-					"force_transfer",
-					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
-					},
-					functionForceTransferIndex,
-					"Exactly as `transfer`, except the origin must be root and the source account may be specified."),
-				primitives.NewMetadataDefinitionVariant(
-					"transfer_keep_alive",
-					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
-					},
-					functionTransferKeepAliveIndex,
-					"Same as the [`transfer`] call, but with a check that the transfer will not kill the origin account."),
-				primitives.NewMetadataDefinitionVariant(
-					"transfer_all",
-					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesBool),
-					},
-					functionTransferAllIndex,
-					"Transfer the entire transferable balance from the caller account."),
-				primitives.NewMetadataDefinitionVariant(
-					"force_free",
-					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
-						primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesU128),
-					},
-					functionForceFreeIndex,
-					"Unreserve some balance from a user by force."),
-			}),
+		primitives.NewMetadataTypeWithParams(
+			expectedBalancesCallsMetadataId,
+			"Balances calls",
+			sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Call"},
+			primitives.NewMetadataTypeDefinitionVariant(
+				sc.Sequence[primitives.MetadataDefinitionVariant]{
+					primitives.NewMetadataDefinitionVariant(
+						"transfer_allow_death",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
+						},
+						functionTransferAllowDeathIndex,
+						"Transfer some liquid free balance to another account.",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"set_balance",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
+							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
+						},
+						functionSetBalanceIndex,
+						"Set the balances of a given account.",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"force_transfer", // todo
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
+						},
+						functionForceTransferIndex,
+						"Exactly as `transfer_allow_death`, except the origin must be root and the source account may be specified.",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"transfer_keep_alive",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
+						},
+						functionTransferKeepAliveIndex,
+						"Same as the [`transfer_allow_death`] call, but with a check that the transfer will not kill the origin account.",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"transfer_all",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesBool),
+						},
+						functionTransferAllIndex,
+						"Transfer the entire transferable balance from the caller account.",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"force_unreserve",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesMultiAddress),
+							primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesU128),
+						},
+						functionForceUnreserveIndex,
+						"Unreserve some balance from a user by force.",
+					),
+
+					primitives.NewMetadataDefinitionVariant(
+						"upgrade_accounts",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.TypesSequenceSequenceU8),
+						},
+						functionUpgradeAccountsIndex,
+						"Upgrade a specified account.",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"force_adjust_total_issuance",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesU8),
+							primitives.NewMetadataTypeDefinitionField(expectedCompactU128TypeId),
+						},
+						functionForceAdjustTotalIssuanceIndex,
+						"Adjust the total issuance in a saturating way.",
+					),
+				},
+			),
 			sc.Sequence[primitives.MetadataTypeParameter]{
 				primitives.NewMetadataEmptyTypeParameter("T"),
 				primitives.NewMetadataEmptyTypeParameter("I"),
-			}),
-
+			},
+		),
 		primitives.NewMetadataTypeWithPath(metadata.TypesBalancesEvent, "pallet_balances pallet Event", sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Event"}, primitives.NewMetadataTypeDefinitionVariant(
 			sc.Sequence[primitives.MetadataDefinitionVariant]{
 				primitives.NewMetadataDefinitionVariant(
@@ -688,6 +348,21 @@ func Test_Module_Metadata(t *testing.T) {
 					},
 					EventSlashed,
 					"Event.Slashed"),
+				primitives.NewMetadataDefinitionVariant(
+					"Upgraded",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesAddress32, "who", "T::AccountId"),
+					},
+					EventUpgraded,
+					"Event.Upgraded"),
+				primitives.NewMetadataDefinitionVariant(
+					"TotalIssuanceForced",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "old", "T::Balance"),
+						primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "new", "T::Balance"),
+					},
+					EventTotalIssuanceForced,
+					"Event.TotalIssuanceForced"),
 			},
 		)),
 		primitives.NewMetadataTypeWithPath(metadata.TypesBalanceStatus,
@@ -705,7 +380,31 @@ func Test_Module_Metadata(t *testing.T) {
 						types.BalanceStatusReserved,
 						"BalanceStatus.Reserved"),
 				})),
-
+		// primitives.NewMetadataTypeWithPath(metadata.TypesAdjustmentDirection,
+		// 	"AdjustmentDirection",
+		// 	sc.Sequence[sc.Str]{"pallet_balances", "AdjustmentDirection"}, primitives.NewMetadataTypeDefinitionVariant(
+		// 		sc.Sequence[primitives.MetadataDefinitionVariant]{
+		// 			primitives.NewMetadataDefinitionVariant(
+		// 				"Increase",
+		// 				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+		// 				types.AdjustmentDirectionIncrease,
+		// 				"AdjustmentDirection.Increase"),
+		// 			primitives.NewMetadataDefinitionVariant(
+		// 				"Decrease",
+		// 				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+		// 				types.AdjustmentDirectionDecrease,
+		// 				"AdjustmentDirection.Decrease"),
+		// 		}),
+		// ),
+		primitives.NewMetadataTypeWithPath(metadata.TypesExtraFlags,
+			"ExtraFlags",
+			sc.Sequence[sc.Str]{"pallet_balances", "ExtraFlags"},
+			primitives.NewMetadataTypeDefinitionComposite(
+				sc.Sequence[primitives.MetadataTypeDefinitionField]{
+					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.PrimitiveTypesU128, "u128"),
+				},
+			),
+		),
 		primitives.NewMetadataTypeWithParams(metadata.TypesBalancesErrors,
 			"pallet_balances pallet Error",
 			sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Error"},
@@ -766,7 +465,14 @@ func Test_Module_Metadata(t *testing.T) {
 					"TotalIssuance",
 					primitives.MetadataModuleStorageEntryModifierDefault,
 					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
-					"The total units issued in the system."),
+					"The total units issued in the system.",
+				),
+				primitives.NewMetadataModuleStorageEntry(
+					"InactiveIssuance",
+					primitives.MetadataModuleStorageEntryModifierDefault,
+					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
+					"The total units of outstanding deactivated balance in the system.",
+				),
 			},
 		}),
 		Call: sc.NewOption[sc.Compact](sc.ToCompact(expectedBalancesCallsMetadataId)),
@@ -836,7 +542,12 @@ func Test_Module_Metadata(t *testing.T) {
 
 func setupModule() Module {
 	mockStoredMap = new(mocks.StoredMap)
+	mockTotalIssuance = new(mocks.StorageValue[sc.U128])
+	mockInactiveIssuance = new(mocks.StorageValue[sc.U128])
 	config := NewConfig(dbWeight, maxLocks, maxReserves, existentialDeposit, mockStoredMap)
+	target := New(moduleId, config, logger, mdGenerator)
+	target.storage.TotalIssuance = mockTotalIssuance
+	target.storage.InactiveIssuance = mockInactiveIssuance
 
 	fromAccountData = &primitives.AccountData{
 		Free: sc.NewU128(5),
@@ -846,5 +557,5 @@ func setupModule() Module {
 		Free: sc.NewU128(1),
 	}
 
-	return New(moduleId, config, logger, mdGenerator)
+	return target
 }

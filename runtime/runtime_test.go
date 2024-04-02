@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/big"
 	"testing"
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
@@ -59,6 +58,10 @@ var (
 	keyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
 	keyTransactionPaymentHash, _ = common.Twox128Hash([]byte("TransactionPayment"))
 	keyNextFeeMultiplierHash, _  = common.Twox128Hash([]byte("NextFeeMultiplier"))
+)
+
+var (
+	keyStorageTotalIssuance = append(keyBalancesHash, keyTotalIssuanceHash...)
 )
 
 var (
@@ -218,33 +221,89 @@ func assertStorageDigestItem(t *testing.T, storage *runtime.Storage, digestItem 
 	}
 }
 
-func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byte, freeBalance *big.Int, nonce uint32) (storageKey []byte, info gossamertypes.AccountInfo) {
-	accountInfo := gossamertypes.AccountInfo{
-		Nonce:       nonce,
-		Consumers:   0,
-		Producers:   0,
-		Sufficients: 0,
-		Data: gossamertypes.AccountData{
-			Free:       scale.MustNewUint128(freeBalance),
-			Reserved:   scale.MustNewUint128(big.NewInt(0)),
-			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byte, freeBalance sc.U128, providers, consumers primitives.RefCount, nonce sc.U32) (storageKey []byte, info primitives.AccountInfo) {
+	accountInfo := primitives.AccountInfo{
+		Nonce:     nonce,
+		Providers: providers,
+		Consumers: consumers,
+		Data: primitives.AccountData{
+			Free: freeBalance,
 		},
 	}
 
-	aliceHash, _ := common.Blake2b128(account)
-	keyStorageAccount := append(keySystemHash, keyAccountHash...)
-	keyStorageAccount = append(keyStorageAccount, aliceHash...)
-	keyStorageAccount = append(keyStorageAccount, account...)
+	key := keyStorageAccount(account)
+	(*storage).Put(key, accountInfo.Bytes())
 
-	bytesStorage, err := scale.Marshal(accountInfo)
-	assert.NoError(t, err)
+	setTotalIssuance(t, storage, freeBalance)
 
-	err = (*storage).Put(keyStorageAccount, bytesStorage)
-	assert.NoError(t, err)
-
-	return keyStorageAccount, accountInfo
+	return key, accountInfo
 }
+
+func keyStorageAccount(account []byte) []byte {
+	pubKey, _ := common.Blake2b128(account)
+	keyStorageAccountHash := append(keySystemHash, keyAccountHash...)
+	keyStorageAccountHash = append(keyStorageAccountHash, pubKey...)
+	keyStorageAccountHash = append(keyStorageAccountHash, account...)
+	return keyStorageAccountHash
+}
+
+func setTotalIssuance(t *testing.T, storage *runtime.Storage, totalIssuance sc.U128) {
+	oldTotalIssuance := sc.NewU128(0)
+	if oldTotalIssuanceBytes := (*storage).Get(keyStorageTotalIssuance); len(oldTotalIssuanceBytes) > 0 {
+		oldTotalIssuanceDecoded, err := sc.DecodeU128(bytes.NewBuffer(oldTotalIssuanceBytes))
+		assert.NoError(t, err)
+		oldTotalIssuance = oldTotalIssuanceDecoded
+	}
+
+	(*storage).Put(keyStorageTotalIssuance, oldTotalIssuance.Add(sc.NewU128(totalIssuance)).Bytes())
+}
+
+// todo delete
+func TestAccInfo(t *testing.T) {
+	rt, storage := newTestRuntime(t)
+	defer rt.Stop()
+
+	keyEncode := []byte("encode")
+	// keyMarshal := []byte("marshal")
+
+	accInfo := primitives.AccountInfo{}
+	err := (*storage).Put(keyEncode, accInfo.Bytes())
+	assert.NoError(t, err)
+
+	accInfoFromStorage := bytes.NewBuffer((*storage).Get(keyEncode))
+	newAccInfo, err := primitives.DecodeAccountInfo(accInfoFromStorage)
+	newAccInfo.Data.Flags = accInfo.Data.Flags.SetNewLogic()
+	assert.NoError(t, err)
+	// assert.Equal(t, accInfo, newAccInfo)
+}
+
+// func setStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byte, freeBalance *big.Int, nonce uint32) (storageKey []byte, info gossamertypes.AccountInfo) {
+// 	accountInfo := gossamertypes.AccountInfo{
+// 		Nonce:       nonce,
+// 		Consumers:   0,
+// 		Producers:   0,
+// 		Sufficients: 0,
+// 		Data: gossamertypes.AccountData{
+// 			Free:       scale.MustNewUint128(freeBalance),
+// 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
+// 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
+// 			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+// 		},
+// 	}
+
+// 	aliceHash, _ := common.Blake2b128(account)
+// 	keyStorageAccount := append(keySystemHash, keyAccountHash...)
+// 	keyStorageAccount = append(keyStorageAccount, aliceHash...)
+// 	keyStorageAccount = append(keyStorageAccount, account...)
+
+// 	bytesStorage, err := scale.Marshal(accountInfo)
+// 	assert.NoError(t, err)
+
+// 	err = (*storage).Put(keyStorageAccount, bytesStorage)
+// 	assert.NoError(t, err)
+
+// 	return keyStorageAccount, accountInfo
+// }
 
 func getQueryInfo(t *testing.T, runtime *wazero_runtime.Instance, extrinsic []byte) primitives.RuntimeDispatchInfo {
 	buffer := &bytes.Buffer{}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"math/big"
 	"testing"
 	"time"
 
@@ -185,7 +184,7 @@ func Test_ApplyExtrinsic_FutureError_InvalidNonce(t *testing.T) {
 	metadata := runtimeMetadata(t, rt)
 
 	// Set Balance & Nonce
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, big.NewInt(5), 3)
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, sc.NewU128(5), 0, 0, 3)
 
 	digest := gossamertypes.NewDigest()
 

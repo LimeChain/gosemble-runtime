@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
@@ -27,7 +26,7 @@ func Test_AccountNonceApi_account_nonce(t *testing.T) {
 
 	nonce := 1
 
-	setStorageAccountInfo(t, storage, pubKey, big.NewInt(5), 1)
+	setStorageAccountInfo(t, storage, pubKey, sc.NewU128(5), 0, 0, 1)
 
 	result, err := rt.Exec("AccountNonceApi_account_nonce", pubKey)
 	assert.NoError(t, err)

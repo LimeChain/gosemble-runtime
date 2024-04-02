@@ -23,9 +23,11 @@ func Test_Remark_With_Event_Signed_DispatchOutcome(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Set account info
-	balance, e := big.NewInt(0).SetString("500000000000000", 10)
-	assert.True(t, e)
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	balanceBigInt, ok := big.NewInt(0).SetString("500000000000000", 10)
+	assert.True(t, ok)
+	balance := sc.NewU128(balanceBigInt)
+
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0, 0, 0)
 
 	initializeBlock(t, rt, parentHash, stateRoot, extrinsicsRoot, blockNumber)
 

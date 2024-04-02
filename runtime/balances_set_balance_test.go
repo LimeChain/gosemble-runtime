@@ -7,6 +7,7 @@ import (
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+	sc "github.com/LimeChain/goscale"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -20,11 +21,7 @@ func Test_Balances_SetBalance_BadOrigin(t *testing.T) {
 
 	metadata := runtimeMetadata(t, rt)
 
-	bob, err := ctypes.NewMultiAddressFromHexAccountID(
-		"0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22")
-	assert.NoError(t, err)
-
-	call, err := ctypes.NewCall(metadata, "Balances.set_balance", bob, ctypes.NewUCompactFromUInt(10000000000), ctypes.NewUCompactFromUInt(10000000000))
+	call, err := ctypes.NewCall(metadata, "Balances.set_balance", bobAddress, ctypes.NewUCompactFromUInt(10000000000), ctypes.NewUCompactFromUInt(10000000000))
 	assert.NoError(t, err)
 
 	// Create the extrinsic
@@ -40,10 +37,11 @@ func Test_Balances_SetBalance_BadOrigin(t *testing.T) {
 	}
 
 	// Set Account Info
-	balance, ok := big.NewInt(0).SetString("500000000000000", 10)
+	balanceBigInt, ok := big.NewInt(0).SetString("500000000000000", 10)
 	assert.True(t, ok)
+	balance := sc.NewU128(balanceBigInt)
 
-	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0, 0, 0)
 
 	// Sign the transaction using Alice's default account
 	err = ext.Sign(signature.TestKeyringPairAlice, o)

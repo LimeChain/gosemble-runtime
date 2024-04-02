@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/mocks"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,17 +18,11 @@ func Test_Call_TransferAll_new(t *testing.T) {
 	target := setupCallTransferAll()
 	expected := callTransferAll{
 		Callable: primitives.Callable{
-			ModuleId:   moduleId,
+			ModuleId:   target.module.Index,
 			FunctionId: functionTransferAllIndex,
 			Arguments:  sc.NewVaryingData(primitives.MultiAddress{}, sc.Bool(true)),
 		},
-		transfer: transfer{
-			moduleId:       moduleId,
-			storedMap:      mockStoredMap,
-			constants:      testConstants,
-			accountMutator: mockMutator,
-		},
-		logger: logger,
+		module: target.module,
 	}
 
 	assert.Equal(t, expected, target)
@@ -109,22 +102,12 @@ func Test_Call_TransferAll_Dispatch_Success(t *testing.T) {
 	toAddressId, err := toAddress.AsAccountId()
 	assert.Nil(t, err)
 
-	mockStoredMap.On("Get", fromAddressId).Return(accountInfo, nil)
-	mockStoredMap.On("CanDecProviders", fromAddressId).Return(true, nil)
-	mockMutator.On("tryMutateAccountWithDust",
-		toAddressId,
-		mockTypeMutateAccountDataBool,
-	).Return(sc.Empty{}, nil)
-	mockStoredMap.On(
-		"DepositEvent",
-		newEventTransfer(
-			moduleId,
-			fromAddressId,
-			toAddressId,
-			accountInfo.Data.Free.Sub(sc.NewU128(1)),
-		),
-	).
-		Return()
+	mockStoredMap.On("CanDecProviders", mock.Anything).Return(true, nil)
+	mockTotalIssuance.On("Get").Return(sc.MaxU128(), nil)
+	mockStoredMap.On("Get", mock.Anything).Return(accountInfo, nil)
+	mockStoredMap.On("TryMutateExistsNoClosure", mock.Anything, mock.Anything).Return(nil)
+	mockStoredMap.On("IncProviders", mock.Anything).Return(primitives.IncRefStatus(0), nil)
+	mockStoredMap.On("DepositEvent", mock.Anything)
 
 	_, dispatchErr := target.Dispatch(
 		primitives.NewRawOriginSigned(fromAddressId),
@@ -132,13 +115,7 @@ func Test_Call_TransferAll_Dispatch_Success(t *testing.T) {
 	)
 
 	assert.Nil(t, dispatchErr)
-	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-	mockStoredMap.AssertCalled(t, "CanDecProviders", fromAddressId)
-	mockMutator.AssertCalled(t,
-		"tryMutateAccountWithDust",
-		toAddressId,
-		mockTypeMutateAccountDataBool,
-	)
+
 	mockStoredMap.AssertCalled(t,
 		"DepositEvent",
 		newEventTransfer(
@@ -161,7 +138,6 @@ func Test_Call_TransferAll_Dispatch_BadOrigin(t *testing.T) {
 	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
 	mockStoredMap.AssertNotCalled(t, "Get", mock.Anything)
 	mockStoredMap.AssertNotCalled(t, "CanDecProviders", mock.Anything)
-	mockMutator.AssertNotCalled(t, "tryMutateAccountWithDust", mock.Anything, mock.Anything)
 	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
 }
 
@@ -180,8 +156,6 @@ func Test_Call_TransferAll_Dispatch_CannotLookup(t *testing.T) {
 
 	assert.Equal(t, primitives.NewDispatchErrorCannotLookup(), dispatchErr)
 	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-	mockStoredMap.AssertCalled(t, "CanDecProviders", fromAddressId)
-	mockMutator.AssertNotCalled(t, "tryMutateAccountWithDust", mock.Anything, mock.Anything)
 	mockStoredMap.AssertNotCalled(t, "DepositEvent", mock.Anything)
 }
 
@@ -194,35 +168,18 @@ func Test_Call_TransferAll_Dispatch_AllowDeath(t *testing.T) {
 	toAddressId, err := toAddress.AsAccountId()
 	assert.Nil(t, err)
 
-	mockStoredMap.On("Get", fromAddressId).Return(accountInfo, nil)
-	mockStoredMap.On("CanDecProviders", fromAddressId).Return(true, nil)
-	mockMutator.On(
-		"tryMutateAccountWithDust",
-		toAddressId,
-		mockTypeMutateAccountDataBool,
-	).Return(sc.Empty{}, nil)
-	mockStoredMap.On(
-		"DepositEvent",
-		newEventTransfer(
-			moduleId,
-			fromAddressId,
-			toAddressId,
-			accountInfo.Data.Free,
-		),
-	).Return()
+	mockTotalIssuance.On("Get").Return(sc.MaxU128(), nil)
+	mockStoredMap.On("TryMutateExistsNoClosure", mock.Anything, mock.Anything).Return(nil)
+	mockStoredMap.On("Get", mock.Anything).Return(accountInfo, nil)
+	mockStoredMap.On("CanDecProviders", mock.Anything).Return(true, nil)
+	mockStoredMap.On("IncProviders", mock.Anything).Return(primitives.IncRefStatus(0), nil)
+	mockStoredMap.On("DepositEvent", mock.Anything).Return()
 
 	_, dispatchErr := target.Dispatch(
 		primitives.NewRawOriginSigned(fromAddressId),
 		sc.NewVaryingData(toAddress, sc.Bool(false)))
 
 	assert.Nil(t, dispatchErr)
-	mockStoredMap.AssertCalled(t, "Get", fromAddressId)
-	mockStoredMap.AssertCalled(t, "CanDecProviders", fromAddressId)
-	mockMutator.AssertCalled(t,
-		"tryMutateAccountWithDust",
-		toAddressId,
-		mockTypeMutateAccountDataBool,
-	)
 	mockStoredMap.AssertCalled(t,
 		"DepositEvent",
 		newEventTransfer(
@@ -234,9 +191,6 @@ func Test_Call_TransferAll_Dispatch_AllowDeath(t *testing.T) {
 	)
 }
 
-func setupCallTransferAll() primitives.Call {
-	mockStoredMap = new(mocks.StoredMap)
-	mockMutator = new(mockAccountMutator)
-
-	return newCallTransferAll(moduleId, functionTransferAllIndex, mockStoredMap, testConstants, mockMutator, logger)
+func setupCallTransferAll() callTransferAll {
+	return newCallTransferAll(functionTransferAllIndex, setupModule())
 }

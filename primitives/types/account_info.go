@@ -60,18 +60,18 @@ func DecodeAccountInfo(buffer *bytes.Buffer) (AccountInfo, error) {
 	}, nil
 }
 
-func (ai AccountInfo) Frozen(reasons Reasons) sc.U128 {
-	switch reasons {
-	case ReasonsAll:
-		if ai.Data.MiscFrozen.Gt(ai.Data.FeeFrozen) {
-			return ai.Data.MiscFrozen
-		}
-		return ai.Data.FeeFrozen
-	case ReasonsMisc:
-		return ai.Data.MiscFrozen
-	case ReasonsFee:
-		return ai.Data.MiscFrozen
-	}
+// func (ai AccountInfo) Frozen(reasons Reasons) sc.U128 {
+// 	switch reasons {
+// 	case ReasonsAll:
+// 		if ai.Data.MiscFrozen.Gt(ai.Data.FeeFrozen) {
+// 			return ai.Data.MiscFrozen
+// 		}
+// 		return ai.Data.FeeFrozen
+// 	case ReasonsMisc:
+// 		return ai.Data.MiscFrozen
+// 	case ReasonsFee:
+// 		return ai.Data.MiscFrozen
+// 	}
 
-	return sc.NewU128(0)
-}
+// 	return sc.NewU128(0)
+// }

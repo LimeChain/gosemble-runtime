@@ -10,6 +10,7 @@ import (
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
+
 	"github.com/ChainSafe/gossamer/lib/runtime"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
 	"github.com/ChainSafe/gossamer/pkg/scale"
@@ -43,6 +44,12 @@ var (
 	keyDigestHash, _             = common.Twox128Hash([]byte("Digest"))
 	keyNumberHash, _             = common.Twox128Hash([]byte("Number"))
 	keyTimestampDidUpdateHash, _ = common.Twox128Hash([]byte("DidUpdate"))
+	keyBalancesHash, _           = common.Twox128Hash([]byte("Balances"))
+	keyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
+)
+
+var (
+	keyStorageTotalIssuance = append(keyBalancesHash, keyTotalIssuanceHash...)
 )
 
 type Instance struct {
@@ -98,15 +105,46 @@ func (i *Instance) SetAccountInfo(publicKey []byte, accountInfo gossamertypes.Ac
 		return fmt.Errorf("failed to marshal account info: %v", err)
 	}
 
-	if err = (*i.storage).Put(accountStorageKey(publicKey), bAccountInfo); err != nil {
+	if err = (*i.storage).Put(keyStorageAccount(publicKey), bAccountInfo); err != nil {
 		return fmt.Errorf("failed to put account info to storage: %v", err)
 	}
 
 	return nil
 }
 
+// todo remove old and rename without New
+func (i *Instance) SetAccountInfoNew(publicKey []byte, accountInfo primitives.AccountInfo) error {
+	if err := (*i.storage).Put(keyStorageAccount(publicKey), accountInfo.Bytes()); err != nil {
+		return fmt.Errorf("failed to put account info to storage: %v", err)
+	}
+
+	newTotalIssuance := sc.NewU128(0)
+	totalIssuanceBytes := (*i.storage).Get(keyStorageTotalIssuance)
+	if len(totalIssuanceBytes) > 0 {
+		totalIssuance, err := sc.DecodeU128(bytes.NewBuffer(totalIssuanceBytes))
+		if err != nil {
+			return fmt.Errorf("failed to decode total issuance storage bytes: %v", err)
+		}
+		newTotalIssuance = totalIssuance
+	}
+	if err := (*i.storage).Put(keyStorageTotalIssuance, newTotalIssuance.Add(accountInfo.Data.Free).Bytes()); err != nil {
+		return fmt.Errorf("failed to put total issuance to storage: %v", err)
+	}
+
+	return nil
+}
+
+func (i *Instance) GetAccountInfoNew(publicKey []byte) (primitives.AccountInfo, error) {
+	bytesStorage := (*i.storage).Get(keyStorageAccount(publicKey))
+	if len(bytesStorage) == 0 {
+		return primitives.AccountInfo{}, nil
+	}
+	return primitives.DecodeAccountInfo(bytes.NewBuffer(bytesStorage))
+}
+
+// todo remove this and rename the above methods without New
 func (i *Instance) GetAccountInfo(publicKey []byte) (gossamertypes.AccountInfo, error) {
-	bytesStorage := (*i.storage).Get(accountStorageKey(publicKey))
+	bytesStorage := (*i.storage).Get(keyStorageAccount(publicKey))
 
 	accountInfo := gossamertypes.AccountInfo{
 		Nonce:       0,
@@ -260,12 +298,12 @@ func (i *Instance) BuildGenesisConfig() error {
 	return nil
 }
 
-func accountStorageKey(account []byte) []byte {
+func keyStorageAccount(account []byte) []byte {
 	pubKey, _ := common.Blake2b128(account)
-	keyStorageAccount := append(keySystemHash, keyAccountHash...)
-	keyStorageAccount = append(keyStorageAccount, pubKey...)
-	keyStorageAccount = append(keyStorageAccount, account...)
-	return keyStorageAccount
+	keyStorageAccountHash := append(keySystemHash, keyAccountHash...)
+	keyStorageAccountHash = append(keyStorageAccountHash, pubKey...)
+	keyStorageAccountHash = append(keyStorageAccountHash, account...)
+	return keyStorageAccountHash
 }
 
 func timestampInherentData(dateTime uint64) ([]byte, error) {

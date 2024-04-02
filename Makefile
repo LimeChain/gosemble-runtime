@@ -108,7 +108,7 @@ test-coverage:
 	./scripts/coverage.sh
 
 GENERATE_WEIGHT_FILES=true
-benchmark: build-benchmarking
+benchmark:
 	@go test --tags="nonwasmenv" -bench=. ./runtime/... -run=XXX -benchtime=1x \
 	-steps=50 \
 	-repeat=20 \
@@ -126,3 +126,5 @@ benchmark-overhead: build-benchmarking
 	-tinygoversion=$(VERSION) \
 	-generate-weight-files=$(GENERATE_WEIGHT_FILES)
 
+cov:
+	@go test --tags "nonwasmenv" -coverprofile=coverage.out `go list ./... | grep -v runtime` && go tool cover -html=coverage.out

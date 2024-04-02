@@ -454,16 +454,14 @@ func Test_Call_SetBalance_updateAccount(t *testing.T) {
 	newReserved := sc.NewU128(6)
 
 	account := &primitives.AccountData{
-		Free:       expectedOldFree,
-		Reserved:   expectedOldReserved,
-		MiscFrozen: sc.NewU128(3),
-		FeeFrozen:  sc.NewU128(4),
+		Free:     expectedOldFree,
+		Reserved: expectedOldReserved,
+		Frozen:   sc.NewU128(4),
 	}
 	expectAccount := &primitives.AccountData{
-		Free:       newFree,
-		Reserved:   newReserved,
-		MiscFrozen: sc.NewU128(3),
-		FeeFrozen:  sc.NewU128(4),
+		Free:     newFree,
+		Reserved: newReserved,
+		Frozen:   sc.NewU128(4),
 	}
 
 	oldFree, oldReserved := updateAccount(account, newFree, newReserved)

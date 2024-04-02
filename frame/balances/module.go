@@ -7,18 +7,21 @@ import (
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/balances/types"
+	balancestypes "github.com/LimeChain/gosemble/frame/balances/types"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 const (
-	functionTransferIndex = iota
+	functionTransferAllowDeathIndex = iota
 	functionSetBalanceIndex
 	functionForceTransferIndex
 	functionTransferKeepAliveIndex
 	functionTransferAllIndex
-	functionForceFreeIndex
+	functionForceUnreserveIndex
+	functionUpgradeAccountsIndex
+	functionForceAdjustTotalIssuanceIndex
 )
 
 const (
@@ -34,9 +37,10 @@ type Module struct {
 	storage     *storage
 	functions   map[sc.U8]primitives.Call
 	mdGenerator *primitives.MetadataTypeGenerator
+	logger      log.WarnLogger
 }
 
-func New(index sc.U8, config *Config, logger log.DebugLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
+func New(index sc.U8, config *Config, logger log.WarnLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	constants := newConstants(config.DbWeight, config.MaxLocks, config.MaxReserves, config.ExistentialDeposit)
 	storage := newStorage()
 
@@ -46,14 +50,17 @@ func New(index sc.U8, config *Config, logger log.DebugLogger, mdGenerator *primi
 		constants:   constants,
 		storage:     storage,
 		mdGenerator: mdGenerator,
+		logger:      logger,
 	}
 	functions := make(map[sc.U8]primitives.Call)
-	functions[functionTransferIndex] = newCallTransfer(index, functionTransferIndex, config.StoredMap, constants, module)
+	functions[functionTransferAllowDeathIndex] = newCallTransferAllowDeath(functionTransferAllowDeathIndex, module)
 	functions[functionSetBalanceIndex] = newCallSetBalance(index, functionSetBalanceIndex, config.StoredMap, constants, module, storage.TotalIssuance)
-	functions[functionForceTransferIndex] = newCallForceTransfer(index, functionForceTransferIndex, config.StoredMap, constants, module)
-	functions[functionTransferKeepAliveIndex] = newCallTransferKeepAlive(index, functionTransferKeepAliveIndex, config.StoredMap, constants, module)
-	functions[functionTransferAllIndex] = newCallTransferAll(index, functionTransferAllIndex, config.StoredMap, constants, module, logger)
-	functions[functionForceFreeIndex] = newCallForceFree(index, functionForceFreeIndex, config.StoredMap, constants, module, logger)
+	functions[functionForceTransferIndex] = newCallForceTransfer(functionForceTransferIndex, module)
+	functions[functionTransferKeepAliveIndex] = newCallTransferKeepAlive(functionTransferKeepAliveIndex, module)
+	functions[functionTransferAllIndex] = newCallTransferAll(functionTransferAllIndex, module)
+	functions[functionForceUnreserveIndex] = newCallForceUnreserve(functionForceUnreserveIndex, module)
+	functions[functionUpgradeAccountsIndex] = newCallUpgradeAccounts(functionUpgradeAccountsIndex, module)
+	functions[functionForceAdjustTotalIssuanceIndex] = newCallForceAdjustTotalIssuance(functionForceAdjustTotalIssuanceIndex, module)
 
 	module.functions = functions
 
@@ -105,178 +112,37 @@ func (m Module) Withdraw(who primitives.AccountId, value sc.U128, reasons sc.U8,
 	}
 
 	result, err := m.tryMutateAccount(who, func(account *primitives.AccountData, _ bool) (sc.Encodable, error) {
-		return m.withdraw(who, value, account, reasons, liveness)
+		var preservation balancestypes.Preservation
+		if liveness == primitives.ExistenceRequirementAllowDeath {
+			preservation = balancestypes.PreservationExpendable
+		} else {
+			preservation = balancestypes.PreservationPreserve
+		}
+		return m.withdraw(who, value, account, reasons, preservation, false)
 	})
 
 	return result.(primitives.Balance), err
 }
 
-// ensureCanWithdraw checks that an account can withdraw from their balance given any existing withdraw restrictions.
-func (m Module) ensureCanWithdraw(who primitives.AccountId, amount sc.U128, reasons primitives.Reasons, newBalance sc.U128) error {
-	if amount.Eq(constants.Zero) {
-		return nil
-	}
-
-	accountInfo, err := m.Config.StoredMap.Get(who)
-	if err != nil {
-		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
-	}
-
-	minBalance := accountInfo.Frozen(reasons)
-	if minBalance.Gt(newBalance) {
-		return primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-			Index:   m.Index,
-			Err:     sc.U32(ErrorLiquidityRestrictions),
-			Message: sc.NewOption[sc.Str](nil),
-		})
-	}
-
-	return nil
+// todo delete the following three (+ in mocks)
+func (m Module) dbWeight() primitives.RuntimeDbWeight {
+	return m.constants.DbWeight
 }
 
-// tryMutateAccount mutates an account based on argument `f`. Does not change total issuance.
-// Does not do anything if `f` returns an error.
-func (m Module) tryMutateAccount(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
-	result, err := m.tryMutateAccountWithDust(who, f)
-	if err != nil {
-		return result, err
-	}
-
-	r := result.(sc.VaryingData)
-
-	dustCleaner := r[1].(dustCleaner)
-	dustCleaner.Drop()
-
-	return r[0].(sc.Encodable), nil
+func (m Module) moduleIndex() sc.U8 {
+	return m.Index
 }
 
-func (m Module) tryMutateAccountWithDust(who primitives.AccountId, f func(who *primitives.AccountData, _ bool) (sc.Encodable, error)) (sc.Encodable, error) {
-	result, err := m.Config.StoredMap.TryMutateExists(
-		who,
-		func(maybeAccount *primitives.AccountData) (sc.Encodable, error) {
-			return m.mutateAccount(maybeAccount, f)
-		},
-	)
-	if err != nil {
-		return result, err
-	}
-
-	resultValue := result.(sc.VaryingData)
-	maybeEndowed := resultValue[0].(sc.Option[primitives.Balance])
-	if maybeEndowed.HasValue {
-		m.Config.StoredMap.DepositEvent(newEventEndowed(m.Index, who, maybeEndowed.Value))
-	}
-
-	maybeDust := resultValue[1].(sc.Option[negativeImbalance])
-	dustCleaner := newDustCleaner(m.Index, who, maybeDust, m.Config.StoredMap)
-
-	r := sc.NewVaryingData(resultValue[2], dustCleaner)
-	return r, nil
-}
-
-func (m Module) mutateAccount(maybeAccount *primitives.AccountData, f func(who *primitives.AccountData, _ bool) (sc.Encodable, error)) (sc.Encodable, error) {
-	account := &primitives.AccountData{}
-	isNew := true
-	if !reflect.DeepEqual(*maybeAccount, primitives.AccountData{}) {
-		account = maybeAccount
-		isNew = false
-	}
-
-	result, err := f(account, isNew)
-	if err != nil {
-		return result, err
-	}
-
-	maybeEndowed := sc.NewOption[primitives.Balance](nil)
-	if isNew {
-		maybeEndowed = sc.NewOption[primitives.Balance](account.Free)
-	}
-	maybeAccountWithDust, imbalance := m.postMutation(*account)
-	if !maybeAccountWithDust.HasValue {
-		maybeAccount = &primitives.AccountData{}
-	} else {
-		maybeAccount.Free = maybeAccountWithDust.Value.Free
-		maybeAccount.MiscFrozen = maybeAccountWithDust.Value.MiscFrozen
-		maybeAccount.FeeFrozen = maybeAccountWithDust.Value.FeeFrozen
-		maybeAccount.Reserved = maybeAccountWithDust.Value.Reserved
-	}
-
-	r := sc.NewVaryingData(maybeEndowed, imbalance, result)
-
-	return r, nil
-}
-
-func (m Module) postMutation(new primitives.AccountData) (sc.Option[primitives.AccountData], sc.Option[negativeImbalance]) {
-	total := new.Total()
-
-	if total.Lt(m.constants.ExistentialDeposit) {
-		if total.Eq(constants.Zero) {
-			return sc.NewOption[primitives.AccountData](nil), sc.NewOption[negativeImbalance](nil)
-		} else {
-			return sc.NewOption[primitives.AccountData](nil), sc.NewOption[negativeImbalance](newNegativeImbalance(total, m.storage.TotalIssuance))
-		}
-	}
-
-	return sc.NewOption[primitives.AccountData](new), sc.NewOption[negativeImbalance](nil)
-}
-
-func (m Module) withdraw(who primitives.AccountId, value sc.U128, account *primitives.AccountData, reasons sc.U8, liveness primitives.ExistenceRequirement) (sc.Encodable, error) {
-	newFreeAccount, err := sc.CheckedSubU128(account.Free, value)
-	if err != nil {
-		return nil, primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-			Index:   m.Index,
-			Err:     sc.U32(ErrorInsufficientBalance),
-			Message: sc.NewOption[sc.Str](nil),
-		})
-	}
-
-	existentialDeposit := m.constants.ExistentialDeposit
-
-	wouldBeDead := (newFreeAccount.Add(account.Reserved)).Lt(existentialDeposit)
-	wouldKill := wouldBeDead && ((account.Free.Add(account.Reserved)).Gte(existentialDeposit))
-
-	if !(liveness == primitives.ExistenceRequirementAllowDeath || !wouldKill) {
-		return nil, primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-			Index:   m.Index,
-			Err:     sc.U32(ErrorKeepAlive),
-			Message: sc.NewOption[sc.Str](nil),
-		})
-	}
-
-	if err := m.ensureCanWithdraw(who, value, primitives.Reasons(reasons), newFreeAccount); err != nil {
-		return nil, err
-	}
-
-	account.Free = newFreeAccount
-
-	m.Config.StoredMap.DepositEvent(newEventWithdraw(m.Index, who, value))
-	return value, nil
-}
-
-func (m Module) deposit(who primitives.AccountId, account *primitives.AccountData, isNew bool, value sc.U128) (sc.Encodable, error) {
-	if isNew {
-		return nil, primitives.NewDispatchErrorModule(primitives.CustomModuleError{
-			Index:   m.Index,
-			Err:     sc.U32(ErrorDeadAccount),
-			Message: sc.NewOption[sc.Str](nil),
-		})
-	}
-
-	free, err := sc.CheckedAddU128(account.Free, value)
-	if err != nil {
-		return nil, primitives.NewDispatchErrorArithmetic(primitives.NewArithmeticErrorOverflow())
-	}
-	account.Free = free
-
-	m.Config.StoredMap.DepositEvent(newEventDeposit(m.Index, who, value))
-
-	return value, nil
+func (m Module) totalIssuance() sc.U128 {
+	ti, _ := m.storage.TotalIssuance.Get()
+	return ti
 }
 
 func (m Module) Metadata() primitives.MetadataModule {
 	metadataIdBalancesCalls := m.mdGenerator.BuildCallsMetadata("Balances", m.functions, &sc.Sequence[primitives.MetadataTypeParameter]{
 		primitives.NewMetadataEmptyTypeParameter("T"),
-		primitives.NewMetadataEmptyTypeParameter("I")})
+		primitives.NewMetadataEmptyTypeParameter("I")},
+	)
 
 	mdConstants := metadataConstants{
 		ExistentialDeposit: primitives.ExistentialDeposit{U128: m.constants.ExistentialDeposit},
@@ -419,6 +285,21 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 					},
 					EventSlashed,
 					"Event.Slashed"),
+				primitives.NewMetadataDefinitionVariant(
+					"Upgraded",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesAddress32, "who", "T::AccountId"),
+					},
+					EventUpgraded,
+					"Event.Upgraded"),
+				primitives.NewMetadataDefinitionVariant(
+					"TotalIssuanceForced",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "old", "T::Balance"),
+						primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "new", "T::Balance"),
+					},
+					EventTotalIssuanceForced,
+					"Event.TotalIssuanceForced"),
 			},
 		)),
 		primitives.NewMetadataTypeWithPath(metadata.TypesBalanceStatus,
@@ -435,8 +316,33 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 						sc.Sequence[primitives.MetadataTypeDefinitionField]{},
 						types.BalanceStatusReserved,
 						"BalanceStatus.Reserved"),
-				})),
-
+				}),
+		),
+		// primitives.NewMetadataTypeWithPath(metadata.TypesAdjustmentDirection,
+		// 	"AdjustmentDirection",
+		// 	sc.Sequence[sc.Str]{"pallet_balances", "AdjustmentDirection"}, primitives.NewMetadataTypeDefinitionVariant(
+		// 		sc.Sequence[primitives.MetadataDefinitionVariant]{
+		// 			primitives.NewMetadataDefinitionVariant(
+		// 				"Increase",
+		// 				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+		// 				types.AdjustmentDirectionIncrease,
+		// 				"AdjustmentDirection.Increase"),
+		// 			primitives.NewMetadataDefinitionVariant(
+		// 				"Decrease",
+		// 				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+		// 				types.AdjustmentDirectionDecrease,
+		// 				"AdjustmentDirection.Decrease"),
+		// 		}),
+		// ),
+		primitives.NewMetadataTypeWithPath(metadata.TypesExtraFlags,
+			"ExtraFlags",
+			sc.Sequence[sc.Str]{"pallet_balances", "ExtraFlags"},
+			primitives.NewMetadataTypeDefinitionComposite(
+				sc.Sequence[primitives.MetadataTypeDefinitionField]{
+					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.PrimitiveTypesU128, "u128"),
+				},
+			),
+		),
 		primitives.NewMetadataTypeWithParams(metadata.TypesBalancesErrors,
 			"pallet_balances pallet Error",
 			sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Error"},
@@ -482,6 +388,7 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 						sc.Sequence[primitives.MetadataTypeDefinitionField]{},
 						ErrorTooManyReserves,
 						"Number of named reserves exceed MaxReserves"),
+					// todo new errors
 				}),
 			sc.Sequence[primitives.MetadataTypeParameter]{
 				primitives.NewMetadataEmptyTypeParameter("T"),
@@ -498,7 +405,14 @@ func (m Module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 				"TotalIssuance",
 				primitives.MetadataModuleStorageEntryModifierDefault,
 				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
-				"The total units issued in the system."),
+				"The total units issued in the system.",
+			),
+			primitives.NewMetadataModuleStorageEntry(
+				"InactiveIssuance",
+				primitives.MetadataModuleStorageEntryModifierDefault,
+				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
+				"The total units of outstanding deactivated balance in the system.",
+			),
 		},
 	})
 }

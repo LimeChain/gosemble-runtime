@@ -84,6 +84,14 @@ type Module interface {
 	StorageAllExtrinsicsLenSet(value sc.U32)
 
 	StorageCodeSet(codeBlob sc.Sequence[sc.U8])
+
+	TryMutateExistsNew(who primitives.AccountId, f func(who *primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error)
+	IncProviders(who types.AccountId) (types.IncRefStatus, error)
+	DecProviders(who types.AccountId) (types.DecRefStatus, error)
+	IncConsumers(who primitives.AccountId) error
+	DecConsumers(who primitives.AccountId) error
+	TryMutateExistsNoClosure(who primitives.AccountId, data primitives.AccountData) error // todo replace with other impls and rename to TryMutateExists
+	IncConsumersWithoutLimit(who primitives.AccountId) error
 }
 
 type module struct {
@@ -463,13 +471,71 @@ func (m module) DepositLog(item primitives.DigestItem) {
 	m.storage.Digest.AppendItem(item)
 }
 
+func (m module) TryMutateExistsNoClosure(who primitives.AccountId, data primitives.AccountData) error {
+	acc, err := m.Get(who)
+	if err != nil {
+		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+	}
+
+	if (data == primitives.AccountData{}) {
+		data = primitives.DefaultAccountData()
+	}
+
+	if acc.Providers > 0 || acc.Sufficients > 0 {
+		acc.Data = data
+		m.storage.Account.Put(who, acc)
+	} else {
+		m.storage.Account.Remove(who)
+	}
+
+	return nil
+}
+func (m module) TryMutateExistsNew(who primitives.AccountId, f func(*primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
+	account, err := m.Get(who)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultAcc := primitives.DefaultAccountData()
+	var someData *primitives.AccountData
+	if !reflect.DeepEqual(account.Data, defaultAcc) {
+		someData = &account.Data
+	} else {
+		someData = &defaultAcc
+	}
+
+	result, err := f(someData)
+	if err != nil {
+		return result, err
+	}
+
+	accountAfter, err := m.Get(who)
+	if err != nil {
+		return nil, err
+	}
+
+	if accountAfter.Providers > 0 || accountAfter.Sufficients > 0 {
+		_, err = m.storage.Account.Mutate(who, func(a *primitives.AccountInfo) (sc.Encodable, error) {
+			mutateAccount(a, someData)
+			return nil, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		m.storage.Account.Remove(who)
+	}
+
+	return result, nil
+}
+
 func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
 	account, err := m.Get(who)
 	if err != nil {
 		return nil, err
 	}
 	wasProviding := false
-	if !reflect.DeepEqual(account.Data, primitives.AccountData{}) {
+	if !reflect.DeepEqual(account.Data, primitives.AccountData{}) { // todo defaultaccdata
 		wasProviding = true
 	}
 
@@ -483,15 +549,15 @@ func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.Acc
 		return result, err
 	}
 
-	isProviding := !reflect.DeepEqual(*someData, primitives.AccountData{})
+	isProviding := !reflect.DeepEqual(*someData, primitives.AccountData{}) // todo defaultaccdata
 
 	if !wasProviding && isProviding {
-		_, err := m.incProviders(who)
+		_, err := m.IncProviders(who)
 		if err != nil {
 			return nil, err
 		}
 	} else if wasProviding && !isProviding {
-		status, err := m.decProviders(who)
+		status, err := m.DecProviders(who)
 		if err != nil {
 			return nil, err
 		}
@@ -513,7 +579,7 @@ func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.Acc
 	return result, nil
 }
 
-func (m module) incProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {
+func (m module) IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {
 	result, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
 		return m.incrementProviders(who, account), nil
 	})
@@ -541,7 +607,9 @@ func (m module) decrementProviders(who primitives.AccountId, maybeAccount *sc.Op
 		}
 		// Account will continue to exist as there is either > 1 provider or
 		// > 0 sufficients.
+
 		account.Providers = account.Providers - 1
+
 		return primitives.DecRefStatusExists, nil
 	} else {
 		m.logger.Warn("Logic error: Account already dead when reducing provider")
@@ -553,7 +621,6 @@ func (m module) incrementProviders(who primitives.AccountId, account *primitives
 	if account.Providers == 0 && account.Sufficients == 0 {
 		account.Providers = 1
 		m.onCreatedAccount(who)
-
 		return primitives.IncRefStatusCreated
 	} else {
 		account.Providers = sc.SaturatingAddU32(account.Providers, 1)
@@ -562,7 +629,7 @@ func (m module) incrementProviders(who primitives.AccountId, account *primitives
 	}
 }
 
-func (m module) decProviders(who primitives.AccountId) (primitives.DecRefStatus, error) {
+func (m module) DecProviders(who primitives.AccountId) (primitives.DecRefStatus, error) {
 	result, err := m.storage.Account.TryMutateExists(who, func(maybeAccount *sc.Option[primitives.AccountInfo]) (sc.Encodable, error) {
 		return m.decrementProviders(who, maybeAccount)
 	})
@@ -572,6 +639,51 @@ func (m module) decProviders(who primitives.AccountId) (primitives.DecRefStatus,
 	}
 
 	return result.(primitives.DecRefStatus), nil
+}
+
+func (m module) IncConsumers(who primitives.AccountId) error {
+	_, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+		if account.Providers > 0 {
+			// todo add MaxConsumers in system config
+			maxConsumers := sc.U32(16)
+			if account.Consumers >= maxConsumers {
+				return nil, primitives.NewDispatchErrorTooManyConsumers()
+			}
+
+			account.Consumers = sc.SaturatingAddU32(account.Consumers, 1)
+			return nil, nil
+		}
+
+		return nil, primitives.NewDispatchErrorNoProviders()
+	})
+
+	return err
+}
+func (m module) IncConsumersWithoutLimit(who primitives.AccountId) error {
+	_, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+		if account.Providers > 0 {
+			account.Consumers = sc.SaturatingAddU32(account.Consumers, 1)
+			return nil, nil
+		}
+
+		return nil, primitives.NewDispatchErrorNoProviders()
+	})
+
+	return err
+}
+
+func (m module) DecConsumers(who primitives.AccountId) error {
+	_, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+		if account.Consumers == 0 {
+			m.logger.Warn("Logic error: Unexpected underflow in reducing consumer")
+		} else {
+			account.Consumers = account.Consumers - 1 // todo see if this works with u32 cuz saturatingsubu32 is not implemented
+		}
+
+		return nil, nil
+	})
+
+	return err
 }
 
 // depositEventIndexed Deposits an event into this block's event record adding this event
@@ -1019,7 +1131,7 @@ func mutateAccount(account *primitives.AccountInfo, data *primitives.AccountData
 	if data != nil {
 		account.Data = *data
 	} else {
-		account.Data = primitives.AccountData{}
+		account.Data = primitives.DefaultAccountData()
 	}
 }
 

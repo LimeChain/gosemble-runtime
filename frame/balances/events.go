@@ -21,6 +21,8 @@ const (
 	EventDeposit
 	EventWithdraw
 	EventSlashed
+	EventUpgraded
+	EventTotalIssuanceForced
 )
 
 var (
@@ -66,6 +68,14 @@ func newEventWithdraw(moduleIndex sc.U8, account primitives.AccountId, amount pr
 
 func newEventSlashed(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
 	return primitives.NewEvent(moduleIndex, EventSlashed, account, amount)
+}
+
+func newEventUpgraded(moduleIndex sc.U8, account primitives.AccountId) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventUpgraded, account)
+}
+
+func newEventTotalIssuanceForced(moduleIndex sc.U8, old, new primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventTotalIssuanceForced, old, new)
 }
 
 func DecodeEvent(moduleIndex sc.U8, buffer *bytes.Buffer) (primitives.Event, error) {
@@ -199,6 +209,22 @@ func DecodeEvent(moduleIndex sc.U8, buffer *bytes.Buffer) (primitives.Event, err
 			return primitives.Event{}, err
 		}
 		return newEventSlashed(moduleIndex, account, amount), nil
+	case EventUpgraded:
+		account, err := primitives.DecodeAccountId(buffer)
+		if err != nil {
+			return primitives.Event{}, err
+		}
+		return newEventUpgraded(moduleIndex, account), nil
+	case EventTotalIssuanceForced:
+		old, err := sc.DecodeU128(buffer)
+		if err != nil {
+			return primitives.Event{}, err
+		}
+		new, err := sc.DecodeU128(buffer)
+		if err != nil {
+			return primitives.Event{}, err
+		}
+		return newEventTotalIssuanceForced(moduleIndex, old, new), nil
 	default:
 		return primitives.Event{}, errInvalidEventType
 	}
