@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"errors"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
@@ -179,6 +180,62 @@ func Test_Module_DoSetKeys(t *testing.T) {
 	mockSystemModule.AssertCalled(t, "IncConsumers", constants.OneAccountId)
 	mockStorageKeyOwner.AssertCalled(t, "Put", sessionKey, constants.OneAccountId)
 	mockStorageNextKeys.AssertCalled(t, "Put", constants.OneAccountId, nextKeys)
+}
+
+func Test_Module_DoSetKeys_InvalidCanIncConsumer(t *testing.T) {
+	expectErr := errors.New("fail")
+	target := setupModule()
+
+	mockSystemModule.On("CanIncConsumer", constants.OneAccountId).Return(false, expectErr)
+
+	err := target.DoSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, primitives.NewDispatchErrorOther(sc.Str(expectErr.Error())), err)
+
+	mockSystemModule.AssertCalled(t, "CanIncConsumer", constants.OneAccountId)
+}
+
+func Test_Module_DoSetKeys_CannotIncConsumer(t *testing.T) {
+	target := setupModule()
+
+	mockSystemModule.On("CanIncConsumer", constants.OneAccountId).Return(false, nil)
+
+	err := target.DoSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, NewDispatchErrorNoAccount(moduleId), err)
+
+	mockSystemModule.AssertCalled(t, "CanIncConsumer", constants.OneAccountId)
+}
+
+func Test_Module_innerSetKeys(t *testing.T) {
+	target := setupModule()
+
+	mockStorageNextKeys.On("Get", constants.OneAccountId).Return(sc.FixedSequence[primitives.Sr25519PublicKey]{}, nil)
+	mockSessionHandler.On("KeyTypeIds").Return(keyTypeIds)
+	mockStorageKeyOwner.On("Get", sessionKey).Return(constants.ZeroAccountId, nil)
+	mockStorageKeyOwner.On("Put", sessionKey, constants.OneAccountId).Return()
+	mockStorageNextKeys.On("Put", constants.OneAccountId, nextKeys).Return()
+
+	res, err := target.innerSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Nil(t, err)
+	assert.Equal(t, sc.NewOption[sc.Sequence[primitives.SessionKey]](sc.Sequence[primitives.SessionKey](nil)), res)
+
+	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
+	mockSessionHandler.AssertCalled(t, "KeyTypeIds")
+	mockStorageKeyOwner.AssertCalled(t, "Get", sessionKey)
+	mockStorageKeyOwner.AssertCalled(t, "Put", sessionKey, constants.OneAccountId)
+	mockStorageNextKeys.AssertCalled(t, "Put", constants.OneAccountId, nextKeys)
+}
+
+func Test_Module_innerSetKeys_ErrNextKeys(t *testing.T) {
+	expectErr := errors.New("fail")
+	target := setupModule()
+
+	mockStorageNextKeys.On("Get", constants.OneAccountId).Return(sc.FixedSequence[primitives.Sr25519PublicKey]{}, expectErr)
+
+	res, err := target.innerSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, primitives.NewDispatchErrorOther(sc.Str(expectErr.Error())), err)
+	assert.Equal(t, sc.Option[sc.Sequence[primitives.SessionKey]]{}, res)
+
+	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
 }
 
 func Test_Module_DoPurgeKeys(t *testing.T) {
