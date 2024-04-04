@@ -72,6 +72,7 @@ func (c checkedExtrinsic) Apply(validator primitives.UnsignedValidator, info *pr
 			return c.dispatch(maybeWho)
 		},
 	)
+	// TODO: handle error
 
 	if err := c.extra.PostDispatch(maybePre, info, &postInfo, length, err); err != nil {
 		return primitives.PostDispatchInfo{}, err

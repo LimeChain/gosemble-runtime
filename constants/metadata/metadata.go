@@ -189,4 +189,8 @@ const (
 	TypesSudoEvent
 	TypesSudoCalls
 	TypesSudoErrors
+
+	TypesBabeConfiguration
+	TypesBabeEpoch
+	TypesBabeStorageAuthorities
 )
