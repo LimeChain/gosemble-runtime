@@ -2,20 +2,22 @@ package main
 
 import (
 	"bytes"
+	"math/big"
+	"testing"
+
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	"github.com/LimeChain/gosemble/frame/aura"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
 func Test_Session_SetKeys(t *testing.T) {
-	rt, storage := newTestRuntime(t)
-	metadata := runtimeMetadata(t, rt)
+	rt, storage := testhelpers.NewRuntimeInstance(t)
+	metadata := testhelpers.RuntimeMetadata(t, rt)
 
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
@@ -23,9 +25,9 @@ func Test_Session_SetKeys(t *testing.T) {
 	// Set account info
 	balance, e := big.NewInt(0).SetString("50000000000000000", 10)
 	assert.True(t, e)
-	accountStorageKey, accountInfo := setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	accountStorageKey, accountInfo := testhelpers.SetStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
 
-	initializeBlock(t, rt, parentHash, stateRoot, extrinsicsRoot, blockNumber)
+	testhelpers.InitializeBlock(t, rt, testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, testhelpers.BlockNumber)
 
 	key, err := ctypes.NewAccountIDFromHexString("0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22")
 	assert.NoError(t, err)
@@ -36,9 +38,9 @@ func Test_Session_SetKeys(t *testing.T) {
 	extrinsic := ctypes.NewExtrinsic(call)
 
 	o := ctypes.SignatureOptions{
-		BlockHash:          ctypes.Hash(parentHash),
+		BlockHash:          ctypes.Hash(testhelpers.ParentHash),
 		Era:                ctypes.ExtrinsicEra{IsImmortalEra: true},
-		GenesisHash:        ctypes.Hash(parentHash),
+		GenesisHash:        ctypes.Hash(testhelpers.ParentHash),
 		Nonce:              ctypes.NewUCompactFromUInt(0),
 		SpecVersion:        ctypes.U32(runtimeVersion.SpecVersion),
 		Tip:                ctypes.NewUCompactFromUInt(0),
@@ -55,10 +57,10 @@ func Test_Session_SetKeys(t *testing.T) {
 
 	res, err := rt.Exec("BlockBuilder_apply_extrinsic", extEnc.Bytes())
 	assert.NoError(t, err)
-	assert.Equal(t, applyExtrinsicResultOutcome.Bytes(), res)
+	assert.Equal(t, testhelpers.ApplyExtrinsicResultOutcome.Bytes(), res)
 
-	assertSessionNextKeys(t, storage, signature.TestKeyringPairAlice.PublicKey, key.ToBytes())
-	assertSessionKeyOwner(t, storage, primitives.NewSessionKey(key.ToBytes(), aura.KeyTypeId), signature.TestKeyringPairAlice.PublicKey)
+	testhelpers.AssertSessionNextKeys(t, storage, signature.TestKeyringPairAlice.PublicKey, key.ToBytes())
+	testhelpers.AssertSessionKeyOwner(t, storage, primitives.NewSessionKey(key.ToBytes(), aura.KeyTypeId), signature.TestKeyringPairAlice.PublicKey)
 
 	bytesAliceStorage := (*storage).Get(accountStorageKey)
 	err = scale.Unmarshal(bytesAliceStorage, &accountInfo)

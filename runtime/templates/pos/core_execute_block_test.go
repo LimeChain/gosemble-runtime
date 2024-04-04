@@ -13,7 +13,7 @@ import (
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/frame/babe"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 
@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	dateTime    = time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
-	storageRoot = common.MustHexToHash("0xd940e147feef433028c8ca2db9ef6c7c51bf6e9538b81301fff3ff24950fa056") // Depends on date
+	genesisConfigJson = []byte("{\"system\":{\"code\":\"\"},\"babe\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"],\"epochConfig\":{\"c\":[1,4],\"allowed_slots\":\"PrimarySlots\"}},\"grandpa\":{\"authorities\":[]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000],[\"5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty\",1000000000000000000],[\"5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y\",1000000000000000000],[\"5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy\",1000000000000000000],[\"5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw\",1000000000000000000],[\"5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL\",1000000000000000000],[\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",1000000000000000000],[\"5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc\",1000000000000000000],[\"5Ck5SLSHYac6WFt5UZRSsdJjwmpSZq85fd5TRNAdZQVzEAPT\",1000000000000000000],[\"5HKPmK9GYtE1PSLsS1qiYU9xQ9Si1NcEhdeCq9sw5bqu4ns8\",1000000000000000000],[ \"5FCfAonRZgTFrTd9HREEyeJjDpT397KMzizE6T3DvebLFE7n\",1000000000000000000],[\"5CRmqmsiNFExV6VbdmPJViVxrWmkaXXvBrSX8oqBT8R9vmWk\",1000000000000000000]]},\"session\": {\"keys\": [[\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",{\"grandpa\":\"5FA9nQDVg267DEd8m1ZypXLBnvN7SFxYwV7ndqSYGiN9TTpu\",\"babe\":\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"}]]},\"transactionPayment\":{\"multiplier\":\"1\"}}")
+	dateTime          = time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
+	storageRoot       = common.MustHexToHash("0xd940e147feef433028c8ca2db9ef6c7c51bf6e9538b81301fff3ff24950fa056") // Depends on date
 )
 
 func Test_BlockExecution(t *testing.T) {
@@ -34,12 +35,18 @@ func Test_BlockExecution(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	metadata := testhelpers.RuntimeMetadata(t, rt)
 
+	genesisConfigJsonBytes, err := scale.Marshal(genesisConfigJson)
+	assert.NoError(t, err)
+
+	_, err = rt.Exec("GenesisBuilder_build_config", genesisConfigJsonBytes)
+	assert.NoError(t, err)
+
 	babeConfigurationBytes, err := rt.Exec("BabeApi_configuration", []byte{})
 	assert.NoError(t, err)
 
 	buffer := bytes.NewBuffer(babeConfigurationBytes)
 
-	babeConfiguration, err := babe.DecodeBabeConfiguration(buffer)
+	babeConfiguration, err := babetypes.DecodeConfiguration(buffer)
 	assert.NoError(t, err)
 
 	slot := sc.U64(dateTime.UnixMilli()) / babeConfiguration.SlotDuration
@@ -80,19 +87,6 @@ func Test_BlockExecution(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, encBlockNumber, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyNumberHash...)))
 
-	// preRuntimeDigest := gossamertypes.PreRuntimeDigest{
-	// 	ConsensusEngineID: babe.EngineId,
-	// 	Data:              slot.Bytes(),
-	// }
-	// assert.NoError(t, digest.Add(preRuntimeDigest))
-	// assert.NoError(t, expectedStorageDigest.Add(preRuntimeDigest))
-
-	// expectedStorageDigest := gossamertypes.NewDigest()
-	// err = expectedStorageDigest.Add(*preDigest)
-	// encExpectedDigest, err := scale.Marshal(expectedStorageDigest)
-	// assert.NoError(t, err)
-
-	// assert.Equal(t, encExpectedDigest, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyDigestHash...)))
 	assert.Equal(t, testhelpers.ParentHash.ToBytes(), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyParentHash...)))
 
 	blockHashKey := append(testhelpers.KeySystemHash, testhelpers.KeyBlockHash...)

@@ -2,7 +2,7 @@ CURRENT_DIR = $(shell pwd)
 
 # runtime template configuration
 BUILD_PATH = build/runtime.wasm
-RUNTIME_TEMPLATE_DIR = runtime/templates/pos
+RUNTIME_TEMPLATE_DIR = runtime/templates/poa
 
 # docker image configuration
 SRC_DIR = /src/examples/wasm/gosemble
@@ -11,6 +11,7 @@ IMAGE = tinygo/${TARGET}
 # tinygo compiler configuration
 VERSION = 0.31.0-dev
 TARGET = polkawasm
+OPT_LEVEL = s # 0, 1, 2, s, z
 GC = extalloc # extalloc, extalloc_leaking
 WASMOPT_PATH = /tinygo/lib/binaryen/bin/wasm-opt
 
@@ -18,8 +19,8 @@ WASMOPT_PATH = /tinygo/lib/binaryen/bin/wasm-opt
 DOCKER_BUILD_TINYGO = docker build --tag $(IMAGE):$(VERSION)-$(GC) -f tinygo/Dockerfile.$(TARGET) tinygo
 DOCKER_RUN_TINYGO = docker run --rm -v $(CURRENT_DIR):$(SRC_DIR) -w $(SRC_DIR) $(IMAGE):$(VERSION)-$(GC) /bin/bash -c
 
-TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -opt s -gc=$(GC) -target=$(TARGET)
-TINYGO_BUILD_COMMAND = tinygo build -gc=$(GC) -opt s -target=$(TARGET)
+TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -opt=$(OPT_LEVEL) -gc=$(GC) -target=$(TARGET)
+TINYGO_BUILD_COMMAND = tinygo build -opt=$(OPT_LEVEL) -gc=$(GC) -target=$(TARGET)
 
 RUNTIME_BUILD_NODEBUG = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
 RUNTIME_BUILD = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
@@ -134,6 +135,12 @@ start-network:
 	cd ../../../..; \
 	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
 
+start-network-babe:
+	cd polkadot-sdk/substrate/bin/node/cli; \
+	cargo build --release; \
+	cd ../../../..; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/substrate-node --dev --execution=wasm
+
 # gossamer node configuration
 CHAIN_SPEC_PLAIN = ../testdata/chain-spec/plain.json
 CHAIN_SPEC_UPDATED = ../testdata/chain-spec/plain-updated.json
@@ -144,7 +151,7 @@ gossamer-build:
 	@cd gossamer; \
 	make build;
 
-gossamer-build-spec:
+gossamer-import-runtime:
 	@cd gossamer; \
 	rm -f $(CHAIN_SPEC_UPDATED); \
 	./bin/gossamer import-runtime --wasm-file ../$(BUILD_PATH) --chain $(CHAIN_SPEC_PLAIN) > $(CHAIN_SPEC_UPDATED); \
@@ -153,10 +160,13 @@ gossamer-build-spec:
 
 gossamer-init:
 	@cd gossamer; \
-	rm -rf tmp/gossamer; \
-	./bin/gossamer init --base-path $(GOSSAMER_BASE_PATH) --chain $(CHAIN_SPEC_RAW) --key alice;
+	rm -rf $(GOSSAMER_BASE_PATH); \
+	./bin/gossamer init --force \
+	--base-path $(GOSSAMER_BASE_PATH) \
+	--chain $(CHAIN_SPEC_RAW) \
+	--key alice;
 
-gossamer-start: gossamer-build gossamer-build-spec gossamer-init
+gossamer-start: gossamer-build gossamer-import-runtime gossamer-init
 	@cd gossamer; \
 	./bin/gossamer \
 		--base-path $(GOSSAMER_BASE_PATH) \

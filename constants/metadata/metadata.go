@@ -190,7 +190,26 @@ const (
 	TypesSudoCalls
 	TypesSudoErrors
 
+	TypesRationalValueU64
+	TypesSlot
+	TypesOptionFixedSequence32U8
+	TypesVrfSignature
+	TypesAllowedSlots
+	TypesPreDigest
+	TypesOptionPreDigest
+	TypesBabeAuthority
+	TypesBabeSequenceAuthority
+	TypesBabeBoundedVecAuthority
+	TypesBabeEpochConfiguration
+	TypesBabeNextConfigDescriptor
+	TypesBabeSkippedEpoch
+	TypesBabeFixedSequenceSkippedEpoch
+	TypesBabeBoundedVecSkippedEpoch
 	TypesBabeConfiguration
 	TypesBabeEpoch
-	TypesBabeStorageAuthorities
+	TypesBabePrimaryPreDigest
+	TypesBabeSecondaryPlainPreDigest
+	TypesBabeSecondaryVRFPreDigest
+	TypesBabeErrors
+	TypesBabeCalls
 )

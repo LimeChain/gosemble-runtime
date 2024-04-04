@@ -22,6 +22,7 @@ import (
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"
+	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
 	tm "github.com/LimeChain/gosemble/frame/testable"
@@ -29,8 +30,13 @@ import (
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
 	txExtensions "github.com/LimeChain/gosemble/frame/transaction_payment/extensions"
 	"github.com/LimeChain/gosemble/hooks"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
+)
+
+const (
+	BabeMaxAuthorities sc.U32 = 100
 )
 
 const (
@@ -40,6 +46,14 @@ const (
 
 const (
 	TimestampMinimumPeriod = 1 * 1_000 // 1 second
+)
+
+const (
+	MilliSecsPerBlock = 2_000
+	SlotDuration      = MilliSecsPerBlock
+	Minutes           = 60_000 / MilliSecsPerBlock
+	Hours             = Minutes * 60
+	Days              = Hours * 24
 )
 
 var (
@@ -56,9 +70,15 @@ var (
 	LengthToFee              primitives.WeightToFee = primitives.IdentityFee{}
 )
 
+var (
+	Period sc.U64 = 6 * Hours
+	Offset sc.U64 = 0
+)
+
 const (
 	SystemIndex sc.U8 = iota
 	TimestampIndex
+	SessionIndex
 	BabeIndex
 	GrandpaIndex
 	BalancesIndex
@@ -66,14 +86,7 @@ const (
 	TestableIndex = 255
 )
 
-const (
-	MaxAuthorities sc.U32 = 100
-)
-
 var (
-	// Block default values used in module initialization.
-	blockWeights, blockLength = initializeBlockDefaults()
-
 	// RuntimeVersion contains the version identifiers of the Runtime.
 	RuntimeVersion = &primitives.RuntimeVersion{
 		SpecName:           sc.Str(constants.SpecName),
@@ -85,10 +98,17 @@ var (
 		StateVersion:       sc.U8(constants.StateVersion),
 	}
 
+	// Block default values used in module initialization.
+	blockWeights, blockLength = initializeBlockDefaults()
+
+	maxConsumers sc.U32 = 16
+)
+
+var (
 	// The BABE epoch configuration at genesis.
-	BabeGenesisEpochConfig = babe.BabeEpochConfiguration{
+	BabeGenesisEpochConfig = babetypes.EpochConfiguration{
 		C:            constants.PrimaryProbability,
-		AllowedSlots: babe.NewPrimaryAndSecondaryPlainSlots(),
+		AllowedSlots: babetypes.NewPrimarySlots(),
 	}
 
 	EpochDuration = constants.EpochDurationInSlots
@@ -122,10 +142,37 @@ func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength)
 func initializeModules() []primitives.Module {
 	systemModule := system.New(
 		SystemIndex,
-		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion),
+		system.NewConfig(
+			primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)},
+			blockWeights,
+			blockLength,
+			DbWeight,
+			RuntimeVersion,
+			maxConsumers,
+		),
 		mdGenerator,
 		logger,
 	)
+
+	handler := session.NewHandler([]session.OneSessionHandler{})
+
+	periodicSession := session.NewPeriodicSessions(Period, Offset)
+
+	sessionModule := session.New(
+		SessionIndex,
+		session.NewConfig(
+			DbWeight,
+			blockWeights,
+			systemModule,
+			periodicSession,
+			handler,
+			session.DefaultManager{},
+		),
+		mdGenerator,
+		logger,
+	)
+
+	externalTrugger := babe.ExternalTrigger{}
 
 	babeModule := babe.New(
 		BabeIndex,
@@ -133,13 +180,18 @@ func initializeModules() []primitives.Module {
 			primitives.PublicKeySr25519,
 			BabeGenesisEpochConfig,
 			EpochDuration,
+			externalTrugger,
+			sessionModule,
+			BabeMaxAuthorities,
 			TimestampMinimumPeriod,
-			MaxAuthorities,
 			systemModule.StorageDigest,
+			systemModule,
 		),
-		systemModule,
+		mdGenerator,
 		logger,
 	)
+
+	sessionModule.AppendHandlers(babeModule)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
@@ -167,6 +219,7 @@ func initializeModules() []primitives.Module {
 	return []primitives.Module{
 		systemModule,
 		timestampModule,
+		sessionModule,
 		babeModule,
 		grandpaModule,
 		balancesModule,

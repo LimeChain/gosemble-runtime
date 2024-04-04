@@ -1,15 +1,17 @@
 package main
 
 import (
+	"math/big"
+	"testing"
+
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/frame/aura"
 	"github.com/LimeChain/gosemble/primitives/types"
+	testhelpers "github.com/LimeChain/gosemble/testhelpers"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
 func BenchmarkSessionPurgeKeys(b *testing.B) {
@@ -26,7 +28,7 @@ func BenchmarkSessionPurgeKeys(b *testing.B) {
 		}
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
 		assert.NoError(b, err)
-		setSessionKeysStorage(b, i.Storage(), signature.TestKeyringPairAlice.PublicKey, bobAddress.AsAddress32[:], aura.KeyTypeId)
+		testhelpers.SetSessionKeysStorage(b, i.Storage(), signature.TestKeyringPairAlice.PublicKey, bobAddress.AsAddress32[:], aura.KeyTypeId)
 
 		err = i.ExecuteExtrinsic(
 			"Session.purge_keys",
@@ -34,7 +36,7 @@ func BenchmarkSessionPurgeKeys(b *testing.B) {
 		)
 		assert.NoError(b, err)
 
-		assertSessionEmptyStorage(b, i.Storage(), signature.TestKeyringPairAlice.PublicKey, bobAddress.AsAddress32[:], aura.KeyTypeId)
+		testhelpers.AssertSessionEmptyStorage(b, i.Storage(), signature.TestKeyringPairAlice.PublicKey, bobAddress.AsAddress32[:], aura.KeyTypeId)
 
 		accountInfo, err = i.GetAccountInfo(aliceAccountIdBytes)
 		assert.NoError(b, err)

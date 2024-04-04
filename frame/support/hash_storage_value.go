@@ -70,6 +70,20 @@ func (hsv HashStorageValue[T]) DecodeLen() (sc.Option[sc.U64], error) {
 	return hsv.baseStorage.decodeLen(hsv.key())
 }
 
+func (hsv HashStorageValue[T]) Mutate(f func(*T) (T, error)) (T, error) {
+	v, err := hsv.Get()
+	if err != nil {
+		return *new(T), err
+	}
+
+	result, err := f(&v)
+	if err == nil {
+		hsv.Put(v)
+	}
+
+	return result, err
+}
+
 func (hsv HashStorageValue[T]) key() []byte {
 	prefixHash := hsv.hashing.Twox128(hsv.prefix)
 	nameHash := hsv.hashing.Twox128(hsv.name)

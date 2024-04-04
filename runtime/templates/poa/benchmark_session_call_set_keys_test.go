@@ -1,15 +1,17 @@
 package main
 
 import (
+	"math/big"
+	"testing"
+
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/frame/aura"
 	"github.com/LimeChain/gosemble/primitives/types"
+	testhelpers "github.com/LimeChain/gosemble/testhelpers"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
 func BenchmarkSessionSetKeys(b *testing.B) {
@@ -34,8 +36,8 @@ func BenchmarkSessionSetKeys(b *testing.B) {
 		)
 		assert.NoError(b, err)
 
-		assertSessionNextKeys(b, i.Storage(), signature.TestKeyringPairAlice.PublicKey, bobAddress.AsAddress32[:])
-		assertSessionKeyOwner(b, i.Storage(), types.NewSessionKey(bobAddress.AsAddress32[:], aura.KeyTypeId), signature.TestKeyringPairAlice.PublicKey)
+		testhelpers.AssertSessionNextKeys(b, i.Storage(), signature.TestKeyringPairAlice.PublicKey, bobAddress.AsAddress32[:])
+		testhelpers.AssertSessionKeyOwner(b, i.Storage(), types.NewSessionKey(bobAddress.AsAddress32[:], aura.KeyTypeId), signature.TestKeyringPairAlice.PublicKey)
 
 		accountInfo, err = i.GetAccountInfo(aliceAccountIdBytes)
 		assert.NoError(b, err)

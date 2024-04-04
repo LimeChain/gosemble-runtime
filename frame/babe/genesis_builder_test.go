@@ -1,43 +1,23 @@
 package babe
 
 import (
+	"errors"
 	"testing"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/mocks"
-	"github.com/LimeChain/gosemble/primitives/types"
-	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	moduleId                      = sc.U8(2)
-	maxAuthorities         sc.U32 = 100
-	timestampMinimumPeriod sc.U64 = 1 * 1_000
-	epochDuration                 = constants.EpochDurationInSlots
-	genesisEpochConfig            = BabeEpochConfiguration{C: constants.PrimaryProbability, AllowedSlots: NewPrimaryAndSecondaryVRFSlots()}
-	pubKey, _                     = types.NewSr25519PublicKey(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
-	authorities                   = sc.Sequence[Authority]{Authority{Key: pubKey}}
+	gcJsonInvalid         = "{'}"
+	gcJsonInvalidAddress  = "{\"babe\":{\"authorities\":[\"abc\"],\"epochConfig\":{\"c\":[0,0],\"allowed_slots\":\"\"}}}"
+	gcJsonInvalidConfig   = "{\"babe\":{\"authorities\":[],\"epochConfig\":{\"c\":[0,0],\"allowed_slots\":\"xyz\"}}}"
+	gcJsonDefault         = "{\"babe\":{\"authorities\":[],\"epochConfig\":{\"c\":[0,0],\"allowed_slots\":\"\"}}}"
+	gcJsonNoAuthorities   = "{\"babe\":{\"authorities\":[],\"epochConfig\":{\"c\":[2,3],\"allowed_slots\":\"PrimaryAndSecondaryVRFSlots\"}}}"
+	gcJsonSomeAuthorities = "{\"babe\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"],\"epochConfig\":{\"c\":[1,4],\"allowed_slots\":\"PrimarySlots\"}}}"
 )
-
-var (
-	expectedGenesisConfig = GenesisConfig{
-		Authorities: authorities,
-		EpochConfig: genesisEpochConfig,
-	}
-
-	expectedJson = "{\"babe\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"],\"epochConfig\":{\"c\":[1,4],\"allowed_slots\":\"PrimaryAndSecondaryVRFSlots\"}}}"
-)
-
-var (
-	mockStorageSegmentIndex    *mocks.StorageValue[sc.U32]
-	mockStorageAuthorities     *mocks.StorageValue[sc.Sequence[Authority]]
-	mockStorageNextAuthorities *mocks.StorageValue[sc.Sequence[Authority]]
-	mockStorageEpochConfig     *mocks.StorageValue[BabeEpochConfiguration]
-)
-
-var target module
 
 func Test_Babe_CreateDefaultConfig(t *testing.T) {
 	target := setupModule()
@@ -45,55 +25,108 @@ func Test_Babe_CreateDefaultConfig(t *testing.T) {
 	gcJson, err := target.CreateDefaultConfig()
 
 	assert.NoError(t, err)
-	assert.Equal(t, expectedJson, string(gcJson))
+
+	assert.Equal(t, gcJsonDefault, string(gcJson))
 }
 
-func Test_Babe_BuildConfig(t *testing.T) {
+func Test_Babe_BuildConfig_Invalid_Json(t *testing.T) {
+	target := setupModule()
+
+	err := target.BuildConfig([]byte(gcJsonInvalid))
+
+	assert.Error(t, err)
+
+	mockStorageSegmentIndex.AssertNotCalled(t, "Put", sc.U32(0))
+	mockStorageAuthorities.AssertNotCalled(t, "DecodeLen")
+	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageNextAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageEpochConfig.AssertNotCalled(t, "Put", epochConfig)
+}
+
+func Test_Babe_BuildConfig_Invalid_Address(t *testing.T) {
+	target := setupModule()
+
+	err := target.BuildConfig([]byte(gcJsonInvalidAddress))
+
+	assert.Equal(t, errors.New("checksum mismatch: expected [126 165] but got [185 123]"), err)
+
+	mockStorageSegmentIndex.AssertNotCalled(t, "Put", sc.U32(0))
+	mockStorageAuthorities.AssertNotCalled(t, "DecodeLen")
+	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageNextAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageEpochConfig.AssertNotCalled(t, "Put", epochConfig)
+}
+
+func Test_Babe_BuildConfig_Invalid_Config(t *testing.T) {
+	target := setupModule()
+
+	err := target.BuildConfig([]byte(gcJsonInvalidConfig))
+
+	assert.Equal(t, errors.New("invalid 'AllowedSlots' type"), err)
+
+	mockStorageSegmentIndex.AssertNotCalled(t, "Put", sc.U32(0))
+	mockStorageAuthorities.AssertNotCalled(t, "DecodeLen")
+	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageNextAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageEpochConfig.AssertNotCalled(t, "Put", epochConfig)
+}
+
+func Test_Babe_BuildConfig_No_Authorities(t *testing.T) {
+	epochConfig := babetypes.EpochConfiguration{
+		C:            primitives.RationalValue{Numerator: sc.U64(2), Denominator: sc.U64(3)},
+		AllowedSlots: babetypes.NewPrimaryAndSecondaryVRFSlots(),
+	}
+
+	target := setupModule()
+
+	mockStorageSegmentIndex.On("Put", sc.U32(0)).Return()
+	mockStorageEpochConfig.On("Put", epochConfig).Return()
+
+	err := target.BuildConfig([]byte(gcJsonNoAuthorities))
+
+	assert.NoError(t, err)
+	mockStorageSegmentIndex.AssertCalled(t, "Put", sc.U32(0))
+	mockStorageAuthorities.AssertNotCalled(t, "DecodeLen")
+	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageNextAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageEpochConfig.AssertCalled(t, "Put", epochConfig)
+}
+
+func Test_Babe_BuildConfig_Some_Authorities(t *testing.T) {
 	target := setupModule()
 
 	mockStorageSegmentIndex.On("Put", sc.U32(0)).Return()
 	mockStorageAuthorities.On("DecodeLen").Return(sc.NewOption[sc.U64](nil), nil)
 	mockStorageAuthorities.On("Put", authorities).Return()
 	mockStorageNextAuthorities.On("Put", authorities).Return()
-	mockStorageEpochConfig.On("Put", genesisEpochConfig).Return()
+	mockStorageEpochConfig.On("Put", epochConfig).Return()
 
-	err := target.BuildConfig([]byte(expectedJson))
+	err := target.BuildConfig([]byte(gcJsonSomeAuthorities))
 
 	assert.NoError(t, err)
+
 	mockStorageSegmentIndex.AssertCalled(t, "Put", sc.U32(0))
 	mockStorageAuthorities.AssertCalled(t, "DecodeLen")
 	mockStorageAuthorities.AssertCalled(t, "Put", authorities)
 	mockStorageNextAuthorities.AssertCalled(t, "Put", authorities)
-	mockStorageEpochConfig.AssertCalled(t, "Put", genesisEpochConfig)
+	mockStorageEpochConfig.AssertCalled(t, "Put", epochConfig)
 }
 
-// TODO: add more test cases
-// duplicate genesis address
-// invalid ss58 address
-// zero authorities
-// storage authorities DecodeLen error
-// storage authorities DecodeLen has value
-// authorities exceed max authorities
+func Test_Babe_BuildConfig_Authorities_Error(t *testing.T) {
+	target := setupModule()
 
-func setupModule() module {
-	mockStorageSegmentIndex = new(mocks.StorageValue[sc.U32])
-	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[Authority]])
-	mockStorageNextAuthorities = new(mocks.StorageValue[sc.Sequence[Authority]])
-	mockStorageEpochConfig = new(mocks.StorageValue[BabeEpochConfiguration])
+	someError := errors.New("some error")
 
-	config := NewConfig(
-		types.PublicKeySr25519,
-		genesisEpochConfig,
-		epochDuration,
-		timestampMinimumPeriod,
-		maxAuthorities,
-	)
+	mockStorageSegmentIndex.On("Put", sc.U32(0)).Return()
+	mockStorageAuthorities.On("DecodeLen").Return(sc.NewOption[sc.U64](nil), someError)
 
-	target := New(moduleId, config).(module)
-	target.storage.SegmentIndex = mockStorageSegmentIndex
-	target.storage.Authorities = mockStorageAuthorities
-	target.storage.NextAuthorities = mockStorageNextAuthorities
-	target.storage.EpochConfig = mockStorageEpochConfig
+	err := target.BuildConfig([]byte(gcJsonSomeAuthorities))
 
-	return target
+	assert.Error(t, someError, err)
+
+	mockStorageSegmentIndex.AssertCalled(t, "Put", sc.U32(0))
+	mockStorageAuthorities.AssertCalled(t, "DecodeLen")
+	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageNextAuthorities.AssertNotCalled(t, "Put", authorities)
+	mockStorageEpochConfig.AssertNotCalled(t, "Put", epochConfig)
 }

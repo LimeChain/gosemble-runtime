@@ -3,6 +3,8 @@ package session
 import (
 	"bytes"
 	"errors"
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
@@ -10,7 +12,6 @@ import (
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (
@@ -608,7 +609,7 @@ func Test_Module_Metadata(t *testing.T) {
 	assert.Equal(t, expectMetadata, metadataModule)
 }
 
-func setupModule() Module {
+func setupModule() module {
 	mockSystemModule = new(mocks.SystemModule)
 	mockShouldEndSession = new(mocks.ShouldEndSession)
 	mockSessionHandler = new(MockSessionHandler)
@@ -617,7 +618,7 @@ func setupModule() Module {
 
 	initMockStorage()
 
-	target := New(moduleId, config, mdGenerator, log.NewLogger())
+	target := New(moduleId, config, mdGenerator, log.NewLogger()).(module)
 	target.storage.Validators = mockStorageValidators
 	target.storage.CurrentIndex = mockStorageCurrentIndex
 	target.storage.QueueChanged = mockStorageQueueChanged

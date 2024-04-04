@@ -2,16 +2,16 @@ package babe
 
 import (
 	"encoding/json"
-	"errors"
 
 	sc "github.com/LimeChain/goscale"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/vedhavyas/go-subkey"
 )
 
 type GenesisConfig struct {
-	Authorities sc.Sequence[Authority]
-	EpochConfig BabeEpochConfiguration
+	Authorities sc.Sequence[babetypes.Authority]
+	EpochConfig babetypes.EpochConfiguration
 }
 
 type genesisConfigJsonStruct struct {
@@ -31,7 +31,6 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// authorities
 	addrExists := map[string]bool{}
 	for _, addr := range gcJson.BabeGenesisConfig.Authorities {
 		if addrExists[addr] {
@@ -48,24 +47,25 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		gc.Authorities = append(gc.Authorities, Authority{Key: pubKey})
+		gc.Authorities = append(gc.Authorities, babetypes.Authority{Key: pubKey})
 		addrExists[addr] = true
 	}
 
-	// c
 	c := gcJson.BabeGenesisConfig.EpochConfig.C
-	gc.EpochConfig.C = types.RationalValue{Numerator: sc.U64(c[0]), Denominator: sc.U64(c[1])}
+	gc.EpochConfig.C = types.RationalValue{
+		Numerator:   sc.U64(c[0]),
+		Denominator: sc.U64(c[1]),
+	}
 
-	// allowed slots
 	switch gcJson.BabeGenesisConfig.EpochConfig.AllowedSlots {
-	case NewPrimarySlots().String():
-		gc.EpochConfig.AllowedSlots = NewPrimarySlots()
-	case NewPrimaryAndSecondaryPlainSlots().String():
-		gc.EpochConfig.AllowedSlots = NewPrimaryAndSecondaryPlainSlots()
-	case NewPrimaryAndSecondaryVRFSlots().String():
-		gc.EpochConfig.AllowedSlots = NewPrimaryAndSecondaryVRFSlots()
+	case babetypes.NewPrimarySlots().String():
+		gc.EpochConfig.AllowedSlots = babetypes.NewPrimarySlots()
+	case babetypes.NewPrimaryAndSecondaryPlainSlots().String():
+		gc.EpochConfig.AllowedSlots = babetypes.NewPrimaryAndSecondaryPlainSlots()
+	case babetypes.NewPrimaryAndSecondaryVRFSlots().String():
+		gc.EpochConfig.AllowedSlots = babetypes.NewPrimaryAndSecondaryVRFSlots()
 	default:
-		return errors.New("invalid 'AllowedSlots' type")
+		return babetypes.ErrInvalidAllowedSlots
 	}
 
 	return nil
@@ -73,10 +73,9 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 
 func (m module) CreateDefaultConfig() ([]byte, error) {
 	gcJson := genesisConfigJsonStruct{}
-	// TODO: check if this is the correct configuration
-	gcJson.BabeGenesisConfig.Authorities = []string{"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"}
-	gcJson.BabeGenesisConfig.EpochConfig.C = [2]uint64{1, 4}
-	gcJson.BabeGenesisConfig.EpochConfig.AllowedSlots = "PrimaryAndSecondaryVRFSlots"
+
+	gcJson.BabeGenesisConfig.Authorities = []string{}
+
 	return json.Marshal(gcJson)
 }
 

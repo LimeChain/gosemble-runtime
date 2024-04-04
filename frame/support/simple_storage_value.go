@@ -60,3 +60,17 @@ func (ssv SimpleStorageValue[T]) Take() (T, error) {
 func (ssv SimpleStorageValue[T]) DecodeLen() (sc.Option[sc.U64], error) {
 	return ssv.baseStorage.decodeLen(ssv.key)
 }
+
+func (ssv SimpleStorageValue[T]) Mutate(f func(*T) (T, error)) (T, error) {
+	v, err := ssv.Get()
+	if err != nil {
+		return *new(T), err
+	}
+
+	result, err := f(&v)
+	if err == nil {
+		ssv.Put(v)
+	}
+
+	return result, err
+}

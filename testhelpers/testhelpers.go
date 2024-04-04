@@ -49,35 +49,43 @@ const (
 
 // keys from all the modules
 var (
-	KeySystemHash, _             = common.Twox128Hash([]byte("System"))
-	KeyAccountHash, _            = common.Twox128Hash([]byte("Account"))
-	KeyAllExtrinsicsLenHash, _   = common.Twox128Hash([]byte("AllExtrinsicsLen"))
-	KeyAuraHash, _               = common.Twox128Hash([]byte("Aura"))
-	KeyAuthoritiesHash, _        = common.Twox128Hash([]byte("Authorities"))
-	KeyAuthorizedUpgradeHash, _  = common.Twox128Hash([]byte("AuthorizedUpgrade"))
-	KeyBabeHash, _               = common.Twox128Hash([]byte("Babe"))
-	KeyBlockHash, _              = common.Twox128Hash([]byte("BlockHash"))
-	KeyCurrentSlotHash, _        = common.Twox128Hash([]byte("CurrentSlot"))
-	KeyDigestHash, _             = common.Twox128Hash([]byte("Digest"))
-	KeyEventsHash, _             = common.Twox128Hash([]byte("Events"))
-	KeyEventCountHash, _         = common.Twox128Hash([]byte("EventCount"))
-	KeyExecutionPhaseHash, _     = common.Twox128Hash([]byte("ExecutionPhase"))
-	KeyExtrinsicCountHash, _     = common.Twox128Hash([]byte("ExtrinsicCount"))
-	KeyExtrinsicIndex            = []byte(":extrinsic_index")
-	KeyHeapPages                 = []byte(":heappages")
-	KeyExtrinsicDataHash, _      = common.Twox128Hash([]byte("ExtrinsicData"))
-	KeyLastRuntimeHash, _        = common.Twox128Hash([]byte("LastRuntimeUpgrade"))
-	KeyNumberHash, _             = common.Twox128Hash([]byte("Number"))
-	KeyParentHash, _             = common.Twox128Hash([]byte("ParentHash"))
-	KeyTimestampHash, _          = common.Twox128Hash([]byte("Timestamp"))
-	KeyTimestampNowHash, _       = common.Twox128Hash([]byte("Now"))
-	KeyTimestampDidUpdateHash, _ = common.Twox128Hash([]byte("DidUpdate"))
-	KeyBlockWeightHash, _        = common.Twox128Hash([]byte("BlockWeight"))
-	KeyGrandpaAuthorities        = []byte(":grandpa_authorities")
-	KeyBalancesHash, _           = common.Twox128Hash([]byte("Balances"))
-	KeyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
-	KeyTransactionPaymentHash, _ = common.Twox128Hash([]byte("TransactionPayment"))
-	KeyNextFeeMultiplierHash, _  = common.Twox128Hash([]byte("NextFeeMultiplier"))
+	KeySystemHash, _                   = common.Twox128Hash([]byte("System"))
+	KeyAccountHash, _                  = common.Twox128Hash([]byte("Account"))
+	KeyAllExtrinsicsLenHash, _         = common.Twox128Hash([]byte("AllExtrinsicsLen"))
+	KeyAuraHash, _                     = common.Twox128Hash([]byte("Aura"))
+	KeyAuthoritiesHash, _              = common.Twox128Hash([]byte("Authorities"))
+	KeyAuthorizedUpgradeHash, _        = common.Twox128Hash([]byte("AuthorizedUpgrade"))
+	KeyBabeHash, _                     = common.Twox128Hash([]byte("Babe"))
+	KeyBlockHash, _                    = common.Twox128Hash([]byte("BlockHash"))
+	KeyCurrentSlotHash, _              = common.Twox128Hash([]byte("CurrentSlot"))
+	KeyDigestHash, _                   = common.Twox128Hash([]byte("Digest"))
+	KeyEventsHash, _                   = common.Twox128Hash([]byte("Events"))
+	KeyEventCountHash, _               = common.Twox128Hash([]byte("EventCount"))
+	KeyExecutionPhaseHash, _           = common.Twox128Hash([]byte("ExecutionPhase"))
+	KeyExtrinsicCountHash, _           = common.Twox128Hash([]byte("ExtrinsicCount"))
+	KeyEpochConfigHash, _              = common.Twox128Hash([]byte("EpochConfig"))
+	KeyEpochIndexHash, _               = common.Twox128Hash([]byte("EpochIndex"))
+	KeyExtrinsicIndex                  = []byte(":extrinsic_index")
+	KeyHeapPages                       = []byte(":heappages")
+	KeyExtrinsicDataHash, _            = common.Twox128Hash([]byte("ExtrinsicData"))
+	KeyLastRuntimeHash, _              = common.Twox128Hash([]byte("LastRuntimeUpgrade"))
+	KeyNumberHash, _                   = common.Twox128Hash([]byte("Number"))
+	KeyParentHash, _                   = common.Twox128Hash([]byte("ParentHash"))
+	KeyTimestampHash, _                = common.Twox128Hash([]byte("Timestamp"))
+	KeyTimestampNowHash, _             = common.Twox128Hash([]byte("Now"))
+	KeyTimestampDidUpdateHash, _       = common.Twox128Hash([]byte("DidUpdate"))
+	KeyBlockWeightHash, _              = common.Twox128Hash([]byte("BlockWeight"))
+	KeyGrandpaAuthorities              = []byte(":grandpa_authorities")
+	KeyBalancesHash, _                 = common.Twox128Hash([]byte("Balances"))
+	KeyTotalIssuanceHash, _            = common.Twox128Hash([]byte("TotalIssuance"))
+	KeyTransactionPaymentHash, _       = common.Twox128Hash([]byte("TransactionPayment"))
+	KeyNextFeeMultiplierHash, _        = common.Twox128Hash([]byte("NextFeeMultiplier"))
+	KeyRandomnessHash, _               = common.Twox128Hash([]byte("Randomness"))
+	KeyNextRandomnessHash, _           = common.Twox128Hash([]byte("NextRandomness"))
+	KeyGenesisSlotHash, _              = common.Twox128Hash([]byte("GenesisSlot"))
+	KeyNextAuthoritiesHash, _          = common.Twox128Hash([]byte("NextAuthorities"))
+	KeyNextEpochConfigHash, _          = common.Twox128Hash([]byte("NextEpochConfig"))
+	KeyPendingEpochConfigChangeHash, _ = common.Twox128Hash([]byte("PendingEpochConfigChange"))
 )
 
 // Session storage keys
@@ -390,7 +398,7 @@ func SignExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyP
 	return nil
 }
 
-func assertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account []byte, expectedKey []byte) {
+func AssertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account []byte, expectedKey []byte) {
 	accountHash, _ := common.Twox64(account)
 	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
 	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
@@ -399,7 +407,7 @@ func assertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account 
 	assert.Equal(t, expectedKey, (*storage).Get(keySessionNextKeys))
 }
 
-func assertSessionKeyOwner(t assert.TestingT, storage *runtime.Storage, key primitives.SessionKey, expectedOwner []byte) {
+func AssertSessionKeyOwner(t assert.TestingT, storage *runtime.Storage, key primitives.SessionKey, expectedOwner []byte) {
 	keyOwnerBytes := key.Bytes()
 	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
 	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
@@ -411,7 +419,7 @@ func assertSessionKeyOwner(t assert.TestingT, storage *runtime.Storage, key prim
 	assert.Equal(t, expectedOwner, (*storage).Get(keySessionKeyOwner))
 }
 
-func assertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
+func AssertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
 	accountHash, _ := common.Twox64(account)
 	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
 	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
@@ -428,7 +436,7 @@ func assertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, acco
 	assert.Nil(t, (*storage).Get(keySessionKeyOwner))
 }
 
-func setSessionKeysStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
+func SetSessionKeysStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
 	accountHash, _ := common.Twox64(account)
 	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
 	keySessionNextKeys = append(keySessionNextKeys, accountHash...)

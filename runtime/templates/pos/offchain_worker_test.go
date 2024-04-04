@@ -9,7 +9,7 @@ import (
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/frame/babe"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ func Test_Offchain_Worker(t *testing.T) {
 
 	buffer := bytes.NewBuffer(babeConfigurationBytes)
 
-	babeConfiguration, err := babe.DecodeBabeConfiguration(buffer)
+	babeConfiguration, err := babetypes.DecodeConfiguration(buffer)
 	assert.NoError(t, err)
 
 	slot := sc.U64(time.UnixMilli()) / babeConfiguration.SlotDuration

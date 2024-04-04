@@ -10,7 +10,7 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/frame/babe"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
@@ -30,16 +30,10 @@ func Test_ApplyExtrinsic_Timestamp(t *testing.T) {
 
 	buffer := bytes.NewBuffer(babeConfigurationBytes)
 
-	babeConfiguration, err := babe.DecodeBabeConfiguration(buffer)
+	babeConfiguration, err := babetypes.DecodeConfiguration(buffer)
 	assert.NoError(t, err)
 
 	slot := sc.U64(time) / babeConfiguration.SlotDuration
-
-	// preRuntimeDigest := gossamertypes.PreRuntimeDigest{
-	// 	ConsensusEngineID: babe.EngineId,
-	// 	Data:              slot.Bytes(),
-	// }
-	// assert.NoError(t, digest.Add(preRuntimeDigest))
 
 	babeHeader := gossamertypes.NewBabeDigest()
 	err = babeHeader.SetValue(*gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{}))

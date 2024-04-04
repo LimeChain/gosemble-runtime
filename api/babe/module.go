@@ -121,8 +121,6 @@ func (m Module) Configuration() int64 {
 		AllowedSlots: epochConfig.AllowedSlots,
 	}
 
-	m.logger.Warn("BABE API: Configuration")
-
 	return m.memUtils.BytesToOffsetAndSize(config.Bytes())
 }
 
@@ -132,8 +130,6 @@ func (m Module) CurrentEpochStart() int64 {
 	if err != nil {
 		m.logger.Critical(err.Error())
 	}
-
-	m.logger.Warn("BABE API: Current Epoch Start")
 
 	return m.memUtils.BytesToOffsetAndSize(epochStart.Bytes())
 }
@@ -145,8 +141,6 @@ func (m Module) CurrentEpoch() int64 {
 		m.logger.Critical(err.Error())
 	}
 
-	m.logger.Warn("BABE API: Current Epoch")
-
 	return m.memUtils.BytesToOffsetAndSize(epoch.Bytes())
 }
 
@@ -157,8 +151,6 @@ func (m Module) NextEpoch() int64 {
 	if err != nil {
 		m.logger.Critical(err.Error())
 	}
-
-	m.logger.Warn("BABE API: Next Epoch")
 
 	return m.memUtils.BytesToOffsetAndSize(epoch.Bytes())
 }
