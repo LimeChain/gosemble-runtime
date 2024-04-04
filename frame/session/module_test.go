@@ -194,6 +194,21 @@ func Test_Module_DoSetKeys_InvalidCanIncConsumer(t *testing.T) {
 	mockSystemModule.AssertCalled(t, "CanIncConsumer", constants.OneAccountId)
 }
 
+func Test_Module_DoSetKeys_KeyNotFound(t *testing.T) {
+	target := setupModule()
+
+	mockSystemModule.On("CanIncConsumer", constants.OneAccountId).Return(true, nil)
+	mockStorageNextKeys.On("Get", constants.OneAccountId).Return(sc.FixedSequence[primitives.Sr25519PublicKey]{}, nil)
+	mockSessionHandler.On("KeyTypeIds").Return(sc.Sequence[sc.FixedSequence[sc.U8]]{sc.FixedSequence[sc.U8]{1, 2, 3}})
+
+	err := target.DoSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, primitives.NewDispatchErrorOther("Some unknown error occurred"), err)
+
+	mockSystemModule.AssertCalled(t, "CanIncConsumer", constants.OneAccountId)
+	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
+	mockSessionHandler.AssertCalled(t, "KeyTypeIds")
+}
+
 func Test_Module_DoSetKeys_CannotIncConsumer(t *testing.T) {
 	target := setupModule()
 
@@ -238,6 +253,53 @@ func Test_Module_innerSetKeys_ErrNextKeys(t *testing.T) {
 	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
 }
 
+func Test_Module_innerSetKeys_KeyTypeNotFound(t *testing.T) {
+	target := setupModule()
+
+	mockStorageNextKeys.On("Get", constants.OneAccountId).Return(sc.FixedSequence[primitives.Sr25519PublicKey]{}, nil)
+	mockSessionHandler.On("KeyTypeIds").Return(sc.Sequence[sc.FixedSequence[sc.U8]]{sc.FixedSequence[sc.U8]{1, 2, 3}})
+
+	res, err := target.innerSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, dispatchErrNotFound, err)
+	assert.Equal(t, sc.NewOption[sc.Sequence[primitives.SessionKey]](nil), res)
+
+	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
+	mockSessionHandler.AssertCalled(t, "KeyTypeIds")
+}
+
+func Test_Module_innerSetKeys_DuplicateKey(t *testing.T) {
+	target := setupModule()
+
+	mockStorageNextKeys.On("Get", constants.OneAccountId).Return(sc.FixedSequence[primitives.Sr25519PublicKey]{}, nil)
+	mockSessionHandler.On("KeyTypeIds").Return(keyTypeIds)
+	mockStorageKeyOwner.On("Get", sessionKey).Return(constants.OneAccountId, nil)
+
+	res, err := target.innerSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, NewDispatchErrorDuplicatedKey(moduleId), err)
+	assert.Equal(t, sc.NewOption[sc.Sequence[primitives.SessionKey]](nil), res)
+
+	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
+	mockSessionHandler.AssertCalled(t, "KeyTypeIds")
+	mockStorageKeyOwner.AssertCalled(t, "Get", sessionKey)
+}
+
+func Test_Module_innerSetKeys_KeyOwnerNotFound(t *testing.T) {
+	expectErr := errors.New("fail")
+	target := setupModule()
+
+	mockStorageNextKeys.On("Get", constants.OneAccountId).Return(sc.FixedSequence[primitives.Sr25519PublicKey]{}, nil)
+	mockSessionHandler.On("KeyTypeIds").Return(keyTypeIds)
+	mockStorageKeyOwner.On("Get", sessionKey).Return(constants.ZeroAccountId, expectErr)
+
+	res, err := target.innerSetKeys(constants.OneAccountId, sessionKeys)
+	assert.Equal(t, primitives.NewDispatchErrorOther(sc.Str(expectErr.Error())), err)
+	assert.Equal(t, sc.NewOption[sc.Sequence[primitives.SessionKey]](nil), res)
+
+	mockStorageNextKeys.AssertCalled(t, "Get", constants.OneAccountId)
+	mockSessionHandler.AssertCalled(t, "KeyTypeIds")
+	mockStorageKeyOwner.AssertCalled(t, "Get", sessionKey)
+}
+
 func Test_Module_DoPurgeKeys(t *testing.T) {
 	target := setupModule()
 
@@ -255,6 +317,43 @@ func Test_Module_DoPurgeKeys(t *testing.T) {
 	mockSessionHandler.AssertCalled(t, "KeyTypeIds")
 	mockStorageKeyOwner.AssertCalled(t, "Remove", sessionKey)
 	mockSystemModule.AssertCalled(t, "DecConsumers", constants.OneAccountId)
+}
+
+func Test_Module_DoPurgeKeys_ErrNextKeys(t *testing.T) {
+	expectErr := errors.New("fail")
+	target := setupModule()
+
+	mockStorageNextKeys.On("TakeBytes", constants.OneAccountId).Return(nextKeys.Bytes(), expectErr)
+
+	err := target.DoPurgeKeys(constants.OneAccountId)
+	assert.Equal(t, primitives.NewDispatchErrorOther(sc.Str(expectErr.Error())), err)
+
+	mockStorageNextKeys.AssertCalled(t, "TakeBytes", constants.OneAccountId)
+}
+
+func Test_Module_DoPurgeKeys_NilNextKeys(t *testing.T) {
+	target := setupModule()
+
+	mockStorageNextKeys.On("TakeBytes", constants.OneAccountId).Return([]byte(nil), nil)
+
+	err := target.DoPurgeKeys(constants.OneAccountId)
+	assert.Equal(t, NewDispatchErrorNoKeys(moduleId), err)
+
+	mockStorageNextKeys.AssertCalled(t, "TakeBytes", constants.OneAccountId)
+}
+
+func Test_Module_DoPurgeKeys_ErrDecodeKeys(t *testing.T) {
+	expectErr := errors.New("fail")
+	target := setupModule()
+
+	mockStorageNextKeys.On("TakeBytes", constants.OneAccountId).Return(nextKeys.Bytes(), nil)
+	mockSessionHandler.On("DecodeKeys", bytes.NewBuffer(nextKeys.Bytes())).Return(nextKeys, expectErr)
+
+	err := target.DoPurgeKeys(constants.OneAccountId)
+	assert.Equal(t, primitives.NewDispatchErrorOther(sc.Str(expectErr.Error())), err)
+
+	mockStorageNextKeys.AssertCalled(t, "TakeBytes", constants.OneAccountId)
+	mockSessionHandler.AssertCalled(t, "DecodeKeys", bytes.NewBuffer(nextKeys.Bytes()))
 }
 
 func Test_Module_IsDisabled_Found(t *testing.T) {
