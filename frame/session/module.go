@@ -204,6 +204,25 @@ func (m Module) DoPurgeKeys(who primitives.AccountId) error {
 	return nil
 }
 
+func (m Module) IsDisabled(index sc.U32) (bool, error) {
+	disabledValidators, err := m.storage.DisabledValidators.Get()
+	if err != nil {
+		return false, err
+	}
+
+	for _, disabledValidator := range disabledValidators {
+		if disabledValidator == index {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (m Module) StorageDisabledValidators() (sc.Sequence[sc.U32], error) {
+	return m.storage.DisabledValidators.Get()
+}
+
 // innerSetKeys sets the keys and checks for duplicates.
 func (m Module) innerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) (sc.Option[sc.Sequence[primitives.SessionKey]], error) {
 	oldKeys, err := m.storage.NextKeys.Get(who)

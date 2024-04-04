@@ -200,6 +200,43 @@ func Test_Module_DoPurgeKeys(t *testing.T) {
 	mockSystemModule.AssertCalled(t, "DecConsumers", constants.OneAccountId)
 }
 
+func Test_Module_IsDisabled_Found(t *testing.T) {
+	target := setupModule()
+
+	mockStorageDisabledValidators.On("Get").Return(sc.Sequence[sc.U32]{sc.U32(5)}, nil)
+
+	result, err := target.IsDisabled(sc.U32(5))
+	assert.Nil(t, err)
+	assert.Equal(t, true, result)
+
+	mockStorageDisabledValidators.AssertCalled(t, "Get")
+}
+
+func Test_Module_IsDisabled_NotFound(t *testing.T) {
+	target := setupModule()
+
+	mockStorageDisabledValidators.On("Get").Return(sc.Sequence[sc.U32]{sc.U32(5)}, nil)
+
+	result, err := target.IsDisabled(sc.U32(6))
+	assert.Nil(t, err)
+	assert.Equal(t, false, result)
+
+	mockStorageDisabledValidators.AssertCalled(t, "Get")
+}
+
+func Test_Module_StorageDisabledValidators(t *testing.T) {
+	expect := sc.Sequence[sc.U32]{sc.U32(5)}
+	target := setupModule()
+
+	mockStorageDisabledValidators.On("Get").Return(expect, nil)
+
+	result, err := target.StorageDisabledValidators()
+	assert.Nil(t, err)
+	assert.Equal(t, expect, result)
+
+	mockStorageDisabledValidators.AssertCalled(t, "Get")
+}
+
 func Test_Module_Metadata(t *testing.T) {
 	target := setupModule()
 

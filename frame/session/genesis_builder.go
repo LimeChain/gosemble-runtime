@@ -69,7 +69,7 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		consensusKeys, ok := keyString[2].(map[string]string)
+		consensusKeys, ok := keyString[2].(map[string]interface{})
 		if !ok {
 			return errInvalidConsensusKeysValue
 		}
@@ -79,13 +79,16 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 			Validator: validatorId,
 		}
 
-		for consensusKeyTypeId, consensusKey := range consensusKeys {
+		for consensusKeyTypeId, consensusKeyStr := range consensusKeys {
 			keyTypeId, err := sc.DecodeFixedSequence[sc.U8](4, bytes.NewBuffer([]byte(consensusKeyTypeId)))
 			if err != nil {
 				return err
 			}
 
-			// TODO: check if actual consensus key type id is necessary
+			consensusKey, ok := consensusKeyStr.(string)
+			if !ok {
+				return errInvalidConsensusKeysValue
+			}
 
 			_, key, err := subkey.SS58Decode(consensusKey)
 			if err != nil {
