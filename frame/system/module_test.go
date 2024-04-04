@@ -23,8 +23,9 @@ const (
 )
 
 var (
-	blockNum   = sc.U64(1)
-	eventCount = sc.U32(1)
+	blockNum     = sc.U64(1)
+	eventCount   = sc.U32(1)
+	maxConsumers = sc.U32(16)
 
 	accountInfo = primitives.AccountInfo{
 		Nonce:       1,
@@ -1053,6 +1054,115 @@ func Test_Module_TryMutateExists_AccountMutate_Error(t *testing.T) {
 	mockStorageAccount.AssertCalled(t,
 		"Mutate",
 		targetAccountId,
+		mockTypeMutateAccountInfo)
+}
+
+func Test_Module_CanIncConsumer_True(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On("Get", targetAccount).Return(accountInfo, nil)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Nil(t, err)
+	assert.Equal(t, true, res)
+
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_CanIncConsumer_False(t *testing.T) {
+	accountInfo := primitives.AccountInfo{
+		Consumers: maxConsumers,
+	}
+
+	target := setupModule()
+
+	mockStorageAccount.On("Get", targetAccount).Return(accountInfo, nil)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Nil(t, err)
+	assert.Equal(t, false, res)
+
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_CanIncConsumer_Err(t *testing.T) {
+	target := setupModule()
+	expectErr := errors.New("expect")
+
+	mockStorageAccount.On("Get", targetAccount).Return(primitives.AccountInfo{}, expectErr)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Equal(t, expectErr, err)
+	assert.False(t, res)
+
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_CanIncConsumer_CheckedErr(t *testing.T) {
+	accountInfo := primitives.AccountInfo{
+		Consumers: math.MaxUint32,
+	}
+	target := setupModule()
+
+	mockStorageAccount.On("Get", targetAccount).Return(accountInfo, nil)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Equal(t, errors.New("overflow"), err)
+	assert.False(t, res)
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_DecConsumers(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On(
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo).
+		Return(sc.Encodable(sc.U32(5)), nil).Once()
+
+	err := target.DecConsumers(targetAccount)
+	assert.Nil(t, err)
+
+	mockStorageAccount.AssertCalled(t,
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo)
+}
+
+func Test_Module_IncConsumers(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On(
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo).
+		Return(sc.Encodable(sc.U32(5)), nil).Once()
+
+	err := target.IncConsumers(targetAccount)
+	assert.Nil(t, err)
+
+	mockStorageAccount.AssertCalled(t,
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo)
+}
+
+func Test_Module_IncConsumersWithoutLimit(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On(
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo).
+		Return(sc.Encodable(sc.U32(5)), nil).Once()
+
+	err := target.IncConsumersWithoutLimit(targetAccount)
+	assert.Nil(t, err)
+
+	mockStorageAccount.AssertCalled(t,
+		"Mutate",
+		targetAccount,
 		mockTypeMutateAccountInfo)
 }
 
@@ -2187,7 +2297,7 @@ func Test_DoApplyAuthorizeUpgrade_Success(t *testing.T) {
 }
 
 func setupModule() module {
-	config := NewConfig(primitives.BlockHashCount{U32: sc.U32(blockHashCount)}, blockWeights, blockLength, dbWeight, &version)
+	config := NewConfig(primitives.BlockHashCount{U32: sc.U32(blockHashCount)}, blockWeights, blockLength, dbWeight, &version, maxConsumers)
 
 	target := New(moduleId, config, mdGenerator, log.NewLogger()).(module)
 

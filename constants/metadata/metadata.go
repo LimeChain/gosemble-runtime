@@ -175,4 +175,13 @@ const (
 	TypesSequenceKeyValue
 
 	TypesCodeUpgradeAuthorization
+
+	TypesSequenceAddress32
+	TypesSessionKey
+	TypesQueuedKey
+	TypeSequenceQueuedKey
+	TypesSessionStorageKeyOwner
+	TypesSessionEvent
+	TypesSessionCalls
+	TypesSessionErrors
 )

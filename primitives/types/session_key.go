@@ -18,6 +18,13 @@ func NewSessionKey(key []byte, typeId [4]byte) SessionKey {
 	}
 }
 
+func NewSessionKeyFromBytes(key []byte, typeId sc.FixedSequence[sc.U8]) SessionKey {
+	return SessionKey{
+		Key:    sc.BytesToSequenceU8(key),
+		TypeId: typeId,
+	}
+}
+
 func (sk SessionKey) Encode(buffer *bytes.Buffer) error {
 	return sc.EncodeEach(buffer, sk.Key, sk.TypeId)
 }

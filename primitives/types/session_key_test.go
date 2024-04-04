@@ -31,6 +31,17 @@ func Test_NewSessionKey(t *testing.T) {
 	assert.Equal(t, expect, target)
 }
 
+func Test_NewSessionKeyFromBytes(t *testing.T) {
+	expect := SessionKey{
+		Key:    sc.BytesToSequenceU8(key),
+		TypeId: sc.BytesToFixedSequenceU8(typeId[:]),
+	}
+
+	target := NewSessionKeyFromBytes(key, sc.BytesToFixedSequenceU8(typeId[:]))
+
+	assert.Equal(t, expect, target)
+}
+
 func Test_SessionKey_Encode(t *testing.T) {
 	buffer := &bytes.Buffer{}
 

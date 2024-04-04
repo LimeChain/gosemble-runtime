@@ -2,7 +2,6 @@ package benchmarking
 
 import (
 	"bytes"
-
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/support"

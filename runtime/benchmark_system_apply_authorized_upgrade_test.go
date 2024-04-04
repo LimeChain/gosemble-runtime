@@ -15,12 +15,13 @@ func BenchmarkSystemApplyAuthorizedUpgrade(b *testing.B) {
 		hash, err := primitives.NewH256(sc.BytesToFixedSequenceU8(codeHash.ToBytes())...)
 		assert.NoError(b, err)
 
-		upgradeAuthorization := sc.NewOption[system.CodeUpgradeAuthorization](system.CodeUpgradeAuthorization{
+		upgradeAuthorization := system.CodeUpgradeAuthorization{
 			CodeHash:     hash,
 			CheckVersion: true,
-		})
+		}
 
-		(*i.Storage()).Put(append(keySystemHash, keyAuthorizedUpgradeHash...), upgradeAuthorization.Bytes())
+		err = (*i.Storage()).Put(append(keySystemHash, keyAuthorizedUpgradeHash...), upgradeAuthorization.Bytes())
+		assert.NoError(b, err)
 
 		err = i.ExecuteExtrinsic(
 			"System.apply_authorized_upgrade",
