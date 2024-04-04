@@ -41,7 +41,3 @@ func (a AccountId) Bytes() []byte {
 func DecodeSequenceAccountId(buffer *bytes.Buffer) (sc.Sequence[AccountId], error) {
 	return sc.DecodeSequenceWith[AccountId](buffer, DecodeAccountId)
 }
-
-func DecodeOptionalAccountId(buffer *bytes.Buffer) (sc.Option[AccountId], error) {
-	return sc.DecodeOptionWith(buffer, DecodeAccountId)
-}

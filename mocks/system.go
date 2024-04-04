@@ -193,31 +193,31 @@ func (m *SystemModule) CanIncConsumer(who primitives.AccountId) (bool, error) {
 	return args[0].(bool), args[1].(error)
 }
 
-func (m *SystemModule) DecConsumers(who primitives.AccountId) (sc.Encodable, error) {
+func (m *SystemModule) DecConsumers(who primitives.AccountId) error {
 	args := m.Called(who)
-	if args[1] == nil {
-		return args[0].(sc.Encodable), nil
+	if args[0] == nil {
+		return nil
 	}
 
-	return args[0].(sc.Encodable), args[1].(error)
+	return args[0].(error)
 }
 
-func (m *SystemModule) IncConsumers(who primitives.AccountId) (sc.Encodable, error) {
+func (m *SystemModule) IncConsumers(who primitives.AccountId) error {
 	args := m.Called(who)
-	if args[1] == nil {
-		return args[0].(sc.Encodable), nil
+	if args[0] == nil {
+		return nil
 	}
 
-	return args[0].(sc.Encodable), args[1].(error)
+	return args[0].(error)
 }
 
-func (m *SystemModule) IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable, error) {
+func (m *SystemModule) IncConsumersWithoutLimit(who primitives.AccountId) error {
 	args := m.Called(who)
-	if args[1] == nil {
-		return args[0].(sc.Encodable), nil
+	if args[0] == nil {
+		return nil
 	}
 
-	return args[0].(sc.Encodable), args[1].(error)
+	return args[0].(error)
 }
 
 func (m *SystemModule) IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {

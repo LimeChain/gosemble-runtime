@@ -72,3 +72,18 @@ func Test_DecodeAccountId_Fails(t *testing.T) {
 	assert.Equal(t, io.EOF, err)
 	assert.Equal(t, AccountId{}, result)
 }
+
+func Test_DecodeSequenceAccountId(t *testing.T) {
+	accId, err := NewAccountId(sc.BytesToSequenceU8(bytesAddress32)...)
+	assert.Nil(t, err)
+
+	expect := sc.Sequence[AccountId]{accId}
+
+	buffer := &bytes.Buffer{}
+	buffer.WriteByte(4)
+	buffer.Write(bytesAddress32)
+
+	result, err := DecodeSequenceAccountId(buffer)
+	assert.Nil(t, err)
+	assert.Equal(t, expect, result)
+}

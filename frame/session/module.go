@@ -20,6 +20,10 @@ const (
 	name = sc.Str("Session")
 )
 
+var (
+	dispatchErrNotFound = primitives.NewDispatchErrorOther("not found")
+)
+
 type Module struct {
 	primitives.DefaultInherentProvider
 	hooks.DefaultDispatchModule
@@ -51,8 +55,8 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 	}
 	module.storage = newStorage(module)
 
-	functions[functionSetKeys] = newCallSetKeys(index, functionSetKeys, module)
-	functions[functionPurgeKeys] = newCallPurgeKeys(index, functionPurgeKeys, module)
+	functions[functionSetKeys] = newCallSetKeys(index, functionSetKeys, config.DbWeight, module, config.Handler)
+	functions[functionPurgeKeys] = newCallPurgeKeys(index, functionPurgeKeys, config.DbWeight, module)
 	module.functions = functions
 
 	return module
@@ -72,11 +76,7 @@ func (m Module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Ca
 
 func (m Module) OnInitialize(n sc.U64) (primitives.Weight, error) {
 	if m.sessionEnder.ShouldEndSession(n) {
-		err := m.rotateSession()
-		if err != nil {
-			return primitives.Weight{}, err
-		}
-		return m.config.BlockWeights.MaxBlock, nil
+		return m.config.BlockWeights.MaxBlock, m.rotateSession()
 	}
 
 	return primitives.WeightZero(), nil
@@ -148,7 +148,7 @@ func (m Module) DoSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[prim
 		return NewDispatchErrorNoAccount(m.index)
 	}
 
-	oldKeys, err := m.InnerSetKeys(who, sessionKeys)
+	oldKeys, err := m.innerSetKeys(who, sessionKeys)
 	if err != nil {
 		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
@@ -157,7 +157,7 @@ func (m Module) DoSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[prim
 		return nil
 	}
 
-	_, err = m.systemModule.IncConsumers(who)
+	err = m.systemModule.IncConsumers(who)
 	if err != nil {
 		return err
 	}
@@ -190,13 +190,13 @@ func (m Module) DoPurgeKeys(who primitives.AccountId) error {
 	for _, keyTypeId := range keyTypeIds {
 		key, found := getKey(keyTypeId, keys)
 		if !found {
-			return primitives.NewDispatchErrorOther("not found")
+			return dispatchErrNotFound
 		}
 
 		m.storage.KeyOwner.Remove(key)
 	}
 
-	_, err = m.systemModule.DecConsumers(who)
+	err = m.systemModule.DecConsumers(who)
 	if err != nil {
 		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
@@ -204,8 +204,8 @@ func (m Module) DoPurgeKeys(who primitives.AccountId) error {
 	return nil
 }
 
-// InnerSetKeys sets the keys and checks for duplicates.
-func (m Module) InnerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) (sc.Option[sc.Sequence[primitives.SessionKey]], error) {
+// innerSetKeys sets the keys and checks for duplicates.
+func (m Module) innerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) (sc.Option[sc.Sequence[primitives.SessionKey]], error) {
 	oldKeys, err := m.storage.NextKeys.Get(who)
 	if err != nil {
 		return sc.Option[sc.Sequence[primitives.SessionKey]]{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -216,7 +216,7 @@ func (m Module) InnerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[p
 	for _, keyTypeId := range keyTypeIds {
 		key, found := getKey(keyTypeId, sessionKeys)
 		if !found {
-			return sc.Option[sc.Sequence[primitives.SessionKey]]{}, primitives.NewDispatchErrorOther("not found")
+			return sc.Option[sc.Sequence[primitives.SessionKey]]{}, dispatchErrNotFound
 		}
 
 		keyOwner, err := m.storage.KeyOwner.Get(key)
@@ -237,7 +237,7 @@ func (m Module) InnerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[p
 	for _, keyTypeId := range keyTypeIds {
 		newKey, found := getKey(keyTypeId, sessionKeys)
 		if !found {
-			return sc.Option[sc.Sequence[primitives.SessionKey]]{}, primitives.NewDispatchErrorOther("not found")
+			return sc.Option[sc.Sequence[primitives.SessionKey]]{}, dispatchErrNotFound
 		}
 
 		oldKey, found := getKey(keyTypeId, oldSessionKeys)
@@ -470,39 +470,6 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 				}),
 			primitives.NewMetadataEmptyTypeParameter("T")),
 	}
-}
-
-func (m Module) metadataErrorsDefinition() *primitives.MetadataTypeDefinition {
-	def := primitives.NewMetadataTypeDefinitionVariant(
-		sc.Sequence[primitives.MetadataDefinitionVariant]{
-			primitives.NewMetadataDefinitionVariant(
-				"InvalidProof",
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-				ErrorInvalidProof,
-				"Invalid ownership proof."),
-			primitives.NewMetadataDefinitionVariant(
-				"NoAssociatedValidatorId",
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-				ErrorNoAssociatedValidatorId,
-				"No associated validator ID for proof."),
-			primitives.NewMetadataDefinitionVariant(
-				"DuplicatedKey",
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-				ErrorDuplicatedKey,
-				"Registered duplicate key."),
-			primitives.NewMetadataDefinitionVariant(
-				"NoKeys",
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-				ErrorNoKeys,
-				"No keys are associated with this account."),
-			primitives.NewMetadataDefinitionVariant(
-				"NoAccount",
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-				ErrorNoAccount,
-				"Keys setting account is not live, so it's impossible to associate keys."),
-		})
-
-	return &def
 }
 
 func (m Module) queueNextValidators(sessionKeys sc.Sequence[queuedKey], nextValidators sc.Sequence[primitives.AccountId], nextIdentitiesChanged bool) (sc.Sequence[queuedKey], bool, error) {

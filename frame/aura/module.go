@@ -187,9 +187,10 @@ func (m Module) OnNewSession(isChanged bool, validators sc.Sequence[primitives.V
 		if !reflect.DeepEqual(nextAuthorities, lastAuthorities) {
 			if len(nextAuthorities) > int(m.config.MaxAuthorities) {
 				m.logger.Warnf("next authorities list larger than maximum [%d], truncating", m.config.MaxAuthorities)
+				return m.changeAuthorities(nextAuthorities[:m.config.MaxAuthorities])
 			}
 
-			return m.changeAuthorities(nextAuthorities[:len(lastAuthorities)])
+			return m.changeAuthorities(nextAuthorities)
 		}
 	}
 

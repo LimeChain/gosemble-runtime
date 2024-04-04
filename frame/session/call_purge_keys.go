@@ -10,17 +10,19 @@ import (
 // This doesn't take effect until the next session.
 type callPurgeKeys struct {
 	primitives.Callable
-	module Module
+	keyManager keyManager
+	dbWeight   primitives.RuntimeDbWeight
 }
 
-func newCallPurgeKeys(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallPurgeKeys(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, module keyManager) primitives.Call {
 	call := callPurgeKeys{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
-			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
+			Arguments:  sc.NewVaryingData(),
 		},
-		module: module,
+		dbWeight:   dbWeight,
+		keyManager: module,
 	}
 
 	return call
@@ -52,7 +54,7 @@ func (c callPurgeKeys) Args() sc.VaryingData {
 }
 
 func (c callPurgeKeys) BaseWeight() primitives.Weight {
-	return callPurgeKeysWeight(c.module.config.DbWeight)
+	return callPurgeKeysWeight(c.dbWeight)
 }
 
 func (_ callPurgeKeys) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -77,7 +79,7 @@ func (c callPurgeKeys) Dispatch(origin primitives.RuntimeOrigin, args sc.Varying
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	return primitives.PostDispatchInfo{}, c.module.DoPurgeKeys(who)
+	return primitives.PostDispatchInfo{}, c.keyManager.DoPurgeKeys(who)
 }
 
 func (_ callPurgeKeys) Docs() string {

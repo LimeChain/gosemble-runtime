@@ -120,12 +120,12 @@ func (m Module) BuildConfig(config []byte) error {
 	}
 
 	for _, sessionKeysConfig := range gc.Keys {
-		_, err := m.InnerSetKeys(sessionKeysConfig.Validator, sessionKeysConfig.Keys)
+		_, err := m.innerSetKeys(sessionKeysConfig.Validator, sessionKeysConfig.Keys)
 		if err != nil {
 			return err
 		}
 
-		_, err = m.systemModule.IncConsumersWithoutLimit(sessionKeysConfig.AccountId)
+		err = m.systemModule.IncConsumersWithoutLimit(sessionKeysConfig.AccountId)
 		if errors.Is(err, types.NewDispatchErrorNoProviders()) {
 			_, err := m.systemModule.IncProviders(sessionKeysConfig.AccountId)
 			if err != nil {

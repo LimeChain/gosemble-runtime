@@ -53,9 +53,9 @@ type Module interface {
 	Get(key primitives.AccountId) (primitives.AccountInfo, error)
 	CanDecProviders(who primitives.AccountId) (bool, error)
 	CanIncConsumer(who primitives.AccountId) (bool, error)
-	DecConsumers(who primitives.AccountId) (sc.Encodable, error)
-	IncConsumers(who primitives.AccountId) (sc.Encodable, error)
-	IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable, error)
+	DecConsumers(who primitives.AccountId) error
+	IncConsumers(who primitives.AccountId) error
+	IncConsumersWithoutLimit(who primitives.AccountId) error
 	IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error)
 
 	TryMutateExists(who primitives.AccountId, f func(who *primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error)
@@ -532,8 +532,8 @@ func (m module) CanIncConsumer(who primitives.AccountId) (bool, error) {
 	return value > 0 && value <= m.Config.MaxConsumers, nil
 }
 
-func (m module) DecConsumers(who primitives.AccountId) (sc.Encodable, error) {
-	return m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+func (m module) DecConsumers(who primitives.AccountId) error {
+	_, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
 		if account.Consumers > 0 {
 			account.Consumers -= 1
 			return nil, nil
@@ -541,10 +541,12 @@ func (m module) DecConsumers(who primitives.AccountId) (sc.Encodable, error) {
 		m.logger.Critical("Unexpected underflow in reducing consumer.")
 		return nil, nil
 	})
+
+	return err
 }
 
-func (m module) IncConsumers(who primitives.AccountId) (sc.Encodable, error) {
-	return m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+func (m module) IncConsumers(who primitives.AccountId) error {
+	_, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
 		if account.Providers > 0 {
 			if account.Consumers < m.Config.MaxConsumers {
 				account.Consumers = sc.SaturatingAddU32(account.Consumers, 1)
@@ -556,10 +558,12 @@ func (m module) IncConsumers(who primitives.AccountId) (sc.Encodable, error) {
 
 		return nil, primitives.NewDispatchErrorNoProviders()
 	})
+
+	return err
 }
 
-func (m module) IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable, error) {
-	return m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
+func (m module) IncConsumersWithoutLimit(who primitives.AccountId) error {
+	_, err := m.storage.Account.Mutate(who, func(account *primitives.AccountInfo) (sc.Encodable, error) {
 		if account.Providers > 0 {
 			account.Consumers = sc.SaturatingAddU32(account.Consumers, 1)
 			return nil, nil
@@ -567,6 +571,8 @@ func (m module) IncConsumersWithoutLimit(who primitives.AccountId) (sc.Encodable
 
 		return nil, primitives.NewDispatchErrorNoProviders()
 	})
+
+	return err
 }
 
 func (m module) IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error) {

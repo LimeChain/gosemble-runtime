@@ -10,24 +10,28 @@ import (
 // Can be executed by any origin.
 type callSetKeys struct {
 	primitives.Callable
-	module Module
+	dbWeight   primitives.RuntimeDbWeight
+	handler    Handler
+	keyManager keyManager
 }
 
-func newCallSetKeys(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallSetKeys(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, keyManager keyManager, handler Handler) primitives.Call {
 	call := callSetKeys{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
-			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
+			Arguments:  sc.NewVaryingData(sc.FixedSequence[primitives.Sr25519PublicKey]{}, sc.Sequence[sc.U8]{}),
 		},
-		module: module,
+		dbWeight:   dbWeight,
+		keyManager: keyManager,
+		handler:    handler,
 	}
 
 	return call
 }
 
 func (c callSetKeys) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, error) {
-	keys, err := c.module.handler.DecodeKeys(buffer)
+	keys, err := c.handler.DecodeKeys(buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +65,7 @@ func (c callSetKeys) Args() sc.VaryingData {
 }
 
 func (c callSetKeys) BaseWeight() primitives.Weight {
-	return callSetKeysWeight(c.module.config.DbWeight)
+	return callSetKeysWeight(c.dbWeight)
 }
 
 func (_ callSetKeys) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -87,12 +91,12 @@ func (c callSetKeys) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingDa
 	}
 	publicKeys := args[0].(sc.FixedSequence[primitives.Sr25519PublicKey])
 
-	keys, err := toSessionKeys(c.module.handler.KeyTypeIds(), publicKeys)
+	keys, err := toSessionKeys(c.handler.KeyTypeIds(), publicKeys)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	return primitives.PostDispatchInfo{}, c.module.DoSetKeys(who, keys)
+	return primitives.PostDispatchInfo{}, c.keyManager.DoSetKeys(who, keys)
 }
 
 func (_ callSetKeys) Docs() string {

@@ -1,7 +1,9 @@
 package aura
 
 import (
+	"bytes"
 	"errors"
+	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"io"
 	"testing"
@@ -33,6 +35,13 @@ var (
 		},
 	}
 	mdGenerator = types.NewMetadataTypeGenerator()
+
+	validator = types.Validator{
+		AccountId:   constants.OneAccountId,
+		AuthorityId: types.Sr25519PublicKey{FixedSequence: constants.OneAddress.FixedSequence},
+	}
+
+	validators = sc.Sequence[types.Validator]{validator}
 )
 
 var (
@@ -231,6 +240,23 @@ func Test_Aura_KeyTypeId(t *testing.T) {
 	assert.Equal(t, [4]byte{'a', 'u', 'r', 'a'}, module.KeyTypeId())
 }
 
+func Test_Aura_DecodeKey(t *testing.T) {
+	setup(timestampMinimumPeriod)
+
+	buffer := bytes.NewBuffer(constants.ZeroAddress.Bytes())
+
+	publicKey, err := module.DecodeKey(buffer)
+	assert.NoError(t, err)
+	assert.Equal(t, types.Sr25519PublicKey{constants.ZeroAddress.FixedSequence}, publicKey)
+}
+
+func Test_Aura_DecodingFailed(t *testing.T) {
+	setup(timestampMinimumPeriod)
+
+	_, err := module.DecodeKey(&bytes.Buffer{})
+	assert.Error(t, io.EOF, err)
+}
+
 func Test_Aura_Metadata(t *testing.T) {
 	setup(timestampMinimumPeriod)
 
@@ -309,6 +335,109 @@ func Test_Aura_OnInitialize_CurrentSlotUpdate(t *testing.T) {
 	assert.Equal(t, types.WeightFromParts(13_000, 0), onInit)
 	mockStorageDigest.AssertCalled(t, "Get")
 	mockStorageCurrentSlot.AssertCalled(t, "Put", sc.U64(1))
+}
+
+func Test_Aura_OnGenesisSession(t *testing.T) {
+	setup(timestampMinimumPeriod)
+	expectValue := sc.Sequence[types.Sr25519PublicKey]{validator.AuthorityId}
+
+	mockStorageAuthorities.On("DecodeLen").Return(sc.NewOption[sc.U64](nil), nil)
+	mockStorageAuthorities.On("Put", expectValue).Return()
+
+	err := module.OnGenesisSession(validators)
+	assert.Nil(t, err)
+
+	mockStorageAuthorities.AssertCalled(t, "DecodeLen")
+	mockStorageAuthorities.AssertCalled(t, "Put", expectValue)
+}
+
+func Test_Aura_OnGenesisSession_NoValidators(t *testing.T) {
+	setup(timestampMinimumPeriod)
+
+	err := module.OnGenesisSession(sc.Sequence[types.Validator]{})
+	assert.Nil(t, err)
+}
+
+func Test_Aura_OnNewSession_ChangeAuthorities(t *testing.T) {
+	setup(timestampMinimumPeriod)
+	expectAuthorities := sc.Sequence[types.Sr25519PublicKey]{validator.AuthorityId}
+	expectMessage := NewConsensusLogAuthoritiesChange(expectAuthorities).Bytes()
+	expectLog := types.NewDigestItemConsensusMessage(sc.BytesToFixedSequenceU8(KeyTypeId[:]), sc.BytesToSequenceU8(expectMessage))
+
+	mockStorageAuthorities.On("Get").Return(authorities, nil)
+	mockStorageAuthorities.On("Put", expectAuthorities).Return()
+	mockLogDepositor.On("DepositLog", expectLog)
+
+	err := module.OnNewSession(true, validators, sc.Sequence[types.Validator]{})
+	assert.Nil(t, err)
+
+	mockStorageAuthorities.AssertCalled(t, "Get")
+	mockStorageAuthorities.AssertCalled(t, "Put", expectAuthorities)
+	mockLogDepositor.AssertCalled(t, "DepositLog", expectLog)
+}
+
+func Test_Aura_OnNewSession_ChangeAuthoritiesMoreThanMax(t *testing.T) {
+	setup(timestampMinimumPeriod)
+	validators := sc.Sequence[types.Validator]{validator, validator}
+	module.config.MaxAuthorities = 1
+	expectAuthorities := sc.Sequence[types.Sr25519PublicKey]{validator.AuthorityId}
+	expectMessage := NewConsensusLogAuthoritiesChange(expectAuthorities).Bytes()
+	expectLog := types.NewDigestItemConsensusMessage(sc.BytesToFixedSequenceU8(KeyTypeId[:]), sc.BytesToSequenceU8(expectMessage))
+
+	mockStorageAuthorities.On("Get").Return(authorities, nil)
+	mockStorageAuthorities.On("Put", expectAuthorities).Return()
+	mockLogDepositor.On("DepositLog", expectLog)
+
+	err := module.OnNewSession(true, validators, sc.Sequence[types.Validator]{})
+	assert.Nil(t, err)
+
+	mockStorageAuthorities.AssertCalled(t, "Get")
+	mockStorageAuthorities.AssertCalled(t, "Put", expectAuthorities)
+	mockLogDepositor.AssertCalled(t, "DepositLog", expectLog)
+}
+
+func Test_Aura_OnNewSession_EmptyAuthorities(t *testing.T) {
+	setup(timestampMinimumPeriod)
+	mockStorageAuthorities.On("Get").Return(authorities, nil)
+
+	err := module.OnNewSession(true, sc.Sequence[types.Validator]{}, sc.Sequence[types.Validator]{})
+	assert.Nil(t, err)
+
+	mockStorageAuthorities.AssertCalled(t, "Get")
+	mockStorageAuthorities.AssertNotCalled(t, "Put")
+	mockLogDepositor.AssertNotCalled(t, "DepositLog")
+}
+
+func Test_Aura_OnNewSession_NotChanged(t *testing.T) {
+	setup(timestampMinimumPeriod)
+
+	err := module.OnNewSession(false, validators, validators)
+	assert.Nil(t, err)
+
+	mockStorageAuthorities.AssertNotCalled(t, "Get")
+	mockStorageAuthorities.AssertNotCalled(t, "Put")
+	mockLogDepositor.AssertNotCalled(t, "DepositLog")
+}
+
+func Test_Aura_OnBeforeSessionEnding(t *testing.T) {
+	setup(timestampMinimumPeriod)
+
+	module.OnBeforeSessionEnding()
+
+	mockStorageAuthorities.AssertNotCalled(t, "Get")
+}
+
+func Test_Aura_OnDisabled(t *testing.T) {
+	setup(timestampMinimumPeriod)
+	validatorIndex := sc.U32(1)
+	message := NewConsensusLogOnDisabled(validatorIndex).Bytes()
+	log := types.NewDigestItemConsensusMessage(sc.BytesToFixedSequenceU8(KeyTypeId[:]), sc.BytesToSequenceU8(message))
+
+	mockLogDepositor.On("DepositLog", log)
+
+	module.OnDisabled(1)
+
+	mockLogDepositor.AssertCalled(t, "DepositLog", log)
 }
 
 func Test_Aura_OnTimestampSet_DurationCannotBeZero(t *testing.T) {

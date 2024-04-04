@@ -1057,6 +1057,115 @@ func Test_Module_TryMutateExists_AccountMutate_Error(t *testing.T) {
 		mockTypeMutateAccountInfo)
 }
 
+func Test_Module_CanIncConsumer_True(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On("Get", targetAccount).Return(accountInfo, nil)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Nil(t, err)
+	assert.Equal(t, true, res)
+
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_CanIncConsumer_False(t *testing.T) {
+	accountInfo := primitives.AccountInfo{
+		Consumers: maxConsumers,
+	}
+
+	target := setupModule()
+
+	mockStorageAccount.On("Get", targetAccount).Return(accountInfo, nil)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Nil(t, err)
+	assert.Equal(t, false, res)
+
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_CanIncConsumer_Err(t *testing.T) {
+	target := setupModule()
+	expectErr := errors.New("expect")
+
+	mockStorageAccount.On("Get", targetAccount).Return(primitives.AccountInfo{}, expectErr)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Equal(t, expectErr, err)
+	assert.False(t, res)
+
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_CanIncConsumer_CheckedErr(t *testing.T) {
+	accountInfo := primitives.AccountInfo{
+		Consumers: math.MaxUint32,
+	}
+	target := setupModule()
+
+	mockStorageAccount.On("Get", targetAccount).Return(accountInfo, nil)
+
+	res, err := target.CanIncConsumer(targetAccount)
+	assert.Equal(t, errors.New("overflow"), err)
+	assert.False(t, res)
+	mockStorageAccount.AssertCalled(t, "Get", targetAccount)
+}
+
+func Test_Module_DecConsumers(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On(
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo).
+		Return(sc.Encodable(sc.U32(5)), nil).Once()
+
+	err := target.DecConsumers(targetAccount)
+	assert.Nil(t, err)
+
+	mockStorageAccount.AssertCalled(t,
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo)
+}
+
+func Test_Module_IncConsumers(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On(
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo).
+		Return(sc.Encodable(sc.U32(5)), nil).Once()
+
+	err := target.IncConsumers(targetAccount)
+	assert.Nil(t, err)
+
+	mockStorageAccount.AssertCalled(t,
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo)
+}
+
+func Test_Module_IncConsumersWithoutLimit(t *testing.T) {
+	target := setupModule()
+
+	mockStorageAccount.On(
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo).
+		Return(sc.Encodable(sc.U32(5)), nil).Once()
+
+	err := target.IncConsumersWithoutLimit(targetAccount)
+	assert.Nil(t, err)
+
+	mockStorageAccount.AssertCalled(t,
+		"Mutate",
+		targetAccount,
+		mockTypeMutateAccountInfo)
+}
+
 func Test_Module_incrementProviders_RefStatusCreated(t *testing.T) {
 	accountInfo := &primitives.AccountInfo{}
 	expectedResult := primitives.IncRefStatusCreated

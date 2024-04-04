@@ -48,16 +48,6 @@ func (m Module) Item() types.ApiItem {
 	return types.NewApiItem(hash, apiVersion)
 }
 
-func (m Module) Keys() sc.Sequence[sc.FixedSequence[sc.U8]] {
-	var keys sc.Sequence[sc.FixedSequence[sc.U8]]
-	for _, session := range m.sessions {
-		keyTypeId := session.KeyTypeId()
-		keys = append(keys, sc.BytesToFixedSequenceU8(keyTypeId[:]))
-	}
-
-	return keys
-}
-
 // GenerateSessionKeys generates a set of session keys with an optional seed.
 // The keys should be stored within the keystore exposed by the Host Api.
 // It takes two arguments:
