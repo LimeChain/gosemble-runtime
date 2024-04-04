@@ -6,7 +6,7 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
-// callSetKeys sets the session keys of thee function caller to `keys`.
+// callSetKeys sets the session keys of the function caller to `keys`.
 // Can be executed by any origin.
 type callSetKeys struct {
 	primitives.Callable

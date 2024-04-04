@@ -54,12 +54,12 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		validatorStrimg, ok := keyString[1].(string)
+		strValidator, ok := keyString[1].(string)
 		if !ok {
 			return errInvalidValidatorValue
 		}
 
-		_, validator, err := subkey.SS58Decode(validatorStrimg)
+		_, validator, err := subkey.SS58Decode(strValidator)
 		if err != nil {
 			return err
 		}
