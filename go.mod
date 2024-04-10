@@ -8,7 +8,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/montanaflynn/stats v0.7.1
-	github.com/shirou/gopsutil/v3 v3.24.2
+	github.com/shirou/gopsutil/v3 v3.24.3
 	github.com/stretchr/testify v1.9.0
 	github.com/vedhavyas/go-subkey v1.0.4
 	golang.org/x/crypto v0.21.0
