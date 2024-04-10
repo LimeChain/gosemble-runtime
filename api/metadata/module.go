@@ -287,6 +287,24 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 
 		primitives.NewMetadataType(metadata.TypesSequenceAddress32, "[]Address32", primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.TypesAddress32))),
 
+		primitives.NewMetadataTypeWithParam(metadata.TypesOptionAccountId, "Option[AccountId]", sc.Sequence[sc.Str]{"Option"}, primitives.NewMetadataTypeDefinitionVariant(
+			sc.Sequence[primitives.MetadataDefinitionVariant]{
+				primitives.NewMetadataDefinitionVariant(
+					"None",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					optionNoneIdx,
+					""),
+				primitives.NewMetadataDefinitionVariant(
+					"Some",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionField(metadata.TypesAddress32),
+					},
+					optionSomeIdx,
+					""),
+			}),
+			primitives.NewMetadataTypeParameter(metadata.TypesAddress32, "T"),
+		),
+
 		primitives.NewMetadataTypeWithPath(metadata.TypesKeyTypeId, "KeyTypeId", sc.Sequence[sc.Str]{"sp_core", "crypto", "KeyTypeId"}, primitives.NewMetadataTypeDefinitionComposite(
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesFixedSequence4U8, "[u8; 4]")},
 		)),
@@ -707,7 +725,7 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			primitives.NewMetadataTypeParameter(metadata.TypesOpaqueMetadata, "T")),
 
 		// type 31
-		primitives.NewMetadataTypeWithParams(metadata.TypesResultEmptyTuple, "Result", sc.Sequence[sc.Str]{"Result"}, primitives.NewMetadataTypeDefinitionVariant(
+		primitives.NewMetadataTypeWithParams(metadata.TypesDispatchOutcome, "Result", sc.Sequence[sc.Str]{"Result"}, primitives.NewMetadataTypeDefinitionVariant(
 			sc.Sequence[primitives.MetadataDefinitionVariant]{
 				primitives.NewMetadataDefinitionVariant(
 					"Ok",
@@ -728,12 +746,12 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 				primitives.NewMetadataTypeParameter(metadata.TypesDispatchError, "E")}),
 
 		// type 869
-		primitives.NewMetadataTypeWithParams(metadata.TypesResult, "Result", sc.Sequence[sc.Str]{"Result"}, primitives.NewMetadataTypeDefinitionVariant(
+		primitives.NewMetadataTypeWithParams(metadata.TypesApplyExtrinsicResult, "ApplyExtrinsicResult", sc.Sequence[sc.Str]{"Result"}, primitives.NewMetadataTypeDefinitionVariant(
 			sc.Sequence[primitives.MetadataDefinitionVariant]{
 				primitives.NewMetadataDefinitionVariant(
 					"Ok",
 					sc.Sequence[primitives.MetadataTypeDefinitionField]{
-						primitives.NewMetadataTypeDefinitionField(metadata.TypesResultEmptyTuple),
+						primitives.NewMetadataTypeDefinitionField(metadata.TypesDispatchOutcome),
 					},
 					resultOkIdx,
 					""),
@@ -745,7 +763,7 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 					resultErrIdx, ""),
 			}),
 			sc.Sequence[primitives.MetadataTypeParameter]{
-				primitives.NewMetadataTypeParameter(metadata.TypesResultEmptyTuple, "T"),
+				primitives.NewMetadataTypeParameter(metadata.TypesDispatchOutcome, "T"),
 				primitives.NewMetadataTypeParameter(txValidityError, "E"),
 			}),
 		primitives.NewMetadataType(metadata.TypesSequenceUncheckedExtrinsics, "[]byte", primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.UncheckedExtrinsic))),

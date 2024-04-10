@@ -498,7 +498,7 @@ func Test_Module_Metadata(t *testing.T) {
 		primitives.NewMetadataTypeWithPath(
 			metadata.TypesSessionEvent,
 			"pallet_session pallet Session",
-			sc.Sequence[sc.Str]{"pallet_session", "pallet", "Session"},
+			sc.Sequence[sc.Str]{"pallet_session", "pallet", "Event"},
 			primitives.NewMetadataTypeDefinitionVariant(
 				sc.Sequence[primitives.MetadataDefinitionVariant]{
 					primitives.NewMetadataDefinitionVariant(

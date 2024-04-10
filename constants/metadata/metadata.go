@@ -142,7 +142,7 @@ const (
 	TypesTransactionValidityError
 	TypesResultValidityTransaction
 	TypesOpaqueMetadata
-	TypesResult
+	TypesApplyExtrinsicResult
 	TypesInherentData
 
 	TypesSequenceUncheckedExtrinsics
@@ -153,7 +153,7 @@ const (
 	TypeOptionInclusionFee
 	TypesOptionTupleSequenceU8KeyTypeId
 
-	TypesResultEmptyTuple
+	TypesDispatchOutcome
 
 	TypesGrandpaAppPublic
 	TypesTupleGrandpaAppPublicU64
@@ -184,4 +184,9 @@ const (
 	TypesSessionEvent
 	TypesSessionCalls
 	TypesSessionErrors
+
+	TypesOptionAccountId
+	TypesSudoEvent
+	TypesSudoCalls
+	TypesSudoErrors
 )

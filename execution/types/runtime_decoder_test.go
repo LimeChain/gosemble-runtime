@@ -57,9 +57,10 @@ var (
 func Test_RuntimeDecoder_New(t *testing.T) {
 	target := setupRuntimeDecoder()
 	expect := runtimeDecoder{
-		modules: []primitives.Module{mockModuleOne},
-		extra:   mockSignedExtra,
-		logger:  logger,
+		modules:   []primitives.Module{mockModuleOne},
+		extra:     mockSignedExtra,
+		sudoIndex: sc.U8(0),
+		logger:    logger,
 	}
 
 	assert.Equal(t, expect, target)
@@ -369,5 +370,5 @@ func setupRuntimeDecoder() RuntimeDecoder {
 
 	apis := []primitives.Module{mockModuleOne}
 
-	return NewRuntimeDecoder(apis, mockSignedExtra, logger)
+	return NewRuntimeDecoder(apis, mockSignedExtra, 0, logger)
 }
