@@ -34,7 +34,8 @@ func (c callRemoveKey) DecodeSudoArgs(_ *bytes.Buffer, _ func(buffer *bytes.Buff
 }
 
 func (c callRemoveKey) DecodeArgs(_ *bytes.Buffer) (primitives.Call, error) {
-	panic("not implemented")
+	c.module.logger.Critical("not implemented")
+	return nil, nil
 }
 
 func (c callRemoveKey) Encode(buffer *bytes.Buffer) error {

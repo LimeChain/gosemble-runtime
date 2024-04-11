@@ -6,6 +6,13 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
+const (
+	docsCallSudoUncheckedWeight = "Authenticates the sudo key and dispatches a function call with `Root` origin." +
+		"This function does not check the weight of the call, and instead allows the" +
+		"Sudo user to specify the weight of the call." +
+		"The dispatch origin for this call must be `Signed`."
+)
+
 // callSudoUncheckedWeight authenticates the sudo key and dispatches a function call with `Root` origin.
 // This function does not check the weight of the call and instead allows allows the sudo user to specify the weight.
 // The dispatch origin for this call must be `Signed`.
@@ -44,7 +51,8 @@ func (c callSudoUncheckedWeight) DecodeSudoArgs(buffer *bytes.Buffer, decodeCall
 }
 
 func (c callSudoUncheckedWeight) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, error) {
-	panic("not implemented")
+	c.module.logger.Critical("not implemented")
+	return nil, nil
 }
 
 func (c callSudoUncheckedWeight) Encode(buffer *bytes.Buffer) error {
@@ -64,7 +72,7 @@ func (c callSudoUncheckedWeight) Args() sc.VaryingData { return c.Callable.Args(
 func (c callSudoUncheckedWeight) BaseWeight() primitives.Weight {
 	weight, ok := c.Arguments[1].(primitives.Weight)
 	if !ok {
-		panic("invalid [1] argument Weight")
+		c.module.logger.Critical("invalid [1] argument Weight")
 	}
 
 	return weight
@@ -96,8 +104,5 @@ func (c callSudoUncheckedWeight) Dispatch(origin primitives.RuntimeOrigin, args 
 }
 
 func (_ callSudoUncheckedWeight) Docs() string {
-	return "Authenticates the sudo key and dispatches a function call with `Root` origin." +
-		"This function does not check the weight of the call, and instead allows the" +
-		"Sudo user to specify the weight of the call." +
-		"The dispatch origin for this call must be `Signed`."
+	return docsCallSudoUncheckedWeight
 }

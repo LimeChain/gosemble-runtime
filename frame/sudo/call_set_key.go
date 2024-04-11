@@ -38,7 +38,8 @@ func (c callSetKey) DecodeSudoArgs(buffer *bytes.Buffer, _ func(buffer *bytes.Bu
 }
 
 func (c callSetKey) DecodeArgs(_ *bytes.Buffer) (primitives.Call, error) {
-	panic("not implemented")
+	c.module.logger.Critical("not implemented")
+	return nil, nil
 }
 
 func (c callSetKey) Encode(buffer *bytes.Buffer) error {

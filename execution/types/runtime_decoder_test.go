@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -19,6 +20,8 @@ const (
 	moduleOneIdx           = sc.U8(0)
 	functionIdx            = sc.U8(0)
 	signedExtrinsicVersion = 132
+	defaultSudoIndex       = 0
+	sudoIndex              = sc.U8(7)
 )
 
 var (
@@ -49,13 +52,14 @@ var (
 )
 
 var (
-	mockModuleOne *mocks.Module
-	mockCallOne   *mocks.Call
-	logger        = log.NewLogger()
+	mockModuleOne  *mocks.Module
+	mockCallOne    *mocks.Call
+	mockDecodeCall = mock.AnythingOfType("func(*bytes.Buffer) (types.Call, error)")
+	logger         = log.NewLogger()
 )
 
 func Test_RuntimeDecoder_New(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 	expect := runtimeDecoder{
 		modules:   []primitives.Module{mockModuleOne},
 		extra:     mockSignedExtra,
@@ -67,7 +71,7 @@ func Test_RuntimeDecoder_New(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeBlock_ZeroExtrinsicsEmptyBody(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	lenExtrinsics := sc.ToCompact(0).Bytes()
 	buff := bytes.NewBuffer(append(header.Bytes(), lenExtrinsics...))
@@ -81,7 +85,7 @@ func Test_RuntimeDecoder_DecodeBlock_ZeroExtrinsicsEmptyBody(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeBlock_Single_Extrinsic(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	moduleFunctions[0] = mockCallOne
 
@@ -125,7 +129,7 @@ func Test_RuntimeDecoder_DecodeBlock_Single_Extrinsic(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeBlock_Multiple_Extrinsics(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 	moduleFunctions[0] = mockCallOne
 
 	totalExtrinsicsInBlock := 10
@@ -179,7 +183,7 @@ func Test_RuntimeDecoder_DecodeBlock_Multiple_Extrinsics(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_Unsigned(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 	moduleFunctions[0] = mockCallOne
 
 	unsignedExtrBytes := append(moduleOneIdx.Bytes(), functionIdx.Bytes()...)
@@ -210,7 +214,7 @@ func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_Unsigned(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_Signed(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	mockSignedExtra.On("Decode", mock.Anything).Return()
 
@@ -240,7 +244,7 @@ func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_Signed(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_InvalidExtrinsicVersion(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	invalidExtrinsicVersion := byte(99)
 
@@ -256,7 +260,7 @@ func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_InvalidExtrinsicVersion(t *tes
 }
 
 func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_InvalidLengthPrefix(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	mockSignedExtra.On("Decode", mock.Anything).Return()
 
@@ -280,7 +284,7 @@ func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_InvalidLengthPrefix(t *testing
 }
 
 func Test_RuntimeDecoder_DecodeCall_Module_Not_Exists(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	idxModuleNotExists := sc.U8(10)
 
@@ -300,7 +304,7 @@ func Test_RuntimeDecoder_DecodeCall_Module_Not_Exists(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeCall_Function_Not_Exists(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	idxFunctionNotExists := sc.U8(10)
 
@@ -322,7 +326,7 @@ func Test_RuntimeDecoder_DecodeCall_Function_Not_Exists(t *testing.T) {
 }
 
 func Test_RuntimeDecoder_DecodeCall(t *testing.T) {
-	target := setupRuntimeDecoder()
+	target := setupRuntimeDecoder(defaultSudoIndex)
 
 	args := sc.NewVaryingData(sc.U8(1), sc.U8(2), sc.U8(3))
 
@@ -345,15 +349,74 @@ func Test_RuntimeDecoder_DecodeCall(t *testing.T) {
 		buf.ReadByte()
 	}).Return(mockCallOne, nil)
 
-	_, err := target.DecodeCall(buf)
+	res, err := target.DecodeCall(buf)
 	assert.NoError(t, err)
+	assert.Equal(t, mockCallOne, res)
 
 	mockModuleOne.AssertCalled(t, "GetIndex")
 	mockModuleOne.AssertCalled(t, "Functions")
 	mockCallOne.AssertCalled(t, "DecodeArgs", buf)
 }
 
-func setupRuntimeDecoder() RuntimeDecoder {
+func Test_RuntimeDecoder_DecodeSudoCall_InvalidType(t *testing.T) {
+	target := setupRuntimeDecoder(sudoIndex)
+
+	args := sc.NewVaryingData(sc.U8(1), sc.U8(2), sc.U8(3))
+
+	callBytes := []byte{
+		uint8(sudoIndex), uint8(functionIdx),
+	}
+
+	callBytes = append(callBytes, args.Bytes()...)
+
+	buf := bytes.NewBuffer(callBytes)
+	moduleFunctions[0] = mockCallOne
+
+	mockModuleOne.On("GetIndex").Return(sudoIndex)
+	mockModuleOne.On("Functions").Return(moduleFunctions)
+
+	res, err := target.DecodeCall(buf)
+	assert.Equal(t, errors.New("function index [0] for module [7] does not implement sudo decoder"), err)
+	assert.Nil(t, res)
+
+	mockModuleOne.AssertCalled(t, "GetIndex")
+	mockModuleOne.AssertCalled(t, "Functions")
+	mockCallOne.AssertNotCalled(t, "DecodeSudoArgs")
+}
+
+func Test_RuntimeDecoder_DecodeCall_Sudo(t *testing.T) {
+	target := setupRuntimeDecoder(sudoIndex)
+	mockCallSudo := new(mocks.CallSudo)
+
+	args := sc.NewVaryingData(sudoIndex, sc.U8(2), sc.U8(3))
+
+	callBytes := append(sudoIndex.Bytes(), functionIdx.Bytes()...)
+
+	callBytes = append(callBytes, args.Bytes()...)
+
+	buf := bytes.NewBuffer(callBytes)
+	moduleFunctions[0] = mockCallSudo
+
+	mockModuleOne.On("GetIndex").Return(sudoIndex)
+	mockModuleOne.On("Functions").Return(moduleFunctions)
+	mockCallSudo.On("DecodeSudoArgs", buf, mockDecodeCall).Run(func(args mock.Arguments) {
+		buf := args.Get(0).(*bytes.Buffer)
+		// reading 3 bytes for the 3 arguments
+		buf.ReadByte()
+		buf.ReadByte()
+		buf.ReadByte()
+	}).Return(mockCallSudo, nil)
+
+	res, err := target.DecodeCall(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, mockCallSudo, res)
+
+	mockModuleOne.AssertCalled(t, "GetIndex")
+	mockModuleOne.AssertCalled(t, "Functions")
+	mockCallSudo.AssertCalled(t, "DecodeSudoArgs", buf, mockDecodeCall)
+}
+
+func setupRuntimeDecoder(sudoIndex sc.U8) RuntimeDecoder {
 	mockModuleOne = new(mocks.Module)
 
 	mockCallOne = new(mocks.Call)
@@ -370,5 +433,5 @@ func setupRuntimeDecoder() RuntimeDecoder {
 
 	apis := []primitives.Module{mockModuleOne}
 
-	return NewRuntimeDecoder(apis, mockSignedExtra, 0, logger)
+	return NewRuntimeDecoder(apis, mockSignedExtra, sudoIndex, logger)
 }

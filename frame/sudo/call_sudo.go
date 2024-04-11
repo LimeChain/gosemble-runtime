@@ -37,7 +37,8 @@ func (c callSudo) DecodeSudoArgs(buffer *bytes.Buffer, decodeCallFunc func(buffe
 }
 
 func (c callSudo) DecodeArgs(_ *bytes.Buffer) (primitives.Call, error) {
-	panic("not implemented")
+	c.module.logger.Critical("not implemented")
+	return nil, nil
 }
 
 func (c callSudo) Encode(buffer *bytes.Buffer) error {
