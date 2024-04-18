@@ -67,6 +67,10 @@ func (m Module) CreateDefaultConfig() int64 {
 			m.logger.Critical(err.Error())
 		}
 
+		if len(gcJsonBytes) == 0 {
+			continue
+		}
+
 		// gcJsonBytes[1:len(gcJsonBytes)-1] trims first and last characters which represent start and end of the json
 		// CreateDefaultConfig returns a valid json (e.g. {"system":{}}), and here we need it as a json field
 		gcs = append(gcs, string(gcJsonBytes[1:len(gcJsonBytes)-1]))

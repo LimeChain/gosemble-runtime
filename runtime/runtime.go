@@ -9,11 +9,13 @@ import (
 	apiAura "github.com/LimeChain/gosemble/api/aura"
 	"github.com/LimeChain/gosemble/api/benchmarking"
 	blockbuilder "github.com/LimeChain/gosemble/api/block_builder"
+	"github.com/LimeChain/gosemble/api/collect_collation_info"
 	"github.com/LimeChain/gosemble/api/core"
 	genesisbuilder "github.com/LimeChain/gosemble/api/genesis_builder"
 	apiGrandpa "github.com/LimeChain/gosemble/api/grandpa"
 	"github.com/LimeChain/gosemble/api/metadata"
 	"github.com/LimeChain/gosemble/api/offchain_worker"
+	"github.com/LimeChain/gosemble/api/parachain"
 	"github.com/LimeChain/gosemble/api/session_keys"
 	taggedtransactionqueue "github.com/LimeChain/gosemble/api/tagged_transaction_queue"
 	apiTxPayments "github.com/LimeChain/gosemble/api/transaction_payment"
@@ -22,9 +24,12 @@ import (
 	"github.com/LimeChain/gosemble/execution/extrinsic"
 	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/aura"
+	aura_ext "github.com/LimeChain/gosemble/frame/aura-ext"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"
+	"github.com/LimeChain/gosemble/frame/parachain_info"
+	"github.com/LimeChain/gosemble/frame/parachain_system"
 	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
@@ -77,11 +82,21 @@ var (
 	Offset sc.U64 = 0
 )
 
+// Parachain
+const (
+	RelayChainSlotDurationMillis = 6_000
+	BlockProcessingVelocity      = 1
+	UnincludedSegmentCapacity    = 1
+)
+
 const (
 	SystemIndex sc.U8 = iota
+	ParachainSystem
 	TimestampIndex
 	SessionIndex
+	ParachainInfo
 	AuraIndex
+	AuraExtIndex
 	GrandpaIndex
 	BalancesIndex
 	TxPaymentsIndex
@@ -137,6 +152,9 @@ func initializeModules() []primitives.Module {
 		logger,
 	)
 
+	parachainSystemModule := parachain_system.New(ParachainSystem, parachain_system.NewConfig(DbWeight))
+	parachainInfoModule := parachain_info.New(ParachainInfo)
+
 	auraModule := aura.New(
 		AuraIndex,
 		aura.NewConfig(
@@ -152,6 +170,8 @@ func initializeModules() []primitives.Module {
 		mdGenerator,
 		logger,
 	)
+
+	auraExtModule := aura_ext.New(AuraExtIndex, aura_ext.NewConfig(DbWeight, RelayChainSlotDurationMillis, BlockProcessingVelocity, UnincludedSegmentCapacity), auraModule, logger)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
@@ -187,9 +207,12 @@ func initializeModules() []primitives.Module {
 
 	return []primitives.Module{
 		systemModule,
+		parachainSystemModule,
 		timestampModule,
 		sessionModule,
+		parachainInfoModule,
 		auraModule,
+		auraExtModule,
 		grandpaModule,
 		balancesModule,
 		tpmModule,
@@ -222,6 +245,7 @@ func runtimeApi() types.RuntimeApi {
 	auraModule := primitives.MustGetModule(AuraIndex, modules).(aura.Module)
 	grandpaModule := primitives.MustGetModule(GrandpaIndex, modules).(grandpa.Module)
 	txPaymentsModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
+	parachainSystemModule := primitives.MustGetModule(ParachainSystem, modules).(parachain_system.Module)
 
 	executiveModule := executive.New(
 		systemModule,
@@ -229,6 +253,7 @@ func runtimeApi() types.RuntimeApi {
 		hooks.DefaultOnRuntimeUpgrade{},
 		logger,
 	)
+	// TODO: Aura ext uses executive
 
 	sessions := []primitives.Session{
 		auraModule,
@@ -246,6 +271,9 @@ func runtimeApi() types.RuntimeApi {
 	sessionKeysApi := session_keys.New(sessions, logger)
 	offchainWorkerApi := offchain_worker.New(executiveModule, logger)
 	genesisBuilderApi := genesisbuilder.New(modules, logger)
+	collectCollationInfoApi := collect_collation_info.New(parachainSystemModule, logger)
+	// TODO: Check if this API module has metadata as well
+	parachainApi := parachain.New(parachainSystemModule, decoder, logger)
 
 	metadataApi := metadata.New(
 		runtimeExtrinsic,
@@ -260,6 +288,7 @@ func runtimeApi() types.RuntimeApi {
 			txPaymentsCallApi,
 			sessionKeysApi,
 			offchainWorkerApi,
+			collectCollationInfoApi,
 		},
 		logger,
 		mdGenerator,
@@ -278,6 +307,8 @@ func runtimeApi() types.RuntimeApi {
 		sessionKeysApi,
 		offchainWorkerApi,
 		genesisBuilderApi,
+		collectCollationInfoApi,
+		parachainApi,
 	}
 
 	runtimeApi := types.NewRuntimeApi(apis, logger)
@@ -460,6 +491,20 @@ func GenesisBuilderBuildConfig(dataPtr int32, dataLen int32) int64 {
 	return runtimeApi().
 		Module(genesisbuilder.ApiModuleName).(genesisbuilder.Module).
 		BuildConfig(dataPtr, dataLen)
+}
+
+//go:export CollectCollationInfo_collect_collation_info
+func CollectCollationInfoCollectCollationInfo(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(collect_collation_info.ApiModuleName).(collect_collation_info.Module).
+		CollectCollationInfo(dataPtr, dataLen)
+}
+
+//go:export validate_block
+func ParachainValidateBlock(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(parachain.ApiModuleName).(parachain.Module).
+		ValidateBlock(dataPtr, dataLen)
 }
 
 //go:export Benchmark_dispatch

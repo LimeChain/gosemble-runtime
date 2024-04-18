@@ -184,4 +184,8 @@ const (
 	TypesSessionEvent
 	TypesSessionCalls
 	TypesSessionErrors
+
+	TypesParachainOutboundHrmpMessage
+	TypesParachainOutboundHrmpMessages
+	TypesParachainValidationResult
 )

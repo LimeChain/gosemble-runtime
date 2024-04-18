@@ -839,6 +839,31 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 				},
 			),
 		),
+		primitives.NewMetadataTypeWithPath(
+			metadata.TypesParachainOutboundHrmpMessage,
+			"parachain primitives outbound hrmp messages",
+			sc.Sequence[sc.Str]{"parachain", "primitives", "OutboundHrmpMessages"},
+			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU32, "id", "Id"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceU8, "data", "Data"),
+			}),
+		),
+		primitives.NewMetadataType(metadata.TypesParachainOutboundHrmpMessages,
+			"[]OutboundHrmpMessage",
+			primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.TypesParachainOutboundHrmpMessage)),
+		),
+		primitives.NewMetadataTypeWithPath(
+			metadata.TypesParachainValidationResult,
+			"parachain primitives validationResult", sc.Sequence[sc.Str]{"parachain", "primitives", "ValidationResult"},
+			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceSequenceU8, "upward_messages", "UpdwardMessages"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesParachainOutboundHrmpMessages, "horizontal_messages", "HorizontalMessages"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesOptionSequenceU8, "validation_code", "ValidationCode"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU32, "processed_downward_messages", "ProcessedDownwardMessages"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU32, "hrmp_watermark", "HrmpWatermark"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceU8, "head_data", "HeadData"),
+			}),
+		),
 	}
 }
 

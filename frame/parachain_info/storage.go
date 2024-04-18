@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	keyAura        = []byte("ParachainInfo")
-	keyParachainId = []byte("ParachainId")
+	keyParachainInfo = []byte("ParachainInfo")
+	keyParachainId   = []byte("ParachainId")
 )
 
 type storage struct {
@@ -16,6 +16,6 @@ type storage struct {
 
 func newStorage() *storage {
 	return &storage{
-		ParachainId: support.NewHashStorageValueWithDefault(keyAura, keyParachainId, sc.DecodeU32, &defaultParachainId),
+		ParachainId: support.NewHashStorageValueWithDefault(keyParachainInfo, keyParachainId, sc.DecodeU32, &defaultParachainId),
 	}
 }
