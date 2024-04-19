@@ -6,7 +6,7 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
-// callRemoveKey authenticates the current sudo key and sets the given `AccountId` as the new sudo key.
+// callRemoveKey permanently removes the sudo key. This cannot be undone.
 type callRemoveKey struct {
 	primitives.Callable
 	dbWeight primitives.RuntimeDbWeight
