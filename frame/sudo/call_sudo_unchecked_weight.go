@@ -14,7 +14,7 @@ const (
 )
 
 // callSudoUncheckedWeight authenticates the sudo key and dispatches a function call with `Root` origin.
-// This function does not check the weight of the call and instead allows allows the sudo user to specify the weight.
+// This function does not check the weight of the call and instead allows the sudo user to specify the weight.
 // The dispatch origin for this call must be `Signed`.
 type callSudoUncheckedWeight struct {
 	primitives.Callable
