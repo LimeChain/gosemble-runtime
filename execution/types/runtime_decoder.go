@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/types"
@@ -22,17 +21,23 @@ type RuntimeDecoder interface {
 	DecodeCall(buffer *bytes.Buffer) (primitives.Call, error)
 }
 
-type runtimeDecoder struct {
-	modules []types.Module
-	extra   primitives.SignedExtra
-	logger  log.WarnLogger
+type SudoDecoder interface {
+	DecodeSudoArgs(buffer *bytes.Buffer, decodeCallFunc func(buffer *bytes.Buffer) (primitives.Call, error)) (primitives.Call, error)
 }
 
-func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, logger log.WarnLogger) RuntimeDecoder {
+type runtimeDecoder struct {
+	modules   []types.Module
+	extra     primitives.SignedExtra
+	sudoIndex sc.U8 // Used for additional decoding related to Sudo calls. Default is 0 and not considered a valid sudo index.
+	logger    log.WarnLogger
+}
+
+func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, sudoIndex sc.U8, logger log.WarnLogger) RuntimeDecoder {
 	return runtimeDecoder{
-		modules: modules,
-		extra:   extra,
-		logger:  logger,
+		modules:   modules,
+		extra:     extra,
+		sudoIndex: sudoIndex,
+		logger:    logger,
 	}
 }
 
@@ -124,10 +129,27 @@ func (rd runtimeDecoder) DecodeCall(buffer *bytes.Buffer) (primitives.Call, erro
 		return nil, fmt.Errorf("function index [%d] for module [%d] not found", functionIndex, moduleIndex)
 	}
 
-	function, err = function.DecodeArgs(buffer)
+	if rd.isSudoCall(moduleIndex) {
+		sudoCall, ok := function.(SudoDecoder)
+		if !ok {
+			return nil, fmt.Errorf("function index [%d] for module [%d] does not implement sudo decoder", functionIndex, moduleIndex)
+		}
+		function, err = sudoCall.DecodeSudoArgs(buffer, rd.DecodeCall)
+	} else {
+		function, err = function.DecodeArgs(buffer)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return function, nil
+}
+
+// Checks if the current module index is Sudo.
+func (rd runtimeDecoder) isSudoCall(moduleIndex sc.U8) bool {
+	if rd.sudoIndex != 0 && moduleIndex == rd.sudoIndex {
+		return true
+	}
+
+	return false
 }

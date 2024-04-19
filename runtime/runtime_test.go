@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/LimeChain/gosemble/frame/session"
+	"github.com/LimeChain/gosemble/frame/sudo"
 	"math/big"
 	"testing"
 
@@ -70,6 +71,12 @@ var (
 	keyKeyOwner, _    = common.Twox128Hash([]byte("KeyOwner"))
 )
 
+// Sudo storage keys
+var (
+	keySudoHash, _ = common.Twox128Hash([]byte("Sudo"))
+	keyKeyHash, _  = common.Twox128Hash([]byte("Key"))
+)
+
 var (
 	parentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
 	stateRoot      = common.MustHexToHash("0xd9e8bf89bda43fb46914321c371add19b81ff92ad6923e8f189b52578074b073")
@@ -133,6 +140,13 @@ var (
 				Err:   sc.U32(session.ErrorNoKeys),
 			}))
 
+	dispatchOutcomeSudoRequireSudoErr, _ = primitives.NewDispatchOutcome(
+		primitives.NewDispatchErrorModule(
+			primitives.CustomModuleError{
+				Index: SudoIndex,
+				Err:   sc.U32(sudo.ErrorRequireSudo),
+			}))
+
 	applyExtrinsicResultOutcome, _               = primitives.NewApplyExtrinsicResult(dispatchOutcome)
 	applyExtrinsicResultExhaustsResourcesErr, _  = primitives.NewApplyExtrinsicResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
 	applyExtrinsicResultBadOriginErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeBadOriginErr)
@@ -141,6 +155,7 @@ var (
 	applyExtrinsicResultExistentialDepositErr, _ = primitives.NewApplyExtrinsicResult(dispatchOutcomeExistentialDepositErr)
 	applyExtrinsicResultKeepAliveErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeKeepAliveErr)
 	applyExtrinsicResultSessionNoKeysErr, _      = primitives.NewApplyExtrinsicResult(dispatchOutcomeSessionNoKeysErr)
+	applyExtrinsicResultSudoRequireSudoErr, _    = primitives.NewApplyExtrinsicResult(dispatchOutcomeSudoRequireSudoErr)
 )
 
 func newTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {

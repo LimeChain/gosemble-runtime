@@ -86,6 +86,11 @@ func newBenchmarkingInstance(runtime *wazero_runtime.Instance, repeats int) (*In
 	}, nil
 }
 
+// Metadata returns the metadata of the current runtime instance.
+func (i *Instance) Metadata() *ctypes.Metadata {
+	return i.metadata
+}
+
 // Returns Storage instance which can be used to modify the state during benchmark tests
 func (i *Instance) Storage() *runtime.Storage {
 	return i.storage
@@ -246,7 +251,7 @@ func (i *Instance) newSignedExtrinsic(signer signature.KeyringPair, signatureOpt
 }
 
 func (i *Instance) BuildGenesisConfig() error {
-	genesisConfig := []byte("{\"system\":{},\"aura\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"]},\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000]]},\"transactionPayment\":{\"multiplier\":\"2\"}}")
+	genesisConfig := []byte("{\"system\":{},\"aura\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"]},\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000]]},\"transactionPayment\":{\"multiplier\":\"2\"},\"sudo\":{\"key\":\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"}}")
 
 	result, err := i.runtime.Exec("GenesisBuilder_build_config", sc.BytesToSequenceU8(genesisConfig).Bytes())
 	if err != nil {

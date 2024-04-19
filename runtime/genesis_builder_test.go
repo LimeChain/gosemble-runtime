@@ -15,7 +15,7 @@ import (
 
 func Test_CreateDefaultConfig(t *testing.T) {
 	rt, _ := newTestRuntime(t)
-	expectedGc := []byte("{\"system\":{},\"session\":{\"keys\":[]},\"aura\":{\"authorities\":[]},\"grandpa\":{\"authorities\":[]},\"balances\":{\"balances\":[]},\"transactionPayment\":{\"multiplier\":\"1\"}}")
+	expectedGc := []byte("{\"system\":{},\"session\":{\"keys\":[]},\"aura\":{\"authorities\":[]},\"grandpa\":{\"authorities\":[]},\"balances\":{\"balances\":[]},\"transactionPayment\":{\"multiplier\":\"1\"},\"sudo\":{\"key\":\"\"}}")
 
 	res, err := rt.Exec("GenesisBuilder_create_default_config", []byte{})
 	assert.NoError(t, err)
@@ -27,7 +27,7 @@ func Test_CreateDefaultConfig(t *testing.T) {
 func Test_BuildConfig(t *testing.T) {
 	rt, storage := newTestRuntime(t)
 
-	gc := []byte("{\"system\":{},\"session\":{\"keys\":[]},\"aura\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"]},\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000]]},\"transactionPayment\":{\"multiplier\":\"2\"}}")
+	gc := []byte("{\"system\":{},\"session\":{\"keys\":[]},\"aura\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"]},\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000]]},\"transactionPayment\":{\"multiplier\":\"2\"},\"sudo\":{\"key\":\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"}}")
 
 	res, err := rt.Exec("GenesisBuilder_build_config", sc.BytesToSequenceU8(gc).Bytes())
 	assert.NoError(t, err)
@@ -89,4 +89,7 @@ func Test_BuildConfig(t *testing.T) {
 	nextFeeMultiplier := (*storage).Get(append(keyTransactionPaymentHash, keyNextFeeMultiplierHash...))
 	expectedNextFeeMultiplier := sc.NewU128(2)
 	assert.Equal(t, expectedNextFeeMultiplier.Bytes(), nextFeeMultiplier)
+
+	// assert sudo key
+	assert.Equal(t, aliceAddress.AsID.ToBytes(), (*storage).Get(append(keySudoHash, keyKeyHash...)))
 }

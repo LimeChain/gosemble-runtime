@@ -387,7 +387,7 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 		primitives.NewMetadataTypeWithPath(
 			metadata.TypesSessionEvent,
 			"pallet_session pallet Session",
-			sc.Sequence[sc.Str]{"pallet_session", "pallet", "Session"},
+			sc.Sequence[sc.Str]{"pallet_session", "pallet", "Event"},
 			primitives.NewMetadataTypeDefinitionVariant(
 				sc.Sequence[primitives.MetadataDefinitionVariant]{
 					primitives.NewMetadataDefinitionVariant(

@@ -26,6 +26,7 @@ import (
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"
 	"github.com/LimeChain/gosemble/frame/session"
+	"github.com/LimeChain/gosemble/frame/sudo"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
 	tm "github.com/LimeChain/gosemble/frame/testable"
@@ -85,6 +86,7 @@ const (
 	GrandpaIndex
 	BalancesIndex
 	TxPaymentsIndex
+	SudoIndex
 	TestableIndex = 255
 )
 
@@ -112,7 +114,7 @@ var (
 	// Modules contains all the modules used by the runtime.
 	modules = initializeModules()
 	extra   = newSignedExtra()
-	decoder = types.NewRuntimeDecoder(modules, extra, logger)
+	decoder = types.NewRuntimeDecoder(modules, extra, SudoIndex, logger)
 )
 
 func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength) {
@@ -183,6 +185,8 @@ func initializeModules() []primitives.Module {
 		mdGenerator,
 	)
 
+	sudoModule := sudo.New(SudoIndex, sudo.NewConfig(DbWeight, systemModule), mdGenerator, logger)
+
 	testableModule := tm.New(TestableIndex, mdGenerator)
 
 	return []primitives.Module{
@@ -193,6 +197,7 @@ func initializeModules() []primitives.Module {
 		grandpaModule,
 		balancesModule,
 		tpmModule,
+		sudoModule,
 		testableModule,
 	}
 }

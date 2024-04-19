@@ -188,7 +188,7 @@ func (m Module) Metadata() primitives.RuntimeApiMetadata {
 					Type: sc.ToCompact(metadata.UncheckedExtrinsic),
 				},
 			},
-			Output: sc.ToCompact(metadata.TypesResult),
+			Output: sc.ToCompact(metadata.TypesApplyExtrinsicResult),
 			Docs: sc.Sequence[sc.Str]{" Apply the given extrinsic.",
 				"",
 				" Returns an inclusion outcome which specifies if this extrinsic is included in",
