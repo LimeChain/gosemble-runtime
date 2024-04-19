@@ -2,21 +2,23 @@ package main
 
 import (
 	"bytes"
+	"math/big"
+	"testing"
+
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	"github.com/LimeChain/gosemble/constants"
+	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
-func Test_Sudo_Sudo_Success(t *testing.T) {
-	rt, storage := newTestRuntime(t)
-	metadata := runtimeMetadata(t, rt)
+func Test_Sudo_SudoAs_Success(t *testing.T) {
+	rt, storage := testhelpers.NewRuntimeInstance(t)
+	metadata := testhelpers.RuntimeMetadata(t, rt)
 
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
@@ -25,11 +27,11 @@ func Test_Sudo_Sudo_Success(t *testing.T) {
 	balance, e := big.NewInt(0).SetString("50000000000000000", 10)
 	assert.True(t, e)
 
-	keyStorageAccountAlice, aliceAccountInfo := setStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
-	initializeBlock(t, rt, parentHash, stateRoot, extrinsicsRoot, blockNumber)
+	keyStorageAccountAlice, aliceAccountInfo := testhelpers.SetStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	testhelpers.InitializeBlock(t, rt, testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, testhelpers.BlockNumber)
 
 	// Set Sudo Key
-	err = (*storage).Put(append(keySudoHash, keyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	err = (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
 	assert.NoError(t, err)
 
 	alice, err := ctypes.NewMultiAddressFromAccountID(signature.TestKeyringPairAlice.PublicKey)
@@ -41,18 +43,18 @@ func Test_Sudo_Sudo_Success(t *testing.T) {
 
 	transferAmount := big.NewInt(0).SetUint64(constants.Dollar)
 
-	callArg, err := ctypes.NewCall(metadata, "Balances.force_transfer", alice, bob, ctypes.NewUCompact(transferAmount))
+	callArg, err := ctypes.NewCall(metadata, "Balances.transfer_keep_alive", bob, ctypes.NewUCompact(transferAmount))
 	assert.NoError(t, err)
 
-	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo_as", alice, callArg)
 	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)
 
 	o := ctypes.SignatureOptions{
-		BlockHash:          ctypes.Hash(parentHash),
+		BlockHash:          ctypes.Hash(testhelpers.ParentHash),
 		Era:                ctypes.ExtrinsicEra{IsImmortalEra: true},
-		GenesisHash:        ctypes.Hash(parentHash),
+		GenesisHash:        ctypes.Hash(testhelpers.ParentHash),
 		Nonce:              ctypes.NewUCompactFromUInt(0),
 		SpecVersion:        ctypes.U32(runtimeVersion.SpecVersion),
 		Tip:                ctypes.NewUCompactFromUInt(0),
@@ -67,15 +69,15 @@ func Test_Sudo_Sudo_Success(t *testing.T) {
 	err = extrinsic.Encode(*encoder)
 	assert.NoError(t, err)
 
-	queryInfo := getQueryInfo(t, rt, extEnc.Bytes())
+	queryInfo := testhelpers.GetQueryInfo(t, rt, extEnc.Bytes())
 
 	res, err := rt.Exec("BlockBuilder_apply_extrinsic", extEnc.Bytes())
 	assert.NoError(t, err)
 
-	assert.Equal(t, applyExtrinsicResultOutcome.Bytes(), res)
+	assert.Equal(t, testhelpers.ApplyExtrinsicResultOutcome.Bytes(), res)
 
 	bobHash, _ := common.Blake2b128(bob.AsID[:])
-	keyStorageAccountBob := append(keySystemHash, keyAccountHash...)
+	keyStorageAccountBob := append(testhelpers.KeySystemHash, testhelpers.KeyAccountHash...)
 	keyStorageAccountBob = append(keyStorageAccountBob, bobHash...)
 	keyStorageAccountBob = append(keyStorageAccountBob, bob.AsID[:]...)
 	bytesStorageBob := (*storage).Get(keyStorageAccountBob)

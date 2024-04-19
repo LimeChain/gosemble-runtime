@@ -7,10 +7,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/sudo"
-
-	"github.com/LimeChain/gosemble/frame/session"
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
@@ -21,8 +18,10 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/trie"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/balances"
+	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
+	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
@@ -44,61 +43,66 @@ const (
 	ConsensusFinalizationIndex
 	BalancesIndex
 	TxPaymentsIndex
+	SudoIndex
 	TestableIndex = 255
 )
 
 // keys from all the modules
 var (
-	KeySystemHash, _                   = common.Twox128Hash([]byte("System"))
-	KeyAccountHash, _                  = common.Twox128Hash([]byte("Account"))
-	KeyAllExtrinsicsLenHash, _         = common.Twox128Hash([]byte("AllExtrinsicsLen"))
-	KeyAuraHash, _                     = common.Twox128Hash([]byte("Aura"))
-	KeyAuthoritiesHash, _              = common.Twox128Hash([]byte("Authorities"))
-	KeyAuthorizedUpgradeHash, _        = common.Twox128Hash([]byte("AuthorizedUpgrade"))
+	KeySystemHash, _             = common.Twox128Hash([]byte("System"))
+	KeyAccountHash, _            = common.Twox128Hash([]byte("Account"))
+	KeyAllExtrinsicsLenHash, _   = common.Twox128Hash([]byte("AllExtrinsicsLen"))
+	KeyAuraHash, _               = common.Twox128Hash([]byte("Aura"))
+	KeyAuthoritiesHash, _        = common.Twox128Hash([]byte("Authorities"))
+	KeyAuthorizedUpgradeHash, _  = common.Twox128Hash([]byte("AuthorizedUpgrade"))
+	KeyBlockHash, _              = common.Twox128Hash([]byte("BlockHash"))
+	KeyCurrentSlotHash, _        = common.Twox128Hash([]byte("CurrentSlot"))
+	KeyDigestHash, _             = common.Twox128Hash([]byte("Digest"))
+	KeyEventsHash, _             = common.Twox128Hash([]byte("Events"))
+	KeyEventCountHash, _         = common.Twox128Hash([]byte("EventCount"))
+	KeyExecutionPhaseHash, _     = common.Twox128Hash([]byte("ExecutionPhase"))
+	KeyExtrinsicCountHash, _     = common.Twox128Hash([]byte("ExtrinsicCount"))
+	KeyExtrinsicIndex            = []byte(":extrinsic_index")
+	KeyHeapPages                 = []byte(":heappages")
+	KeyExtrinsicDataHash, _      = common.Twox128Hash([]byte("ExtrinsicData"))
+	KeyLastRuntimeHash, _        = common.Twox128Hash([]byte("LastRuntimeUpgrade"))
+	KeyNumberHash, _             = common.Twox128Hash([]byte("Number"))
+	KeyParentHash, _             = common.Twox128Hash([]byte("ParentHash"))
+	KeyTimestampHash, _          = common.Twox128Hash([]byte("Timestamp"))
+	KeyTimestampNowHash, _       = common.Twox128Hash([]byte("Now"))
+	KeyTimestampDidUpdateHash, _ = common.Twox128Hash([]byte("DidUpdate"))
+	KeyBlockWeightHash, _        = common.Twox128Hash([]byte("BlockWeight"))
+	KeyGrandpaAuthorities        = []byte(":grandpa_authorities")
+	KeyBalancesHash, _           = common.Twox128Hash([]byte("Balances"))
+	KeyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
+	KeyTransactionPaymentHash, _ = common.Twox128Hash([]byte("TransactionPayment"))
+	KeyNextFeeMultiplierHash, _  = common.Twox128Hash([]byte("NextFeeMultiplier"))
+)
+
+// Babe storage keys
+var (
 	KeyBabeHash, _                     = common.Twox128Hash([]byte("Babe"))
-	KeyBlockHash, _                    = common.Twox128Hash([]byte("BlockHash"))
-	KeyCurrentSlotHash, _              = common.Twox128Hash([]byte("CurrentSlot"))
-	KeyDigestHash, _                   = common.Twox128Hash([]byte("Digest"))
-	KeyEventsHash, _                   = common.Twox128Hash([]byte("Events"))
-	KeyEventCountHash, _               = common.Twox128Hash([]byte("EventCount"))
-	KeyExecutionPhaseHash, _           = common.Twox128Hash([]byte("ExecutionPhase"))
-	KeyExtrinsicCountHash, _           = common.Twox128Hash([]byte("ExtrinsicCount"))
 	KeyEpochConfigHash, _              = common.Twox128Hash([]byte("EpochConfig"))
 	KeyEpochIndexHash, _               = common.Twox128Hash([]byte("EpochIndex"))
-	KeyExtrinsicIndex                  = []byte(":extrinsic_index")
-	KeyHeapPages                       = []byte(":heappages")
-	KeyExtrinsicDataHash, _            = common.Twox128Hash([]byte("ExtrinsicData"))
-	KeyLastRuntimeHash, _              = common.Twox128Hash([]byte("LastRuntimeUpgrade"))
-	KeyNumberHash, _                   = common.Twox128Hash([]byte("Number"))
-	KeyParentHash, _                   = common.Twox128Hash([]byte("ParentHash"))
-	KeyTimestampHash, _                = common.Twox128Hash([]byte("Timestamp"))
-	KeyTimestampNowHash, _             = common.Twox128Hash([]byte("Now"))
-	KeyTimestampDidUpdateHash, _       = common.Twox128Hash([]byte("DidUpdate"))
-	KeyBlockWeightHash, _              = common.Twox128Hash([]byte("BlockWeight"))
-	KeyGrandpaAuthorities              = []byte(":grandpa_authorities")
-	KeyBalancesHash, _                 = common.Twox128Hash([]byte("Balances"))
-	KeyTotalIssuanceHash, _            = common.Twox128Hash([]byte("TotalIssuance"))
-	KeyTransactionPaymentHash, _       = common.Twox128Hash([]byte("TransactionPayment"))
-	KeyNextFeeMultiplierHash, _        = common.Twox128Hash([]byte("NextFeeMultiplier"))
-	KeyRandomnessHash, _               = common.Twox128Hash([]byte("Randomness"))
-	KeyNextRandomnessHash, _           = common.Twox128Hash([]byte("NextRandomness"))
 	KeyGenesisSlotHash, _              = common.Twox128Hash([]byte("GenesisSlot"))
+	KeyNextRandomnessHash, _           = common.Twox128Hash([]byte("NextRandomness"))
 	KeyNextAuthoritiesHash, _          = common.Twox128Hash([]byte("NextAuthorities"))
 	KeyNextEpochConfigHash, _          = common.Twox128Hash([]byte("NextEpochConfig"))
 	KeyPendingEpochConfigChangeHash, _ = common.Twox128Hash([]byte("PendingEpochConfigChange"))
+	KeyRandomnessHash, _               = common.Twox128Hash([]byte("Randomness"))
 )
 
 // Session storage keys
 var (
-	keySessionHash, _ = common.Twox128Hash([]byte("Session"))
-	keyNextKeys, _    = common.Twox128Hash([]byte("NextKeys"))
-	keyKeyOwner, _    = common.Twox128Hash([]byte("KeyOwner"))
+	KeySessionHash, _ = common.Twox128Hash([]byte("Session"))
+	KeyNextKeys, _    = common.Twox128Hash([]byte("NextKeys"))
+	KeyKeyOwner, _    = common.Twox128Hash([]byte("KeyOwner"))
 )
 
 // Sudo storage keys
 var (
-	keySudoHash, _ = common.Twox128Hash([]byte("Sudo"))
-	keyKeyHash, _  = common.Twox128Hash([]byte("Key"))
+	KeySudoHash, _ = common.Twox128Hash([]byte("Sudo"))
+	KeyKeyHash, _  = common.Twox128Hash([]byte("Key"))
 )
 
 var (
@@ -182,6 +186,12 @@ var (
 	ApplyExtrinsicResultSudoRequireSudoErr, _    = primitives.NewApplyExtrinsicResult(dispatchOutcomeSudoRequireSudoErr)
 )
 
+var (
+	GenesisConfigJson = []byte(
+		"{\"system\":{\"code\":\"\"},\"babe\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"],\"epochConfig\":{\"c\":[1,4],\"allowed_slots\":\"PrimarySlots\"}},\"grandpa\":{\"authorities\":[]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000],[\"5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty\",1000000000000000000],[\"5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y\",1000000000000000000],[\"5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy\",1000000000000000000],[\"5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw\",1000000000000000000],[\"5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL\",1000000000000000000],[\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",1000000000000000000],[\"5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc\",1000000000000000000],[\"5Ck5SLSHYac6WFt5UZRSsdJjwmpSZq85fd5TRNAdZQVzEAPT\",1000000000000000000],[\"5HKPmK9GYtE1PSLsS1qiYU9xQ9Si1NcEhdeCq9sw5bqu4ns8\",1000000000000000000],[ \"5FCfAonRZgTFrTd9HREEyeJjDpT397KMzizE6T3DvebLFE7n\",1000000000000000000],[\"5CRmqmsiNFExV6VbdmPJViVxrWmkaXXvBrSX8oqBT8R9vmWk\",1000000000000000000]]},\"session\": {\"keys\": [[\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",{\"grandpa\":\"5FA9nQDVg267DEd8m1ZypXLBnvN7SFxYwV7ndqSYGiN9TTpu\",\"babe\":\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"}]]},\"transactionPayment\":{\"multiplier\":\"1\"},\"sudo\":{\"key\":\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"}}",
+	)
+)
+
 // TODO:
 // implement "Client" type with the helpers functions
 // there is also separate "Instance" type for benchmarking that we might get rid of
@@ -217,13 +227,13 @@ func RuntimeMetadata(t assert.TestingT, instance *wazero_runtime.Instance) *ctyp
 	return metadata
 }
 
-func InitializeBlock(t *testing.T, rt *wazero_runtime.Instance, parentHash, stateRoot, extrinsicsRoot common.Hash, blockNumber uint64) {
+func InitializeBlock(t *testing.T, instance *wazero_runtime.Instance, parentHash, stateRoot, extrinsicsRoot common.Hash, blockNumber uint64) {
 	digest := gossamertypes.NewDigest()
 	header := gossamertypes.NewHeader(parentHash, stateRoot, extrinsicsRoot, uint(blockNumber), digest)
 	encodedHeader, err := scale.Marshal(*header)
 	assert.NoError(t, err)
 
-	_, err = rt.Exec("Core_initialize_block", encodedHeader)
+	_, err = instance.Exec("Core_initialize_block", encodedHeader)
 	assert.NoError(t, err)
 }
 
@@ -303,14 +313,14 @@ func SetStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byt
 	return keyStorageAccount, accountInfo
 }
 
-func GetQueryInfo(t *testing.T, runtime *wazero_runtime.Instance, extrinsic []byte) primitives.RuntimeDispatchInfo {
+func GetQueryInfo(t *testing.T, instance *wazero_runtime.Instance, extrinsic []byte) primitives.RuntimeDispatchInfo {
 	buffer := &bytes.Buffer{}
 
 	buffer.Write(extrinsic)
 	err := sc.U32(buffer.Len()).Encode(buffer)
 	assert.NoError(t, err)
 
-	bytesRuntimeDispatchInfo, err := runtime.Exec("TransactionPaymentApi_query_info", buffer.Bytes())
+	bytesRuntimeDispatchInfo, err := instance.Exec("TransactionPaymentApi_query_info", buffer.Bytes())
 	assert.NoError(t, err)
 
 	buffer.Reset()
@@ -400,7 +410,7 @@ func SignExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyP
 
 func AssertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account []byte, expectedKey []byte) {
 	accountHash, _ := common.Twox64(account)
-	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
+	keySessionNextKeys := append(KeySessionHash, KeyNextKeys...)
 	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
 	keySessionNextKeys = append(keySessionNextKeys, account...)
 
@@ -410,7 +420,7 @@ func AssertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account 
 func AssertSessionKeyOwner(t assert.TestingT, storage *runtime.Storage, key primitives.SessionKey, expectedOwner []byte) {
 	keyOwnerBytes := key.Bytes()
 	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
-	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
+	keySessionKeyOwner := append(KeySessionHash, KeyKeyOwner...)
 	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerHash...)
 	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerBytes...)
 
@@ -421,7 +431,7 @@ func AssertSessionKeyOwner(t assert.TestingT, storage *runtime.Storage, key prim
 
 func AssertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
 	accountHash, _ := common.Twox64(account)
-	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
+	keySessionNextKeys := append(KeySessionHash, KeyNextKeys...)
 	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
 	keySessionNextKeys = append(keySessionNextKeys, account...)
 
@@ -429,7 +439,7 @@ func AssertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, acco
 
 	keyOwnerBytes := primitives.NewSessionKey(key, keyTypeId).Bytes()
 	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
-	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
+	keySessionKeyOwner := append(KeySessionHash, KeyKeyOwner...)
 	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerHash...)
 	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerBytes...)
 
@@ -438,7 +448,7 @@ func AssertSessionEmptyStorage(t assert.TestingT, storage *runtime.Storage, acco
 
 func SetSessionKeysStorage(t assert.TestingT, storage *runtime.Storage, account []byte, key []byte, keyTypeId [4]byte) {
 	accountHash, _ := common.Twox64(account)
-	keySessionNextKeys := append(keySessionHash, keyNextKeys...)
+	keySessionNextKeys := append(KeySessionHash, KeyNextKeys...)
 	keySessionNextKeys = append(keySessionNextKeys, accountHash...)
 	keySessionNextKeys = append(keySessionNextKeys, account...)
 
@@ -446,9 +456,44 @@ func SetSessionKeysStorage(t assert.TestingT, storage *runtime.Storage, account 
 
 	keyOwnerBytes := primitives.NewSessionKey(key, keyTypeId).Bytes()
 	keyOwnerHash, _ := common.Twox64(keyOwnerBytes)
-	keySessionKeyOwner := append(keySessionHash, keyKeyOwner...)
+	keySessionKeyOwner := append(KeySessionHash, KeyKeyOwner...)
 	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerHash...)
 	keySessionKeyOwner = append(keySessionKeyOwner, keyOwnerBytes...)
 
 	assert.Nil(t, (*storage).Put(keySessionKeyOwner, account))
+}
+
+func GetBabeSlot(t *testing.T, instance *wazero_runtime.Instance, time uint64) uint64 {
+	babeConfigurationBytes, err := instance.Exec("BabeApi_configuration", []byte{})
+	assert.NoError(t, err)
+
+	babeConfiguration, err := babetypes.DecodeConfiguration(bytes.NewBuffer(babeConfigurationBytes))
+	assert.NoError(t, err)
+
+	return time / uint64(babeConfiguration.SlotDuration)
+}
+
+func NewBabeDigest(t *testing.T, slot uint64) gossamertypes.Digest {
+	primaryDigest := gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{})
+	babeDigest := gossamertypes.NewBabeDigest()
+	err := babeDigest.SetValue(*primaryDigest)
+	assert.NoError(t, err)
+
+	encPreDigestData, err := scale.Marshal(babeDigest)
+	assert.NoError(t, err)
+
+	preDigest := gossamertypes.NewBABEPreRuntimeDigest(encPreDigestData)
+	digest := gossamertypes.NewDigest()
+	err = digest.Add(*preDigest)
+	assert.NoError(t, err)
+
+	return digest
+}
+
+func GenesisBuild(t *testing.T, instance *wazero_runtime.Instance, genesisConfig []byte) {
+	genesisConfigBytes, err := scale.Marshal(genesisConfig)
+	assert.NoError(t, err)
+
+	_, err = instance.Exec("GenesisBuilder_build_config", genesisConfigBytes)
+	assert.NoError(t, err)
 }

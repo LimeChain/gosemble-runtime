@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
-	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -18,34 +16,11 @@ import (
 func Test_Offchain_Worker(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 
-	time := time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
+	dateTime := time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
+	time := dateTime.UnixMilli()
 
-	babeConfigurationBytes, err := rt.Exec("BabeApi_configuration", []byte{})
-	assert.NoError(t, err)
-
-	buffer := bytes.NewBuffer(babeConfigurationBytes)
-
-	babeConfiguration, err := babetypes.DecodeConfiguration(buffer)
-	assert.NoError(t, err)
-
-	slot := sc.U64(time.UnixMilli()) / babeConfiguration.SlotDuration
-
-	// preRuntimeDigest := gossamertypes.PreRuntimeDigest{
-	// 	ConsensusEngineID: aura.EngineId,
-	// 	Data:              slot.Bytes(),
-	// }
-	// assert.NoError(t, digest.Add(preRuntimeDigest))
-
-	babeHeader := gossamertypes.NewBabeDigest()
-	err = babeHeader.SetValue(*gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{}))
-	assert.NoError(t, err)
-	data, err := scale.Marshal(babeHeader)
-	assert.NoError(t, err)
-	preDigest := gossamertypes.NewBABEPreRuntimeDigest(data)
-
-	digest := gossamertypes.NewDigest()
-	err = digest.Add(*preDigest)
-	assert.NoError(t, err)
+	slot := testhelpers.GetBabeSlot(t, rt, uint64(time))
+	digest := testhelpers.NewBabeDigest(t, slot)
 
 	header := gossamertypes.NewHeader(testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), digest)
 

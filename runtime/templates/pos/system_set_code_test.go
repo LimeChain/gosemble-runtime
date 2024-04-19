@@ -8,10 +8,6 @@ import (
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/frame/aura"
-	"github.com/LimeChain/gosemble/frame/system"
-	"github.com/LimeChain/gosemble/frame/transaction_payment"
-	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
@@ -19,107 +15,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_SetCode_Success(t *testing.T) {
-	rt, storage := testhelpers.NewRuntimeInstance(t)
-	metadata := testhelpers.RuntimeMetadata(t, rt)
-
-	runtimeVersion, err := rt.Version()
-	assert.NoError(t, err)
-
-	testhelpers.InitializeBlock(t, rt, testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, testhelpers.BlockNumber)
-
-	codeSpecVersion101, err := os.ReadFile(testhelpers.RuntimeWasmSpecVersion101)
-	assert.NoError(t, err)
-
-	call, err := ctypes.NewCall(metadata, "System.set_code", codeSpecVersion101)
-	assert.NoError(t, err)
-
-	extrinsic := ctypes.NewExtrinsic(call)
-
-	o := ctypes.SignatureOptions{
-		BlockHash:          ctypes.Hash(testhelpers.ParentHash),
-		Era:                ctypes.ExtrinsicEra{IsImmortalEra: true},
-		GenesisHash:        ctypes.Hash(testhelpers.ParentHash),
-		Nonce:              ctypes.NewUCompactFromUInt(0),
-		SpecVersion:        ctypes.U32(runtimeVersion.SpecVersion),
-		Tip:                ctypes.NewUCompactFromUInt(0),
-		TransactionVersion: ctypes.U32(runtimeVersion.TransactionVersion),
-	}
-
-	err = extrinsic.Sign(signature.TestKeyringPairAlice, o)
-	assert.NoError(t, err)
-
-	extEnc := bytes.Buffer{}
-	encoder := cscale.NewEncoder(&extEnc)
-	err = extrinsic.Encode(*encoder)
-	assert.NoError(t, err)
-
-	res, err := rt.Exec("BlockBuilder_apply_extrinsic", extEnc.Bytes())
-	assert.NoError(t, err)
-
-	// Code is written to storage
-	assert.Equal(t, codeSpecVersion101, (*storage).LoadCode())
-
-	// Runtime environment upgraded digest item is logged
-	testhelpers.AssertStorageDigestItem(t, storage, types.DigestItemRuntimeEnvironmentUpgraded)
-
-	// Events are emitted
-	buffer := &bytes.Buffer{}
-
-	testhelpers.AssertStorageSystemEventCount(t, storage, uint32(3))
-
-	buffer.Write((*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyEventsHash...)))
-	decodedCount, err := sc.DecodeCompact[sc.U32](buffer)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(decodedCount.Number.(sc.U32)), uint32(3))
-
-	// Event system code updated
-	testhelpers.AssertEmittedSystemEvent(t, system.EventCodeUpdated, buffer)
-
-	// Event txpayment transaction fee paid
-	testhelpers.AssertEmittedTransactionPaymentEvent(t, transaction_payment.EventTransactionFeePaid, buffer)
-
-	// Event system extrinsic success
-	testhelpers.AssertEmittedSystemEvent(t, system.EventExtrinsicSuccess, buffer)
-
-	// Runtime version is updated
-	rt, storage = testhelpers.NewRuntimeInstanceFromCode(t, rt, (*storage).LoadCode())
-
-	runtimeVersion, err = rt.Version()
-	assert.NoError(t, err)
-	assert.Equal(t, runtimeVersion.SpecVersion, uint32(101))
-
-	assert.Equal(t, testhelpers.ApplyExtrinsicResultOutcome.Bytes(), res)
-}
-
 func Test_Block_Execution_After_Code_Upgrade(t *testing.T) {
-	t.Skip()
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	metadata := testhelpers.RuntimeMetadata(t, rt)
 
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
 
-	bytesSlotDuration, err := rt.Exec("AuraApi_slot_duration", []byte{})
-	assert.NoError(t, err)
+	time := dateTime.UnixMilli()
 
-	buffer := &bytes.Buffer{}
-	buffer.Write(bytesSlotDuration)
-
-	slotDuration, err := sc.DecodeU64(buffer)
-	assert.Nil(t, err)
-	buffer.Reset()
-
-	slot := sc.U64(dateTime.UnixMilli()) / slotDuration
-
-	preRuntimeDigest := gossamertypes.PreRuntimeDigest{
-		ConsensusEngineID: aura.EngineId,
-		Data:              slot.Bytes(),
-	}
-	digest := gossamertypes.NewDigest()
-	assert.NoError(t, digest.Add(preRuntimeDigest))
+	slot := testhelpers.GetBabeSlot(t, rt, uint64(time))
+	digest := testhelpers.NewBabeDigest(t, slot)
 
 	header := gossamertypes.NewHeader(testhelpers.ParentHash, storageRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), digest)
+
 	encodedHeader, err := scale.Marshal(*header)
 	assert.NoError(t, err)
 
@@ -137,6 +46,7 @@ func Test_Block_Execution_After_Code_Upgrade(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, inherentExt)
 
+	buffer := bytes.NewBuffer([]byte{})
 	buffer.Write([]byte{inherentExt[0]})
 
 	totalInherents, err := sc.DecodeCompact[sc.U128](buffer)

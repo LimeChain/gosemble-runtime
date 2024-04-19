@@ -92,5 +92,5 @@ func Test_BuildConfig(t *testing.T) {
 	assert.Equal(t, expectedNextFeeMultiplier.Bytes(), nextFeeMultiplier)
 
 	// assert sudo key
-	assert.Equal(t, aliceAddress.AsID.ToBytes(), (*storage).Get(append(keySudoHash, keyKeyHash...)))
+	assert.Equal(t, aliceAddress.AsID.ToBytes(), (*storage).Get(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...)))
 }

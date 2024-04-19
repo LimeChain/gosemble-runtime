@@ -13,7 +13,6 @@ import (
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
-	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 
@@ -21,9 +20,9 @@ import (
 )
 
 var (
-	genesisConfigJson = []byte("{\"system\":{\"code\":\"\"},\"babe\":{\"authorities\":[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"],\"epochConfig\":{\"c\":[1,4],\"allowed_slots\":\"PrimarySlots\"}},\"grandpa\":{\"authorities\":[]},\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1000000000000000000],[\"5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty\",1000000000000000000],[\"5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y\",1000000000000000000],[\"5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy\",1000000000000000000],[\"5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw\",1000000000000000000],[\"5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL\",1000000000000000000],[\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",1000000000000000000],[\"5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc\",1000000000000000000],[\"5Ck5SLSHYac6WFt5UZRSsdJjwmpSZq85fd5TRNAdZQVzEAPT\",1000000000000000000],[\"5HKPmK9GYtE1PSLsS1qiYU9xQ9Si1NcEhdeCq9sw5bqu4ns8\",1000000000000000000],[ \"5FCfAonRZgTFrTd9HREEyeJjDpT397KMzizE6T3DvebLFE7n\",1000000000000000000],[\"5CRmqmsiNFExV6VbdmPJViVxrWmkaXXvBrSX8oqBT8R9vmWk\",1000000000000000000]]},\"session\": {\"keys\": [[\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",\"5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY\",{\"grandpa\":\"5FA9nQDVg267DEd8m1ZypXLBnvN7SFxYwV7ndqSYGiN9TTpu\",\"babe\":\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\"}]]},\"transactionPayment\":{\"multiplier\":\"1\"}}")
-	dateTime          = time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
-	storageRoot       = common.MustHexToHash("0xd940e147feef433028c8ca2db9ef6c7c51bf6e9538b81301fff3ff24950fa056") // Depends on date
+	authority1  = gossamertypes.AuthorityRaw{Key: [32]byte{0xd4, 0x35, 0x93, 0xc7, 0x15, 0xfd, 0xd3, 0x1c, 0x61, 0x14, 0x1a, 0xbd, 0x04, 0xa9, 0x9f, 0xd6, 0x82, 0x2c, 0x85, 0x58, 0x85, 0x4c, 0xcd, 0xe3, 0x9a, 0x56, 0x84, 0xe7, 0xa5, 0x6d, 0xa2, 0x7d}, Weight: 0}
+	dateTime    = time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
+	storageRoot = common.MustHexToHash("0x48048c3e427fa73c56be0f8859aa0471c836c9fb874f3277f1b19e68a59539c1") // Depends on date
 )
 
 func Test_BlockExecution(t *testing.T) {
@@ -35,33 +34,12 @@ func Test_BlockExecution(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	metadata := testhelpers.RuntimeMetadata(t, rt)
 
-	genesisConfigJsonBytes, err := scale.Marshal(genesisConfigJson)
-	assert.NoError(t, err)
+	testhelpers.GenesisBuild(t, rt, testhelpers.GenesisConfigJson)
 
-	_, err = rt.Exec("GenesisBuilder_build_config", genesisConfigJsonBytes)
-	assert.NoError(t, err)
+	time := dateTime.UnixMilli()
 
-	babeConfigurationBytes, err := rt.Exec("BabeApi_configuration", []byte{})
-	assert.NoError(t, err)
-
-	buffer := bytes.NewBuffer(babeConfigurationBytes)
-
-	babeConfiguration, err := babetypes.DecodeConfiguration(buffer)
-	assert.NoError(t, err)
-
-	slot := sc.U64(dateTime.UnixMilli()) / babeConfiguration.SlotDuration
-
-	buffer.Reset()
-
-	babeHeader := gossamertypes.NewBabeDigest()
-	err = babeHeader.SetValue(*gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{}))
-	assert.NoError(t, err)
-	data, err := scale.Marshal(babeHeader)
-	assert.NoError(t, err)
-	preDigest := gossamertypes.NewBABEPreRuntimeDigest(data)
-	digest := gossamertypes.NewDigest()
-	err = digest.Add(*preDigest)
-	assert.NoError(t, err)
+	slot := testhelpers.GetBabeSlot(t, rt, uint64(time))
+	digest := testhelpers.NewBabeDigest(t, slot)
 
 	header := gossamertypes.NewHeader(testhelpers.ParentHash, storageRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), digest)
 
@@ -100,10 +78,10 @@ func Test_BlockExecution(t *testing.T) {
 	assert.Equal(t, testhelpers.ParentHash.ToBytes(), (*storage).Get(blockHashKey))
 
 	idata := gossamertypes.NewInherentData()
-	err = idata.SetInherent(gossamertypes.Timstap0, uint64(dateTime.UnixMilli()))
+	err = idata.SetInherent(gossamertypes.Timstap0, uint64(time))
 	assert.NoError(t, err)
 
-	expectedExtrinsicBytes := testhelpers.TimestampExtrinsicBytes(t, metadata, uint64(dateTime.UnixMilli()))
+	expectedExtrinsicBytes := testhelpers.TimestampExtrinsicBytes(t, metadata, uint64(time))
 
 	ienc, err := idata.Encode()
 	assert.NoError(t, err)
@@ -112,6 +90,7 @@ func Test_BlockExecution(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, inherentExt)
 
+	buffer := bytes.NewBuffer([]byte{})
 	buffer.Write([]byte{inherentExt[0]})
 
 	totalInherents, err := sc.DecodeCompact[sc.U128](buffer)
@@ -133,113 +112,48 @@ func Test_BlockExecution(t *testing.T) {
 	bytesResult, err := rt.Exec("BlockBuilder_finalize_block", []byte{})
 	assert.NoError(t, err)
 
+	expectedDigest := setupExpectedDigest(t, slot)
 	resultHeader := gossamertypes.NewEmptyHeader()
 	assert.NoError(t, scale.Unmarshal(bytesResult, resultHeader))
 	resultHeader.Hash() // Call this to be set, otherwise structs do not match...
-
-	// assert.Equal(t, header, resultHeader)
+	expectedHeader := gossamertypes.NewHeader(testhelpers.ParentHash, storageRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), expectedDigest)
+	assert.Equal(t, expectedHeader, resultHeader)
 
 	assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampDidUpdateHash...)))
-	assert.Equal(t, sc.U64(dateTime.UnixMilli()).Bytes(), (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampNowHash...)))
+	assert.Equal(t, sc.U64(time).Bytes(), (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampNowHash...)))
 
 	assert.Equal(t, []byte(nil), (*storage).Get(testhelpers.KeyExtrinsicIndex))
 	assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyExecutionPhaseHash...)))
 	assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyAllExtrinsicsLenHash...)))
 	assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyExtrinsicCountHash...)))
 
+	expectedEncDigest, err := scale.Marshal(expectedDigest)
+	assert.NoError(t, err)
+
 	assert.Equal(t, testhelpers.ParentHash.ToBytes(), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyParentHash...)))
-	// assert.Equal(t, encExpectedDigest, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyDigestHash...)))
+	assert.Equal(t, expectedEncDigest, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyDigestHash...)))
 	assert.Equal(t, encBlockNumber, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyNumberHash...)))
 
-	assert.Equal(t, slot.Bytes(), (*storage).Get(append(testhelpers.KeyBabeHash, testhelpers.KeyCurrentSlotHash...)))
+	assert.Equal(t, sc.U64(slot).Bytes(), (*storage).Get(append(testhelpers.KeyBabeHash, testhelpers.KeyCurrentSlotHash...)))
 }
 
-// func Test_ExecuteBlock(t *testing.T) {
-// 	// blockBuilder.Inherent_Extrinsics
-// 	// blockBuilder.ExecuteBlock
+func setupExpectedDigest(t *testing.T, slot uint64) gossamertypes.Digest {
+	nextEpoch := gossamertypes.NextEpochData{
+		Authorities: []gossamertypes.AuthorityRaw{authority1},
+		Randomness:  [32]byte{},
+	}
+	babeConsensusDigest := gossamertypes.NewBabeConsensusDigest()
+	babeConsensusDigest.SetValue(nextEpoch)
+	encConsensusDigest, err := scale.Marshal(babeConsensusDigest)
+	assert.NoError(t, err)
+	nextEpochConsensusDigest := gossamertypes.ConsensusDigest{
+		ConsensusEngineID: gossamertypes.BabeEngineID,
+		Data:              encConsensusDigest,
+	}
 
-// 	rt, _ := testhelpers.NewRuntimeInstance(t)
-// 	metadata := testhelpers.RuntimeMetadata(t, rt)
+	digest := testhelpers.NewBabeDigest(t, slot)
+	assert.NoError(t, err)
+	digest.Add(nextEpochConsensusDigest)
 
-// 	babeConfigurationBytes, err := rt.Exec("BabeApi_configuration", []byte{})
-// 	assert.NoError(t, err)
-
-// 	buffer := bytes.NewBuffer(babeConfigurationBytes)
-
-// 	babeConfiguration, err := babe.DecodeBabeConfiguration(buffer)
-// 	assert.NoError(t, err)
-
-// 	slot := sc.U64(dateTime.UnixMilli()) / babeConfiguration.SlotDuration
-
-// 	buffer.Reset()
-
-// 	babeHeader := gossamertypes.NewBabeDigest()
-// 	err = babeHeader.SetValue(*gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{}))
-// 	assert.NoError(t, err)
-// 	data, err := scale.Marshal(babeHeader)
-// 	assert.NoError(t, err)
-// 	preDigest := gossamertypes.NewBABEPreRuntimeDigest(data)
-// 	digest := gossamertypes.NewDigest()
-// 	err = digest.Add(*preDigest)
-// 	assert.NoError(t, err)
-
-// 	idata := gossamertypes.NewInherentData()
-// 	err = idata.SetInherent(gossamertypes.Timstap0, uint64(dateTime.UnixMilli()))
-
-// 	assert.NoError(t, err)
-
-// 	ienc, err := idata.Encode()
-// 	assert.NoError(t, err)
-
-// 	expectedExtrinsicBytes := testhelpers.TimestampExtrinsicBytes(t, metadata, uint64(dateTime.UnixMilli()))
-
-// 	inherentExt, err := rt.Exec("BlockBuilder_inherent_extrinsics", ienc)
-// 	assert.NoError(t, err)
-// 	assert.NotNil(t, inherentExt)
-
-// 	buffer.Write([]byte{inherentExt[0]})
-
-// 	totalInherents, err := sc.DecodeCompact[sc.U128](buffer)
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, int64(1), totalInherents.ToBigInt().Int64())
-// 	buffer.Reset()
-
-// 	actualExtrinsic := inherentExt[1:]
-// 	assert.Equal(t, expectedExtrinsicBytes, actualExtrinsic)
-
-// 	var exts [][]byte
-// 	err = scale.Unmarshal(inherentExt, &exts)
-// 	assert.Nil(t, err)
-
-// 	// expectedStorageDigest, err := scale.Marshal(digest)
-// 	// assert.NoError(t, err)
-// 	// encBlockNumber, err := scale.Marshal(testhelpers.BlockNumber)
-// 	// assert.NoError(t, err)
-
-// 	header := gossamertypes.NewHeader(testhelpers.ParentHash, storageRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), digest)
-
-// 	block := gossamertypes.Block{
-// 		Header: *header,
-// 		Body:   gossamertypes.BytesArrayToExtrinsics(exts),
-// 	}
-
-// 	encodedBlock, err := scale.Marshal(block)
-// 	assert.Nil(t, err)
-
-// 	_, err = rt.Exec("Core_execute_block", encodedBlock)
-// 	assert.NoError(t, err)
-
-// 	// assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampDidUpdateHash...)))
-// 	// assert.Equal(t, sc.U64(dateTime.UnixMilli()).Bytes(), (*storage).Get(append(testhelpers.KeyTimestampHash, testhelpers.KeyTimestampNowHash...)))
-
-// 	// assert.Equal(t, []byte(nil), (*storage).Get(testhelpers.KeyExtrinsicIndex))
-// 	// assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyExecutionPhaseHash...)))
-// 	// assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyAllExtrinsicsLenHash...)))
-// 	// assert.Equal(t, []byte(nil), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyExtrinsicCountHash...)))
-
-// 	// assert.Equal(t, testhelpers.ParentHash.ToBytes(), (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyParentHash...)))
-// 	// // assert.Equal(t, expectedStorageDigest, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyDigestHash...)))
-// 	// assert.Equal(t, encBlockNumber, (*storage).Get(append(testhelpers.KeySystemHash, testhelpers.KeyNumberHash...)))
-
-// 	// assert.Equal(t, slot.Bytes(), (*storage).Get(append(testhelpers.KeyBabeHash, testhelpers.KeyCurrentSlotHash...)))
-// }
+	return digest
+}
