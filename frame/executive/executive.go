@@ -95,7 +95,7 @@ func (m module) ExecuteBlock(block primitives.Block) error {
 		return err
 	}
 
-	// todo: handle err
+	// TODO: handle error
 	m.executeExtrinsicsWithBookKeeping(block)
 
 	header := block.Header()

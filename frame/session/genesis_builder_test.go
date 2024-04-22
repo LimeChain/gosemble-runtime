@@ -1,11 +1,12 @@
 package session
 
 import (
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 var (

@@ -18,6 +18,7 @@ import (
 	"github.com/LimeChain/gosemble/primitives/benchmarking"
 	benchmarkingtypes "github.com/LimeChain/gosemble/primitives/benchmarking"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -149,8 +150,40 @@ func (i *Instance) InitializeBlock(blockNumber uint, timestamp uint64) error {
 		return err
 	}
 
-	header := gossamertypes.NewHeader(parentHash, common.Hash{}, common.Hash{}, blockNumber, digest)
+	// babeConfigurationBytes, err := i.runtime.Exec("BabeApi_configuration", []byte{})
+	// if err != nil {
+	// 	return err
+	// }
 
+	// buffer := bytes.NewBuffer(babeConfigurationBytes)
+
+	// babeConfiguration, err := babetypes.DecodeConfiguration(buffer)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// slot := sc.U64(timestamp) / babeConfiguration.SlotDuration
+
+	// babeHeader := gossamertypes.NewBabeDigest()
+	// err = babeHeader.SetValue(*gossamertypes.NewBabePrimaryPreDigest(0, uint64(slot), [32]byte{}, [64]byte{}))
+	// if err != nil {
+	// 	return err
+	// }
+
+	// data, err := scale.Marshal(babeHeader)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// preDigest := gossamertypes.NewBABEPreRuntimeDigest(data)
+
+	// digest := gossamertypes.NewDigest()
+	// err = digest.Add(*preDigest)
+	// if err != nil {
+	// 	return err
+	// }
+
+	header := gossamertypes.NewHeader(testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, uint(testhelpers.BlockNumber), digest)
 	bytesHeader, err := scale.Marshal(*header)
 	if err != nil {
 		return err

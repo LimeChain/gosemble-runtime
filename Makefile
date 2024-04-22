@@ -1,18 +1,26 @@
 CURRENT_DIR = $(shell pwd)
-SRC_DIR = /src/examples/wasm/gosemble
+
+# runtime template configuration
 BUILD_PATH = build/runtime.wasm
-TARGET = polkawasm
-GC = extalloc # (extalloc, extalloc_leaking)
-VERSION = 0.31.0-dev
+RUNTIME_TEMPLATE_DIR = runtime/templates/poa
+
+# docker image configuration
+SRC_DIR = /src/examples/wasm/gosemble
 IMAGE = tinygo/${TARGET}
 
+# tinygo compiler configuration
+VERSION = 0.31.0-dev
+TARGET = polkawasm
+OPT_LEVEL = s # 0, 1, 2, s, z
+GC = extalloc # extalloc, extalloc_leaking
 WASMOPT_PATH = /tinygo/lib/binaryen/bin/wasm-opt
 
+# runtime build commands
 DOCKER_BUILD_TINYGO = docker build --tag $(IMAGE):$(VERSION)-$(GC) -f tinygo/Dockerfile.$(TARGET) tinygo
 DOCKER_RUN_TINYGO = docker run --rm -v $(CURRENT_DIR):$(SRC_DIR) -w $(SRC_DIR) $(IMAGE):$(VERSION)-$(GC) /bin/bash -c
 
-TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -opt s -gc=$(GC) -target=$(TARGET)
-TINYGO_BUILD_COMMAND = tinygo build -gc=$(GC) -opt s -target=$(TARGET)
+TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -opt=$(OPT_LEVEL) -gc=$(GC) -target=$(TARGET)
+TINYGO_BUILD_COMMAND = tinygo build -opt=$(OPT_LEVEL) -gc=$(GC) -target=$(TARGET)
 
 RUNTIME_BUILD_NODEBUG = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
 RUNTIME_BUILD = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
@@ -78,22 +86,19 @@ build-tinygo:
 
 build-release: build-tinygo
 	@echo "Building \"runtime.wasm\" (no-debug)"; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH) runtime/runtime.go
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 build-dev: build-tinygo
 	@echo "Building \"runtime.wasm\""; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(BUILD_PATH) runtime/runtime.go
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 build-benchmarking: build-tinygo
 	@echo "Building \"runtime.wasm\" (no-debug)"; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH) runtime/runtime.go
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
-start-network:
-	cp build/runtime.wasm polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
-	cd polkadot-sdk/substrate/bin/node-template/node; \
-	cargo build --release; \
-	cd ../../../..; \
-	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
+test-coverage:
+	@set -e; \
+	./scripts/coverage.sh
 
 test: test-unit test-integration
 
@@ -101,15 +106,11 @@ test-unit:
 	@go test --tags "nonwasmenv" -cover -v `go list ./... | grep -v runtime`
 
 test-integration:
-	@go test --tags="nonwasmenv" -v ./runtime/...
+	@go test --tags="nonwasmenv" -v -count=1 ./$(RUNTIME_TEMPLATE_DIR)/...
 
-test-coverage:
-	@set -e; \
-	./scripts/coverage.sh
-
-GENERATE_WEIGHT_FILES=true
+GENERATE_WEIGHT_FILES = true
 benchmark: build-benchmarking
-	@go test --tags="nonwasmenv" -bench=. ./runtime/... -run=XXX -benchtime=1x \
+	@go test --tags="nonwasmenv" -bench=. ./$(RUNTIME_TEMPLATE_DIR)/... -run=XXX -benchtime=1x \
 	-steps=50 \
 	-repeat=20 \
 	-heap-pages=4096 \
@@ -125,3 +126,51 @@ benchmark-overhead: build-benchmarking
 	-target=$(TARGET) \
 	-tinygoversion=$(VERSION) \
 	-generate-weight-files=$(GENERATE_WEIGHT_FILES)
+
+# substrate node configuration
+start-network:
+	cp $(BUILD_PATH) polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
+	cd polkadot-sdk/substrate/bin/node-template/node; \
+	cargo build --release; \
+	cd ../../../..; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
+
+start-network-babe:
+	cd polkadot-sdk/substrate/bin/node/cli; \
+	cargo build --release; \
+	cd ../../../..; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/substrate-node --dev --execution=wasm
+
+# gossamer node configuration
+CHAIN_SPEC_PLAIN = ../testdata/chain-spec/plain.json
+CHAIN_SPEC_UPDATED = ../testdata/chain-spec/plain-updated.json
+CHAIN_SPEC_RAW = ../testdata/chain-spec/raw-updated.json
+GOSSAMER_BASE_PATH = tmp/gossamer
+
+gossamer-build:
+	@cd gossamer; \
+	make build;
+
+gossamer-import-runtime:
+	@cd gossamer; \
+	rm -f $(CHAIN_SPEC_UPDATED); \
+	./bin/gossamer import-runtime --wasm-file ../$(BUILD_PATH) --chain $(CHAIN_SPEC_PLAIN) > $(CHAIN_SPEC_UPDATED); \
+	rm -f $(CHAIN_SPEC_RAW); \
+	./bin/gossamer build-spec --chain $(CHAIN_SPEC_UPDATED) --raw --output-path $(CHAIN_SPEC_RAW)
+
+gossamer-init:
+	@cd gossamer; \
+	rm -rf $(GOSSAMER_BASE_PATH); \
+	./bin/gossamer init --force \
+	--base-path $(GOSSAMER_BASE_PATH) \
+	--chain $(CHAIN_SPEC_RAW) \
+	--key alice;
+
+gossamer-start: gossamer-build gossamer-import-runtime gossamer-init
+	@cd gossamer; \
+	./bin/gossamer \
+		--base-path $(GOSSAMER_BASE_PATH) \
+		--rpc-external \
+		--ws-external \
+		--ws-port 8546 \
+		--key alice;

@@ -2,9 +2,10 @@ package session
 
 import (
 	"bytes"
+	"reflect"
+
 	sc "github.com/LimeChain/goscale"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"reflect"
 )
 
 // Handler handles session lifecycle events.
@@ -21,6 +22,8 @@ type Handler interface {
 	OnBeforeSessionEnding()
 	// OnDisabled triggers hook for a disabled validator. Acts accordingly until a new session begins.
 	OnDisabled(validatorIndex sc.U32)
+
+	AppendHandlers(module OneSessionHandler)
 }
 
 type handler struct {
@@ -131,4 +134,8 @@ func takeOutKeys(module OneSessionHandler, validators sc.Sequence[queuedKey]) (s
 	}
 
 	return result, nil
+}
+
+func (h handler) AppendHandlers(module OneSessionHandler) {
+	h.modules = append(h.modules, module)
 }

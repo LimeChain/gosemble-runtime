@@ -3,13 +3,14 @@ package session
 import (
 	"bytes"
 	"errors"
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/mocks"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 var (
@@ -181,4 +182,8 @@ func (m *MockSessionHandler) OnBeforeSessionEnding() {
 
 func (m *MockSessionHandler) OnDisabled(validatorIndex sc.U32) {
 	m.Called(validatorIndex)
+}
+
+func (m *MockSessionHandler) AppendHandlers(module OneSessionHandler) {
+	m.Called(module)
 }

@@ -1,6 +1,8 @@
 package benchmarking
 
-import "flag"
+import (
+	"flag"
+)
 
 // cmd flags and other options related to benchmarking
 var Config = initBenchmarkingConfig()

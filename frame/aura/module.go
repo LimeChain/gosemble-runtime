@@ -3,9 +3,10 @@ package aura
 import (
 	"bytes"
 	"errors"
+	"reflect"
+
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/primitives/log"
-	"reflect"
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
@@ -131,7 +132,15 @@ func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 		if totalAuthorities.HasValue {
 			authorityIndex := currentSlot % totalAuthorities.Value
 
-			if m.disabledValidators != nil && m.disabledValidators.IsDisabled(sc.U32(authorityIndex)) {
+			var disabled bool
+			if m.disabledValidators != nil {
+				disabled, err = m.disabledValidators.IsDisabled(sc.U32(authorityIndex))
+				if err != nil {
+					return primitives.Weight{}, err
+				}
+			}
+
+			if disabled {
 				m.logger.Criticalf("Validator with index [%d] is disabled and should not be attempting to author blocks.", authorityIndex)
 			}
 		}

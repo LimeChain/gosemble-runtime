@@ -37,7 +37,7 @@ func newStorage(m Module) *storage {
 		QueueChanged:       support.NewHashStorageValue(keySession, keyQueuedChanged, sc.DecodeBool),
 		QueuedKeys:         support.NewHashStorageValue(keySession, keyQueuedKeys, DecodeQueuedKeys),
 		DisabledValidators: support.NewHashStorageValue(keySession, keyDisabledValidators, sc.DecodeSequence[sc.U32]),
-		NextKeys:           support.NewHashStorageMap[primitives.AccountId, sc.FixedSequence[primitives.Sr25519PublicKey]](keySession, keyNextKeys, hashing.Twox64, m.handler.DecodeKeys),
+		NextKeys:           support.NewHashStorageMap[primitives.AccountId, sc.FixedSequence[primitives.Sr25519PublicKey]](keySession, keyNextKeys, hashing.Twox64, m.DecodeKeys),
 		KeyOwner:           support.NewHashStorageMap[primitives.SessionKey, primitives.AccountId](keySession, keyKeyOwner, hashing.Twox64, primitives.DecodeAccountId),
 	}
 }

@@ -82,3 +82,13 @@ func (m *StorageValue[T]) DecodeLen() (sc.Option[sc.U64], error) {
 
 	return args.Get(0).(sc.Option[sc.U64]), args.Get(1).(error)
 }
+
+func (m *StorageValue[T]) Mutate(f func(*T) (T, error)) (T, error) {
+	args := m.Called()
+
+	if args.Get(1) == nil {
+		return args.Get(0).(T), nil
+	}
+
+	return args.Get(0).(T), args.Get(1).(error)
+}

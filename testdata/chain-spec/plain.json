@@ -1,0 +1,20 @@
+{
+  "name": "Gosemble Local Testnet",
+  "id": "gosemble_local_testnet",
+  "chainType": "Local",
+  "bootNodes": [],
+  "telemetryEndpoints": null,
+  "protocolId": null,
+  "genesis": {
+    "runtime": {
+      "system": {
+        "code": ""
+      }
+    }
+  },
+  "properties": null,
+  "forkBlocks": null,
+  "badBlocks": null,
+  "lightSyncState": null,
+  "codeSubstitutes": {}
+}
