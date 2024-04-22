@@ -24,7 +24,7 @@ type Configuration struct {
 	C primitives.RationalValue
 
 	// The authorities
-	Authorities sc.Sequence[Authority]
+	Authorities sc.Sequence[primitives.Authority]
 
 	// The randomness
 	Randomness Randomness
@@ -64,7 +64,7 @@ func DecodeConfiguration(buffer *bytes.Buffer) (Configuration, error) {
 		return Configuration{}, err
 	}
 
-	authorities, err := sc.DecodeSequenceWith(buffer, DecodeAuthority)
+	authorities, err := sc.DecodeSequenceWith(buffer, primitives.DecodeAuthority)
 	if err != nil {
 		return Configuration{}, err
 	}

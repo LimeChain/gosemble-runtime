@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	sc "github.com/LimeChain/goscale"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 // BABE epoch information
@@ -15,7 +16,7 @@ type Epoch struct {
 	// The duration of this epoch.
 	Duration sc.U64
 	// The authorities and their weights.
-	Authorities sc.Sequence[Authority]
+	Authorities sc.Sequence[primitives.Authority]
 	// Randomness for this epoch.
 	Randomness Randomness
 	// Configuration of the epoch.
@@ -53,7 +54,7 @@ func DecodeEpoch(buffer *bytes.Buffer) (Epoch, error) {
 		return Epoch{}, err
 	}
 
-	authorities, err := sc.DecodeSequenceWith(buffer, DecodeAuthority)
+	authorities, err := sc.DecodeSequenceWith(buffer, primitives.DecodeAuthority)
 	if err != nil {
 		return Epoch{}, err
 	}

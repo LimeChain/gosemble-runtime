@@ -10,7 +10,6 @@ import (
 	"github.com/LimeChain/gosemble/mocks"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/log"
-	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/stretchr/testify/assert"
@@ -32,15 +31,15 @@ var (
 	slot                   = sc.U64(130)
 	maxAuthorities  sc.U32 = 50
 	authorityIndex         = sc.U32(1)
-	pubKey, _              = types.NewSr25519PublicKey(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
-	aliceAuthority         = babetypes.Authority{Key: pubKey}
-	authorities            = sc.Sequence[babetypes.Authority]{aliceAuthority}
-	nextAuthorities        = sc.Sequence[babetypes.Authority]{aliceAuthority}
+	pubKey, _              = primitives.NewSr25519PublicKey(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
+	aliceAuthority         = primitives.Authority{Id: primitives.AccountId(pubKey)}
+	authorities            = sc.Sequence[primitives.Authority]{aliceAuthority}
+	nextAuthorities        = sc.Sequence[primitives.Authority]{aliceAuthority}
 
 	output = sc.NewFixedSequence(32, make([]sc.U8, 32)...)
 	proof  = sc.NewFixedSequence(64, make([]sc.U8, 64)...)
 
-	vrfSignature = types.VrfSignature{
+	vrfSignature = primitives.VrfSignature{
 		PreOutput: output,
 		Proof:     proof,
 	}
@@ -50,28 +49,28 @@ var (
 
 	preDigest = PreDigest{sc.NewVaryingData(Primary, primaryPreDigest)}
 
-	digestsPreRuntime = sc.Sequence[types.DigestPreRuntime]{
+	digestsPreRuntime = sc.Sequence[primitives.DigestPreRuntime]{
 		{
 			ConsensusEngineId: sc.BytesToFixedSequenceU8(EngineId[:]),
 			Message:           sc.BytesToSequenceU8(preDigest.Bytes()),
 		},
 	}
 
-	digestsPreRuntimeInvalidMessage = sc.Sequence[types.DigestPreRuntime]{
+	digestsPreRuntimeInvalidMessage = sc.Sequence[primitives.DigestPreRuntime]{
 		{
 			ConsensusEngineId: sc.BytesToFixedSequenceU8(EngineId[:]),
 			Message:           sc.BytesToSequenceU8(primaryPreDigest.Bytes()),
 		},
 	}
 
-	digestsPreRuntimeTestEngineId = sc.Sequence[types.DigestPreRuntime]{
+	digestsPreRuntimeTestEngineId = sc.Sequence[primitives.DigestPreRuntime]{
 		{
 			ConsensusEngineId: sc.BytesToFixedSequenceU8([]byte{'T', 'E', 'S', 'T'}),
 			Message:           sc.BytesToSequenceU8(preDigest.Bytes()),
 		},
 	}
 
-	nextEpochDataLog = types.NewDigestItemConsensusMessage(
+	nextEpochDataLog = primitives.NewDigestItemConsensusMessage(
 		sc.BytesToFixedSequenceU8(EngineId[:]),
 		sc.BytesToSequenceU8(NewNextEpochDataConsensusLog(
 			NextEpochDescriptor{Authorities: authorities, Randomness: randomness},
@@ -80,7 +79,7 @@ var (
 
 	nextConfigDescriptor = NextConfigDescriptor{
 		V1: babetypes.EpochConfiguration{
-			C: types.RationalValue{
+			C: primitives.RationalValue{
 				Numerator:   3,
 				Denominator: 5,
 			},
@@ -102,18 +101,18 @@ var (
 
 var (
 	mockSystemDigestFn = func() (primitives.Digest, error) {
-		items := sc.Sequence[types.DigestItem]{
-			types.NewDigestItemPreRuntime(
+		items := sc.Sequence[primitives.DigestItem]{
+			primitives.NewDigestItemPreRuntime(
 				sc.BytesToFixedSequenceU8(EngineId[:]),
 				sc.BytesToSequenceU8(preDigest.Bytes()),
 			),
 		}
-		return types.NewDigest(items), nil
+		return primitives.NewDigest(items), nil
 	}
 )
 
 var (
-	mockStorageAuthorities              *mocks.StorageValue[sc.Sequence[babetypes.Authority]]
+	mockStorageAuthorities              *mocks.StorageValue[sc.Sequence[primitives.Authority]]
 	mockStorageNextEpochConfig          *mocks.StorageValue[babetypes.EpochConfiguration]
 	mockStorageCurrentSlot              *mocks.StorageValue[babetypes.Slot]
 	mockStorageRandomness               *mocks.StorageValue[babetypes.Randomness]
@@ -122,7 +121,7 @@ var (
 	mockStorageEpochIndex               *mocks.StorageValue[sc.U64]
 	mockStorageEpochStart               *mocks.StorageValue[babetypes.EpochStartBlocks]
 	mockStorageGenesisSlot              *mocks.StorageValue[babetypes.Slot]
-	mockStorageNextAuthorities          *mocks.StorageValue[sc.Sequence[babetypes.Authority]]
+	mockStorageNextAuthorities          *mocks.StorageValue[sc.Sequence[primitives.Authority]]
 	mockStorageNextRandomness           *mocks.StorageValue[babetypes.Randomness]
 	mockStoragePendingEpochConfigChange *mocks.StorageValue[NextConfigDescriptor]
 	mockStorageInitialized              *mocks.StorageValue[sc.Option[PreDigest]]
@@ -143,7 +142,7 @@ var (
 var target module
 
 func setupModule() module {
-	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[babetypes.Authority]])
+	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[primitives.Authority]])
 	mockStorageNextEpochConfig = new(mocks.StorageValue[babetypes.EpochConfiguration])
 	mockStorageCurrentSlot = new(mocks.StorageValue[babetypes.Slot])
 	mockStorageRandomness = new(mocks.StorageValue[babetypes.Randomness])
@@ -152,7 +151,7 @@ func setupModule() module {
 	mockStorageEpochIndex = new(mocks.StorageValue[sc.U64])
 	mockStorageEpochStart = new(mocks.StorageValue[babetypes.EpochStartBlocks])
 	mockStorageGenesisSlot = new(mocks.StorageValue[babetypes.Slot])
-	mockStorageNextAuthorities = new(mocks.StorageValue[sc.Sequence[babetypes.Authority]])
+	mockStorageNextAuthorities = new(mocks.StorageValue[sc.Sequence[primitives.Authority]])
 	mockStorageNextRandomness = new(mocks.StorageValue[babetypes.Randomness])
 	mockStoragePendingEpochConfigChange = new(mocks.StorageValue[NextConfigDescriptor])
 	mockStorageInitialized = new(mocks.StorageValue[sc.Option[PreDigest]])
@@ -166,7 +165,7 @@ func setupModule() module {
 	mockIoHashing = new(mocks.IoHashing)
 
 	config := NewConfig(
-		types.PublicKeySr25519,
+		primitives.PublicKeySr25519,
 		epochConfig,
 		epochDuration,
 		mockEpochChangeTrigger,
@@ -177,7 +176,7 @@ func setupModule() module {
 		mockSystemModule,
 	)
 
-	target = New(moduleId, config, types.NewMetadataTypeGenerator(), log.NewLogger()).(module)
+	target = New(moduleId, config, primitives.NewMetadataTypeGenerator(), log.NewLogger()).(module)
 
 	target.storage.Authorities = mockStorageAuthorities
 	target.storage.NextEpochConfig = mockStorageNextEpochConfig

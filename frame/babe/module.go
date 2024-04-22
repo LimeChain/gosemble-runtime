@@ -15,7 +15,7 @@ import (
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
-	"github.com/LimeChain/gosemble/primitives/types"
+
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -53,13 +53,13 @@ type Module interface {
 	hooks.OnTimestampSet[sc.U64]
 	session.OneSessionHandler
 
-	StorageAuthorities() (sc.Sequence[babetypes.Authority], error)
+	StorageAuthorities() (sc.Sequence[primitives.Authority], error)
 	StorageRandomness() (babetypes.Randomness, error)
 	StorageSegmentIndexSet(sc.U32)
 	StorageEpochConfig() (babetypes.EpochConfiguration, error)
 	StorageEpochConfigSet(value babetypes.EpochConfiguration)
 
-	EnactEpochChange(authorities sc.Sequence[babetypes.Authority], nextAuthorities sc.Sequence[babetypes.Authority], sessionIndex sc.Option[sc.U32]) error
+	EnactEpochChange(authorities sc.Sequence[primitives.Authority], nextAuthorities sc.Sequence[primitives.Authority], sessionIndex sc.Option[sc.U32]) error
 	ShouldEpochChange(now sc.U64) bool
 
 	SlotDuration() sc.U64
@@ -137,7 +137,7 @@ func (m module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Ca
 // Storage
 
 // Current epoch authorities.
-func (m module) StorageAuthorities() (sc.Sequence[babetypes.Authority], error) {
+func (m module) StorageAuthorities() (sc.Sequence[primitives.Authority], error) {
 	return m.storage.Authorities.Get()
 }
 
@@ -250,7 +250,7 @@ func (m module) ShouldEpochChange(now sc.U64) bool {
 // manager logic like `pallet-session`.
 //
 // This doesn't do anything if `authorities` is empty.
-func (m module) EnactEpochChange(authorities sc.Sequence[babetypes.Authority], nextAuthorities sc.Sequence[babetypes.Authority], sessionIndex sc.Option[sc.U32]) error {
+func (m module) EnactEpochChange(authorities sc.Sequence[primitives.Authority], nextAuthorities sc.Sequence[primitives.Authority], sessionIndex sc.Option[sc.U32]) error {
 	// PRECONDITION: caller has done initialization and is guaranteed
 	// by the session module to be called before this.
 	// initializedBytes, err := m.storage.Initialized.GetBytes()
@@ -516,7 +516,7 @@ func (m module) NextEpoch() (babetypes.Epoch, error) {
 }
 
 func (m module) depositConsensus(new ConsensusLog) {
-	log := types.NewDigestItemConsensusMessage(
+	log := primitives.NewDigestItemConsensusMessage(
 		sc.BytesToFixedSequenceU8(EngineId[:]),
 		sc.BytesToSequenceU8(new.Bytes()),
 	)
@@ -552,7 +552,7 @@ func (m module) depositRandomness(randomness babetypes.Randomness) error {
 	return nil
 }
 
-func (m module) initializeGenesisAuthorities(authorities sc.Sequence[babetypes.Authority]) error {
+func (m module) initializeGenesisAuthorities(authorities sc.Sequence[primitives.Authority]) error {
 	if len(authorities) != 0 {
 		totalAuthorities, err := m.storage.Authorities.DecodeLen()
 		if err != nil {
@@ -892,7 +892,7 @@ func (m module) OnFinalize(_now sc.U64) error {
 				output[i] = byte(signature.Value.PreOutput[i])
 			}
 
-			public, err := primitives.NewPublicKey(sc.FixedSequenceU8ToBytes(authority.Key.FixedSequence))
+			public, err := primitives.NewPublicKey(sc.FixedSequenceU8ToBytes(authority.Id.FixedSequence))
 
 			inout, err := primitives.AttachInput(output, public, transcript)
 			if err != nil {
@@ -944,10 +944,10 @@ func (m module) EpochConfig() babetypes.EpochConfiguration {
 	return m.config.EpochConfig
 }
 
-func authoritiesFrom(validators sc.Sequence[primitives.Validator]) sc.Sequence[babetypes.Authority] {
-	authorities := make(sc.Sequence[babetypes.Authority], 0)
+func authoritiesFrom(validators sc.Sequence[primitives.Validator]) sc.Sequence[primitives.Authority] {
+	authorities := make(sc.Sequence[primitives.Authority], 0)
 	for _, v := range validators {
-		authorities = append(authorities, babetypes.Authority{Key: v.AuthorityId, Weight: 1})
+		authorities = append(authorities, primitives.Authority{Id: primitives.AccountId(v.AuthorityId), Weight: 1})
 	}
 	return authorities
 }

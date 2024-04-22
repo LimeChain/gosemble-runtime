@@ -6,11 +6,12 @@ import (
 	sc "github.com/LimeChain/goscale"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/vedhavyas/go-subkey"
 )
 
 type GenesisConfig struct {
-	Authorities sc.Sequence[babetypes.Authority]
+	Authorities sc.Sequence[primitives.Authority]
 	EpochConfig babetypes.EpochConfiguration
 }
 
@@ -47,7 +48,7 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		gc.Authorities = append(gc.Authorities, babetypes.Authority{Key: pubKey})
+		gc.Authorities = append(gc.Authorities, primitives.Authority{Id: types.AccountId(pubKey)})
 		addrExists[addr] = true
 	}
 

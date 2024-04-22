@@ -10,11 +10,18 @@ import (
 )
 
 var (
+	pubKey1 = primitives.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)}
+
+	authority = primitives.Authority{
+		Id:     primitives.AccountId(pubKey1),
+		Weight: sc.U64(2),
+	}
+
 	configuration = Configuration{
 		SlotDuration: sc.U64(1),
 		EpochLength:  sc.U64(2),
 		C:            primitives.RationalValue{Numerator: 3, Denominator: 4},
-		Authorities:  sc.Sequence[Authority]{authority},
+		Authorities:  sc.Sequence[primitives.Authority]{authority},
 		Randomness:   NewRandomness(),
 		AllowedSlots: NewPrimarySlots(),
 	}

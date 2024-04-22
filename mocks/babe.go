@@ -175,14 +175,14 @@ func (m *BabeModule) OffchainWorker(n sc.U64) {
 	m.Called(n)
 }
 
-func (m *BabeModule) StorageAuthorities() (sc.Sequence[babetypes.Authority], error) {
+func (m *BabeModule) StorageAuthorities() (sc.Sequence[primitives.Authority], error) {
 	args := m.Called()
 
 	if args.Error(1) == nil {
-		return args.Get(0).(sc.Sequence[babetypes.Authority]), nil
+		return args.Get(0).(sc.Sequence[primitives.Authority]), nil
 	}
 
-	return args.Get(0).(sc.Sequence[babetypes.Authority]), args.Error(1)
+	return args.Get(0).(sc.Sequence[primitives.Authority]), args.Error(1)
 }
 
 func (m *BabeModule) StorageRandomness() (babetypes.Randomness, error) {
@@ -213,7 +213,7 @@ func (m *BabeModule) StorageEpochConfigSet(value babetypes.EpochConfiguration) {
 	m.Called(value)
 }
 
-func (m *BabeModule) EnactEpochChange(authorities sc.Sequence[babetypes.Authority], nextAuthorities sc.Sequence[babetypes.Authority], sessionIndex sc.Option[sc.U32]) error {
+func (m *BabeModule) EnactEpochChange(authorities sc.Sequence[primitives.Authority], nextAuthorities sc.Sequence[primitives.Authority], sessionIndex sc.Option[sc.U32]) error {
 	args := m.Called(authorities, nextAuthorities, sessionIndex)
 	return args.Error(0)
 }

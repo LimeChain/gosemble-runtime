@@ -53,7 +53,7 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 
 		// 521
 		primitives.NewMetadataType(
-			metadata.TypesBabeAuthority,
+			metadata.TypesAuthority,
 			"Authority",
 			primitives.NewMetadataTypeDefinitionTuple(
 				sc.Sequence[sc.Compact]{
@@ -65,25 +65,25 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 
 		// 522
 		primitives.NewMetadataType(
-			metadata.TypesBabeSequenceAuthority,
+			metadata.TypesSequenceAuthority,
 			"SequenceAuthority",
 			primitives.NewMetadataTypeDefinitionSequence(
-				sc.ToCompact(metadata.TypesBabeAuthority),
+				sc.ToCompact(metadata.TypesAuthority),
 			),
 		),
 
 		// 520
 		primitives.NewMetadataTypeWithParams(
-			metadata.TypesBabeBoundedVecAuthority,
+			metadata.TypesBoundedVecAuthority,
 			"WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>",
 			sc.Sequence[sc.Str]{"bounded_collections", "weak_bounded_vec", "WeakBoundedVec"},
 			primitives.NewMetadataTypeDefinitionComposite(
 				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesBabeSequenceAuthority, "Vec<T>"),
+					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesSequenceAuthority, "Vec<T>"),
 				},
 			),
 			sc.Sequence[primitives.MetadataTypeParameter]{
-				primitives.NewMetadataTypeParameter(metadata.TypesBabeAuthority, "T"),
+				primitives.NewMetadataTypeParameter(metadata.TypesAuthority, "T"),
 				primitives.NewMetadataEmptyTypeParameter("S"),
 			},
 		),
@@ -392,7 +392,7 @@ func (m module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 			primitives.NewMetadataModuleStorageEntry(
 				"Authorities",
 				primitives.MetadataModuleStorageEntryModifierDefault,
-				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBabeBoundedVecAuthority)),
+				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBoundedVecAuthority)),
 				"Current epoch authorities.",
 			),
 
@@ -455,7 +455,7 @@ func (m module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 			primitives.NewMetadataModuleStorageEntry(
 				"NextAuthorities",
 				primitives.MetadataModuleStorageEntryModifierDefault,
-				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBabeBoundedVecAuthority)),
+				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBoundedVecAuthority)),
 				"Authorities set scheduled to be used with the next session",
 			),
 

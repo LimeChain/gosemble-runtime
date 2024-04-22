@@ -7,6 +7,8 @@ import (
 	"github.com/LimeChain/gosemble/frame/support"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/io"
+
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 var (
@@ -33,7 +35,7 @@ var (
 var defaultRandomnessValue = babetypes.NewRandomness()
 
 type storage struct {
-	Authorities              support.StorageValue[sc.Sequence[babetypes.Authority]]
+	Authorities              support.StorageValue[sc.Sequence[primitives.Authority]]
 	AuthorVrfRandomness      support.StorageValue[sc.Option[babetypes.Randomness]]
 	CurrentSlot              support.StorageValue[babetypes.Slot]
 	EpochConfig              support.StorageValue[babetypes.EpochConfiguration]
@@ -42,7 +44,7 @@ type storage struct {
 	GenesisSlot              support.StorageValue[babetypes.Slot]
 	Initialized              support.StorageValue[sc.Option[PreDigest]]
 	Lateness                 support.StorageValue[sc.U64]
-	NextAuthorities          support.StorageValue[sc.Sequence[babetypes.Authority]]
+	NextAuthorities          support.StorageValue[sc.Sequence[primitives.Authority]]
 	NextEpochConfig          support.StorageValue[babetypes.EpochConfiguration]
 	NextRandomness           support.StorageValue[babetypes.Randomness]
 	PendingEpochConfigChange support.StorageValue[NextConfigDescriptor]
@@ -76,8 +78,8 @@ func newStorage() *storage {
 	}
 }
 
-func decodeAuthorities(buffer *bytes.Buffer) (sc.Sequence[babetypes.Authority], error) {
-	return sc.DecodeSequenceWith(buffer, babetypes.DecodeAuthority)
+func decodeAuthorities(buffer *bytes.Buffer) (sc.Sequence[primitives.Authority], error) {
+	return sc.DecodeSequenceWith(buffer, primitives.DecodeAuthority)
 }
 
 func decodeRandomness(buffer *bytes.Buffer) (sc.FixedSequence[sc.U8], error) {

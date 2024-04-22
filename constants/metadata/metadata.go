@@ -190,6 +190,10 @@ const (
 	TypesSudoCalls
 	TypesSudoErrors
 
+	TypesAuthority
+	TypesSequenceAuthority
+	TypesBoundedVecAuthority
+
 	TypesRationalValueU64
 	TypesSlot
 	TypesOptionFixedSequence32U8
@@ -197,9 +201,7 @@ const (
 	TypesAllowedSlots
 	TypesPreDigest
 	TypesOptionPreDigest
-	TypesBabeAuthority
-	TypesBabeSequenceAuthority
-	TypesBabeBoundedVecAuthority
+
 	TypesBabeEpochConfiguration
 	TypesBabeNextConfigDescriptor
 	TypesBabeSkippedEpoch

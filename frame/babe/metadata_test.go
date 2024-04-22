@@ -22,7 +22,7 @@ func Test_Metadata(t *testing.T) {
 				primitives.NewMetadataModuleStorageEntry(
 					"Authorities",
 					primitives.MetadataModuleStorageEntryModifierDefault,
-					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBabeBoundedVecAuthority)),
+					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBoundedVecAuthority)),
 					"Current epoch authorities.",
 				),
 				primitives.NewMetadataModuleStorageEntry(
@@ -76,7 +76,7 @@ func Test_Metadata(t *testing.T) {
 				primitives.NewMetadataModuleStorageEntry(
 					"NextAuthorities",
 					primitives.MetadataModuleStorageEntryModifierDefault,
-					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBabeBoundedVecAuthority)),
+					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBoundedVecAuthority)),
 					"Authorities set scheduled to be used with the next session",
 				),
 				primitives.NewMetadataModuleStorageEntry(

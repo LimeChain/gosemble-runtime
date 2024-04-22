@@ -17,6 +17,8 @@ import (
 )
 
 var (
+	pubKey1 = primitives.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)}
+
 	epochDuration = sc.U64(1000)
 	slotDuration  = epochDuration / 100
 
@@ -25,11 +27,8 @@ var (
 		AllowedSlots: babetypes.NewPrimaryAndSecondaryPlainSlots(),
 	}
 
-	authorities = sc.Sequence[babetypes.Authority]{
-		babetypes.Authority{
-			Key:    types.Sr25519PublicKey{FixedSequence: sc.BytesToFixedSequenceU8([]byte{1, 2, 3})},
-			Weight: sc.U64(1),
-		},
+	authorities = sc.Sequence[primitives.Authority]{
+		primitives.Authority{Id: primitives.AccountId(pubKey1), Weight: sc.U64(1)}, // []byte{1, 2, 3}
 	}
 
 	randomness = babetypes.Randomness(sc.BytesToFixedSequenceU8([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}))
