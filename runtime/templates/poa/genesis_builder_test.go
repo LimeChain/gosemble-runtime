@@ -7,7 +7,6 @@ import (
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/frame/grandpa"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
@@ -69,8 +68,7 @@ func Test_BuildConfig(t *testing.T) {
 	grandpaAuthorities := (*storage).Get(testhelpers.KeyGrandpaAuthorities)
 	accId, _ := types.NewAccountId(expectedPubKey...)
 	authorities := sc.Sequence[types.Authority]{{Id: accId, Weight: sc.U64(1)}}
-	expectedGrandpaAuthorities := types.VersionedAuthorityList{AuthorityList: authorities, Version: grandpa.AuthorityVersion}
-	assert.Equal(t, expectedGrandpaAuthorities.Bytes(), grandpaAuthorities)
+	assert.Equal(t, authorities.Bytes(), grandpaAuthorities)
 
 	// assert balance
 	accHash, _ := common.Blake2b128(accId.Bytes())

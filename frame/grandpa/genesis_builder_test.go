@@ -11,10 +11,9 @@ import (
 )
 
 var (
-	validGcJson            = "{\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]}}"
-	accId, _               = types.NewAccountId(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
-	authorities            = sc.Sequence[types.Authority]{{Id: accId, Weight: sc.U64(1)}}
-	versionedAuthorityList = types.VersionedAuthorityList{AuthorityList: authorities, Version: AuthorityVersion}
+	validGcJson = "{\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]}}"
+	accId, _    = types.NewAccountId(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
+	authorities = sc.Sequence[types.Authority]{{Id: accId, Weight: sc.U64(1)}}
 )
 
 func Test_GenesisConfig_BuildConfig(t *testing.T) {
@@ -23,7 +22,7 @@ func Test_GenesisConfig_BuildConfig(t *testing.T) {
 		gcJson                   string
 		expectedErr              error
 		shouldAssertCalled       bool
-		storageAuthorities       types.VersionedAuthorityList
+		storageAuthorities       sc.Sequence[types.Authority]
 		storageAuthoritiesGetErr error
 	}{
 		{
@@ -64,21 +63,21 @@ func Test_GenesisConfig_BuildConfig(t *testing.T) {
 		{
 			name:               "storage authorities already initialized",
 			gcJson:             validGcJson,
-			storageAuthorities: versionedAuthorityList,
+			storageAuthorities: authorities,
 			expectedErr:        errAuthoritiesAlreadyInitialized,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			setup()
 			mockStorageAuthorities.On("Get").Return(tt.storageAuthorities, tt.storageAuthoritiesGetErr)
-			mockStorageAuthorities.On("Put", versionedAuthorityList).Return()
+			mockStorageAuthorities.On("Put", authorities).Return()
 
 			err := target.BuildConfig([]byte(tt.gcJson))
 			assert.Equal(t, tt.expectedErr, err)
 
 			if tt.shouldAssertCalled {
 				mockStorageAuthorities.AssertCalled(t, "Get")
-				mockStorageAuthorities.AssertCalled(t, "Put", versionedAuthorityList)
+				mockStorageAuthorities.AssertCalled(t, "Put", authorities)
 			}
 		})
 	}

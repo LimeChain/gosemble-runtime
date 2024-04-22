@@ -58,7 +58,7 @@ func newStorage() *storage {
 	hashing := io.NewHashing()
 
 	return &storage{
-		Authorities:              support.NewHashStorageValue(keyBabe, keyAuthorities, decodeAuthorities),
+		Authorities:              support.NewHashStorageValue(keyBabe, keyAuthorities, primitives.DecodeAuthorityList),
 		AuthorVrfRandomness:      support.NewHashStorageValue(keyBabe, keyAuthorVrfRandomness, decodeOptionRandomness),
 		CurrentSlot:              support.NewHashStorageValue(keyBabe, keyCurrentSlot, sc.DecodeU64),
 		EpochConfig:              support.NewHashStorageValue(keyBabe, keyEpochConfig, babetypes.DecodeEpochConfiguration),
@@ -67,7 +67,7 @@ func newStorage() *storage {
 		GenesisSlot:              support.NewHashStorageValue(keyBabe, keyGenesisSlot, sc.DecodeU64),
 		Initialized:              support.NewHashStorageValue(keyBabe, keyInitialized, decodePreDigest),
 		Lateness:                 support.NewHashStorageValue(keyBabe, keyLateness, sc.DecodeU64),
-		NextAuthorities:          support.NewHashStorageValue(keyBabe, keyNextAuthorities, decodeAuthorities),
+		NextAuthorities:          support.NewHashStorageValue(keyBabe, keyNextAuthorities, primitives.DecodeAuthorityList),
 		NextEpochConfig:          support.NewHashStorageValue(keyBabe, keyNextEpochConfig, babetypes.DecodeEpochConfiguration),
 		NextRandomness:           support.NewHashStorageValueWithDefault(keyBabe, keyNextRandomness, decodeRandomness, &defaultRandomnessValue),
 		PendingEpochConfigChange: support.NewHashStorageValue(keyBabe, keyPendingEpochConfigChange, DecodeNextConfigDescriptor),
@@ -76,10 +76,6 @@ func newStorage() *storage {
 		SkippedEpochs:            support.NewHashStorageValue(keyBabe, keySkippedEpochs, decodeSkippedEpochs),
 		UnderConstruction:        support.NewHashStorageMap[sc.U32, babetypes.Randomness](keyBabe, keyUnderConstruction, hashing.Twox64, decodeRandomness),
 	}
-}
-
-func decodeAuthorities(buffer *bytes.Buffer) (sc.Sequence[primitives.Authority], error) {
-	return sc.DecodeSequenceWith(buffer, primitives.DecodeAuthority)
 }
 
 func decodeRandomness(buffer *bytes.Buffer) (sc.FixedSequence[sc.U8], error) {

@@ -86,12 +86,12 @@ func (m Module) BuildConfig(config []byte) error {
 		return nil
 	}
 
-	totalAuthorities, err := m.storage.Authorities.Get()
+	authorities, err := m.storage.Authorities.Get()
 	if err != nil {
 		return err
 	}
 
-	if len(totalAuthorities.AuthorityList) > 0 {
+	if len(authorities) > 0 {
 		return errAuthoritiesAlreadyInitialized
 	}
 
@@ -100,10 +100,7 @@ func (m Module) BuildConfig(config []byte) error {
 	// 	"Grandpa: `Config::MaxAuthorities` is smaller than the number of genesis authorities!",
 	// ),
 
-	m.storage.Authorities.Put(types.VersionedAuthorityList{
-		AuthorityList: gc.Authorities,
-		Version:       AuthorityVersion,
-	})
+	m.storage.Authorities.Put(gc.Authorities)
 
 	// todo missing
 	//// NOTE: initialize first session of first set. this is necessary for

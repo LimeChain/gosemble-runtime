@@ -1,6 +1,7 @@
 package grandpa
 
 import (
+	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/support"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -10,11 +11,11 @@ var (
 )
 
 type storage struct {
-	Authorities support.StorageValue[primitives.VersionedAuthorityList]
+	Authorities support.StorageValue[sc.Sequence[primitives.Authority]]
 }
 
 func newStorage() *storage {
 	return &storage{
-		Authorities: support.NewSimpleStorageValue(keyGrandpaAuthorities, primitives.DecodeVersionedAuthorityList),
+		Authorities: support.NewSimpleStorageValue(keyGrandpaAuthorities, primitives.DecodeAuthorityList),
 	}
 }

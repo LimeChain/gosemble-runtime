@@ -85,18 +85,21 @@ func (m Module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Ca
 }
 
 func (m Module) Authorities() (sc.Sequence[primitives.Authority], error) {
-	versionedAuthorityList, err := m.storage.Authorities.Get()
-	if err != nil {
-		return nil, err
-	}
+	return m.storage.Authorities.Get()
+}
 
-	authorities := versionedAuthorityList.AuthorityList
-	if versionedAuthorityList.Version != AuthorityVersion {
-		m.logger.Warnf("unknown Grandpa authorities version: [%d]", versionedAuthorityList.Version)
-		return sc.Sequence[primitives.Authority]{}, nil
-	}
-
-	return authorities, nil
+func (m Module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
+	return sc.NewOption[primitives.MetadataModuleStorage](primitives.MetadataModuleStorage{
+		Prefix: m.name(),
+		Items: sc.Sequence[primitives.MetadataModuleStorageEntry]{
+			primitives.NewMetadataModuleStorageEntry(
+				"Authorities",
+				primitives.MetadataModuleStorageEntryModifierDefault,
+				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesBoundedVecAuthority)),
+				"The current list of authorities.",
+			),
+		},
+	})
 }
 
 func (m Module) Metadata() primitives.MetadataModule {

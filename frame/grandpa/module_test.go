@@ -24,7 +24,7 @@ var (
 )
 
 var (
-	mockStorageAuthorities *mocks.StorageValue[primitives.VersionedAuthorityList]
+	mockStorageAuthorities *mocks.StorageValue[sc.Sequence[primitives.Authority]]
 	target                 Module
 	logger                 = log.NewLogger()
 )
@@ -91,38 +91,13 @@ func Test_Module_Authorities_Success(t *testing.T) {
 			Weight: 5,
 		},
 	}
-	storageAuthorites := primitives.VersionedAuthorityList{
-		Version:       AuthorityVersion,
-		AuthorityList: expectAuthorites,
-	}
 
-	mockStorageAuthorities.On("Get").Return(storageAuthorites, nil)
+	mockStorageAuthorities.On("Get").Return(expectAuthorites, nil)
 
 	result, err := target.Authorities()
 	assert.Nil(t, err)
 
 	assert.Equal(t, expectAuthorites, result)
-	mockStorageAuthorities.AssertCalled(t, "Get")
-}
-
-func Test_Module_Authorities_DifferentVersion(t *testing.T) {
-	setup()
-	storageAuthorites := primitives.VersionedAuthorityList{
-		Version: sc.U8(255),
-		AuthorityList: sc.Sequence[primitives.Authority]{
-			{
-				Id:     constants.ZeroAccountId,
-				Weight: sc.U64(64),
-			},
-		},
-	}
-
-	mockStorageAuthorities.On("Get").Return(storageAuthorites, nil)
-
-	result, err := target.Authorities()
-	assert.Nil(t, err)
-
-	assert.Equal(t, sc.Sequence[primitives.Authority]{}, result)
 	mockStorageAuthorities.AssertCalled(t, "Get")
 }
 
@@ -193,7 +168,7 @@ func Test_Module_Metadata(t *testing.T) {
 }
 
 func setup() {
-	mockStorageAuthorities = new(mocks.StorageValue[primitives.VersionedAuthorityList])
+	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[primitives.Authority]])
 	target = New(moduleId, logger, mdGenerator)
 
 	target.storage.Authorities = mockStorageAuthorities

@@ -36,3 +36,7 @@ func DecodeAuthority(buffer *bytes.Buffer) (Authority, error) {
 func (a Authority) Bytes() []byte {
 	return sc.EncodedBytes(a)
 }
+
+func DecodeAuthorityList(buffer *bytes.Buffer) (sc.Sequence[Authority], error) {
+	return sc.DecodeSequenceWith(buffer, DecodeAuthority)
+}
