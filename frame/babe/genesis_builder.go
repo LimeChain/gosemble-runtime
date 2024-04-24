@@ -53,9 +53,9 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	c := gcJson.BabeGenesisConfig.EpochConfig.C
-	gc.EpochConfig.C = types.RationalValue{
-		Numerator:   sc.U64(c[0]),
-		Denominator: sc.U64(c[1]),
+	gc.EpochConfig.C = types.Tuple2U64{
+		First:  sc.U64(c[0]),
+		Second: sc.U64(c[1]),
 	}
 
 	switch gcJson.BabeGenesisConfig.EpochConfig.AllowedSlots {

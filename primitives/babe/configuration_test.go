@@ -20,7 +20,7 @@ var (
 	configuration = Configuration{
 		SlotDuration: sc.U64(1),
 		EpochLength:  sc.U64(2),
-		C:            primitives.RationalValue{Numerator: 3, Denominator: 4},
+		C:            primitives.Tuple2U64{First: 3, Second: 4},
 		Authorities:  sc.Sequence[primitives.Authority]{authority},
 		Randomness:   NewRandomness(),
 		AllowedSlots: NewPrimarySlots(),

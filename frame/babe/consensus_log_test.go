@@ -7,23 +7,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewNextEpochDataConsensusLog(t *testing.T) {
+func Test_NewConsensusLogNextEpochData(t *testing.T) {
 	assert.Equal(t,
-		ConsensusLog{sc.NewVaryingData(NextEpochData, nextEpochDescriptor)},
-		NewNextEpochDataConsensusLog(nextEpochDescriptor),
+		ConsensusLog{sc.NewVaryingData(ConsensusLogNextEpochData, nextEpochDescriptor)},
+		NewConsensusLogNextEpochData(nextEpochDescriptor),
 	)
 }
 
-func Test_NewOnDisabledConsensusLog(t *testing.T) {
+func Test_NewConsensusLogOnDisabled(t *testing.T) {
 	assert.Equal(t,
-		ConsensusLog{sc.NewVaryingData(OnDisabled, authorityIndex)},
-		NewOnDisabledConsensusLog(authorityIndex),
+		ConsensusLog{sc.NewVaryingData(ConsensusLogOnDisabled, authorityIndex)},
+		NewConsensusLogOnDisabled(authorityIndex),
 	)
 }
 
-func Test_NewNextConfigDataConsensusLog(t *testing.T) {
+func Test_NewConsensusLogNextConfigData(t *testing.T) {
 	assert.Equal(t,
-		ConsensusLog{sc.NewVaryingData(NextConfigData, nextConfigDescriptor)},
-		NewNextConfigDataConsensusLog(nextConfigDescriptor),
+		ConsensusLog{sc.NewVaryingData(ConsensusLogNextConfigData, nextConfigDescriptor)},
+		NewConsensusLogNextConfigData(nextConfigDescriptor),
 	)
 }

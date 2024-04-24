@@ -6,7 +6,6 @@ import (
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/mocks"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/log"
@@ -72,16 +71,16 @@ var (
 
 	nextEpochDataLog = primitives.NewDigestItemConsensusMessage(
 		sc.BytesToFixedSequenceU8(EngineId[:]),
-		sc.BytesToSequenceU8(NewNextEpochDataConsensusLog(
+		sc.BytesToSequenceU8(NewConsensusLogNextEpochData(
 			NextEpochDescriptor{Authorities: authorities, Randomness: randomness},
 		).Bytes()),
 	)
 
 	nextConfigDescriptor = NextConfigDescriptor{
 		V1: babetypes.EpochConfiguration{
-			C: primitives.RationalValue{
-				Numerator:   3,
-				Denominator: 5,
+			C: primitives.Tuple2U64{
+				First:  3,
+				Second: 5,
 			},
 			AllowedSlots: babetypes.NewPrimaryAndSecondaryVRFSlots(),
 		},
@@ -169,7 +168,7 @@ func setupModule() module {
 		epochConfig,
 		epochDuration,
 		mockEpochChangeTrigger,
-		*new(session.Module),
+		mockSessionModule,
 		maxAuthorities,
 		timestampMinimumPeriod,
 		mockSystemDigestFn,

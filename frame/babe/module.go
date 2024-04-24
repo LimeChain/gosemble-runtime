@@ -9,12 +9,12 @@ import (
 	"reflect"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -33,13 +33,13 @@ var (
 )
 
 var (
-	errAuthoritiesListEmpty            = errors.New("Authorities cannot be empty!")
-	errAuthoritiesAlreadyInitialized   = errors.New("Authorities are already initialized!")
-	errAuthoritiesExceedMaxAuthorities = errors.New("Initial number of authorities should be lower than MaxAuthorities")
-	errEpochConfigIsUninitialized      = errors.New("EpochConfig is initialized in genesis; we never `take` or `kill` it; qed")
-	errEpochIndexOverflow              = errors.New("epoch index is u64; it is always only incremented by one; if u64 is not enough we should crash for safety; qed.")
-	errTimestampMismatch               = errors.New("Timestamp slot must match `CurrentSlot`")
-	errZeroSlotDuration                = errors.New("Babe slot duration cannot be zero.")
+	errAuthoritiesListEmpty            = errors.New("Babe: Authorities cannot be empty!")
+	errAuthoritiesAlreadyInitialized   = errors.New("Babe: Authorities are already initialized!")
+	errAuthoritiesExceedMaxAuthorities = errors.New("Babe: Initial number of authorities should be lower than MaxAuthorities")
+	errEpochConfigIsUninitialized      = errors.New("Babe: EpochConfig is initialized in genesis; we never `take` or `kill` it; qed")
+	errEpochIndexOverflow              = errors.New("Babe: epoch index is u64; it is always only incremented by one; if u64 is not enough we should crash for safety; qed.")
+	errTimestampMismatch               = errors.New("Babe: Timestamp slot must match `CurrentSlot`")
+	errZeroSlotDuration                = errors.New("Babe: Slot duration cannot be zero.")
 )
 
 const (
@@ -51,7 +51,7 @@ const (
 type Module interface {
 	primitives.Module
 	hooks.OnTimestampSet[sc.U64]
-	session.OneSessionHandler
+	sessiontypes.OneSessionHandler
 
 	StorageAuthorities() (sc.Sequence[primitives.Authority], error)
 	StorageRandomness() (babetypes.Randomness, error)
@@ -365,7 +365,7 @@ func (m module) EnactEpochChange(authorities sc.Sequence[primitives.Authority], 
 		Authorities: nextAuthorities,
 		Randomness:  nextRandomness,
 	}
-	m.depositConsensus(NewNextEpochDataConsensusLog(nextEpoch))
+	m.depositConsensus(NewConsensusLogNextEpochData(nextEpoch))
 
 	nextConfig, err := m.storage.NextEpochConfig.Get()
 	if err != nil {
@@ -385,7 +385,7 @@ func (m module) EnactEpochChange(authorities sc.Sequence[primitives.Authority], 
 		nextEpochConfig := pendingEpochConfigChange.V1
 		m.storage.NextEpochConfig.Put(nextEpochConfig)
 
-		m.depositConsensus(NewNextConfigDataConsensusLog(pendingEpochConfigChange))
+		m.depositConsensus(NewConsensusLogNextConfigData(pendingEpochConfigChange))
 	}
 
 	return nil
@@ -603,7 +603,7 @@ func (m module) initializeGenesisEpoch(slot babetypes.Slot) error {
 		Randomness:  randomness,
 	}
 
-	m.depositConsensus(NewNextEpochDataConsensusLog(next))
+	m.depositConsensus(NewConsensusLogNextEpochData(next))
 
 	return nil
 }
@@ -770,19 +770,19 @@ func (m module) DecodeKey(buffer *bytes.Buffer) (primitives.Sr25519PublicKey, er
 }
 
 func (m module) OnGenesisSession(validators sc.Sequence[primitives.Validator]) error {
-	authorities := authoritiesFrom(validators)
+	authorities := primitives.AuthoritiesFrom(validators)
 	return m.initializeGenesisAuthorities(authorities)
 }
 
 // OnNewSession triggers once the session has changed.
 func (m module) OnNewSession(changed bool, validators sc.Sequence[primitives.Validator], queuedValidators sc.Sequence[primitives.Validator]) error {
-	authorities := authoritiesFrom(validators)
+	authorities := primitives.AuthoritiesFrom(validators)
 	if len(authorities) > int(m.config.MaxAuthorities) {
 		m.logger.Warn("The session has more validators than expected. A runtime configuration adjustment may be needed.")
 		authorities = authorities[:m.config.MaxAuthorities]
 	}
 
-	nextAuthorities := authoritiesFrom(queuedValidators)
+	nextAuthorities := primitives.AuthoritiesFrom(queuedValidators)
 	if len(nextAuthorities) > int(m.config.MaxAuthorities) {
 		m.logger.Warn("The session has more queued validators than expected. A runtime configuration adjustment may be needed.")
 		authorities = authorities[:m.config.MaxAuthorities]
@@ -801,7 +801,7 @@ func (m module) OnBeforeSessionEnding() {}
 
 // OnDisabled triggers hook for a disabled validator. Acts accordingly until a new session begins.
 func (m module) OnDisabled(validatorIndex sc.U32) {
-	m.depositConsensus(NewOnDisabledConsensusLog(validatorIndex))
+	m.depositConsensus(NewConsensusLogOnDisabled(validatorIndex))
 }
 
 // Module hooks implementation
@@ -942,14 +942,6 @@ func (m module) EpochStartSlot(epochIndex sc.U64, genesisSlot babetypes.Slot, ep
 
 func (m module) EpochConfig() babetypes.EpochConfiguration {
 	return m.config.EpochConfig
-}
-
-func authoritiesFrom(validators sc.Sequence[primitives.Validator]) sc.Sequence[primitives.Authority] {
-	authorities := make(sc.Sequence[primitives.Authority], 0)
-	for _, v := range validators {
-		authorities = append(authorities, primitives.Authority{Id: primitives.AccountId(v.AuthorityId), Weight: 1})
-	}
-	return authorities
 }
 
 // compute randomness for a new epoch. rho is the concatenation of all

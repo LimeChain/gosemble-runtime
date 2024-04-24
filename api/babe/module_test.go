@@ -23,7 +23,7 @@ var (
 	slotDuration  = epochDuration / 100
 
 	genesisEpochConfig = babetypes.EpochConfiguration{
-		C:            types.RationalValue{Numerator: 1, Denominator: 4},
+		C:            types.Tuple2U64{First: 1, Second: 4},
 		AllowedSlots: babetypes.NewPrimaryAndSecondaryPlainSlots(),
 	}
 
@@ -113,7 +113,7 @@ func Test_Configuration_Empty_Config(t *testing.T) {
 func Test_Configuration_Stored_Config(t *testing.T) {
 	setup()
 
-	someStoredConfig := babetypes.EpochConfiguration{C: types.RationalValue{Numerator: 1, Denominator: 1}}
+	someStoredConfig := babetypes.EpochConfiguration{C: types.Tuple2U64{First: 1, Second: 1}}
 
 	expectedConfig := config
 	expectedConfig.C = someStoredConfig.C

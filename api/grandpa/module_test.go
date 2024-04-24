@@ -99,6 +99,14 @@ func Test_Module_Metadata(t *testing.T) {
 					" is finalized by the authorities from block B-1.",
 				},
 			},
+			types.RuntimeApiMethodMetadata{
+				Name:   "current_set_id",
+				Inputs: sc.Sequence[types.RuntimeApiMethodParamMetadata]{},
+				Output: sc.ToCompact(metadata.PrimitiveTypesU64),
+				Docs: sc.Sequence[sc.Str]{
+					"Get current GRANDPA authority set id.",
+				},
+			},
 		},
 		Docs: sc.Sequence[sc.Str]{
 			" APIs for integrating the GRANDPA finality gadget into runtimes.",

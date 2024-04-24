@@ -305,6 +305,30 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			primitives.NewMetadataTypeParameter(metadata.TypesAddress32, "T"),
 		),
 
+		primitives.NewMetadataTypeWithParam(
+			metadata.TypesOptionU64,
+			"Option[U64]",
+			sc.Sequence[sc.Str]{"Option"},
+			primitives.NewMetadataTypeDefinitionVariant(
+				sc.Sequence[primitives.MetadataDefinitionVariant]{
+					primitives.NewMetadataDefinitionVariant(
+						"None",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+						optionNoneIdx,
+						"",
+					),
+					primitives.NewMetadataDefinitionVariant(
+						"Some",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesU64),
+						},
+						optionSomeIdx,
+						"",
+					),
+				}),
+			primitives.NewMetadataTypeParameter(metadata.TypesAddress32, "T"),
+		),
+
 		primitives.NewMetadataTypeWithPath(metadata.TypesKeyTypeId, "KeyTypeId", sc.Sequence[sc.Str]{"sp_core", "crypto", "KeyTypeId"}, primitives.NewMetadataTypeDefinitionComposite(
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesFixedSequence4U8, "[u8; 4]")},
 		)),
@@ -856,6 +880,55 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 					primitives.NewMetadataTypeDefinitionFieldWithNames(typesCompactU64, "proof_size", "u64"),
 				},
 			),
+		),
+
+		// 161
+		primitives.NewMetadataType(
+			metadata.TypesTuple2U64,
+			"Tuple<u64, u64>",
+			primitives.NewMetadataTypeDefinitionTuple(
+				sc.Sequence[sc.Compact]{
+					sc.ToCompact(metadata.PrimitiveTypesU64),
+					sc.ToCompact(metadata.PrimitiveTypesU64),
+				},
+			),
+		),
+
+		// 521
+		primitives.NewMetadataType(
+			metadata.TypesAuthority,
+			"Authority",
+			primitives.NewMetadataTypeDefinitionTuple(
+				sc.Sequence[sc.Compact]{
+					sc.ToCompact(metadata.TypesSr25519PubKey),
+					sc.ToCompact(metadata.PrimitiveTypesU64),
+				},
+			),
+		),
+
+		// 522
+		primitives.NewMetadataType(
+			metadata.TypesSequenceAuthority,
+			"SequenceAuthority",
+			primitives.NewMetadataTypeDefinitionSequence(
+				sc.ToCompact(metadata.TypesAuthority),
+			),
+		),
+
+		// 520
+		primitives.NewMetadataTypeWithParams(
+			metadata.TypesBoundedVecAuthority,
+			"WeakBoundedVec<(AuthorityId, AuthorityWeight), T::MaxAuthorities>",
+			sc.Sequence[sc.Str]{"bounded_collections", "weak_bounded_vec", "WeakBoundedVec"},
+			primitives.NewMetadataTypeDefinitionComposite(
+				sc.Sequence[primitives.MetadataTypeDefinitionField]{
+					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesSequenceAuthority, "Vec<T>"),
+				},
+			),
+			sc.Sequence[primitives.MetadataTypeParameter]{
+				primitives.NewMetadataTypeParameter(metadata.TypesAuthority, "T"),
+				primitives.NewMetadataEmptyTypeParameter("S"),
+			},
 		),
 	}
 }

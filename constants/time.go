@@ -44,4 +44,4 @@ const (
 )
 
 // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
-var PrimaryProbability = types.RationalValue{Numerator: 1, Denominator: 4}
+var PrimaryProbability = types.Tuple2U64{First: 1, Second: 4}

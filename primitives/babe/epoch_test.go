@@ -17,7 +17,7 @@ var (
 		Authorities: sc.Sequence[primitives.Authority]{},
 		Randomness:  NewRandomness(),
 		Config: EpochConfiguration{
-			C:            primitives.RationalValue{Numerator: 2, Denominator: 3},
+			C:            primitives.Tuple2U64{First: 2, Second: 3},
 			AllowedSlots: NewPrimarySlots(),
 		},
 	}

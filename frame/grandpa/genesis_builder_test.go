@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	validGcJson = "{\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]}}"
-	accId, _    = types.NewAccountId(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
-	authorities = sc.Sequence[types.Authority]{{Id: accId, Weight: sc.U64(1)}}
+	validGcJson   = "{\"grandpa\":{\"authorities\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]}}"
+	accountId, _  = types.NewAccountId(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
+	authorityList = sc.Sequence[types.Authority]{{Id: accountId, Weight: 1}}
 )
 
 func Test_GenesisConfig_BuildConfig(t *testing.T) {
-	for _, tt := range []struct {
+	for _, testExample := range []struct {
 		name                     string
 		gcJson                   string
 		expectedErr              error
@@ -63,21 +63,27 @@ func Test_GenesisConfig_BuildConfig(t *testing.T) {
 		{
 			name:               "storage authorities already initialized",
 			gcJson:             validGcJson,
-			storageAuthorities: authorities,
+			storageAuthorities: authorityList,
 			expectedErr:        errAuthoritiesAlreadyInitialized,
 		},
 	} {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(testExample.name, func(t *testing.T) {
 			setup()
-			mockStorageAuthorities.On("Get").Return(tt.storageAuthorities, tt.storageAuthoritiesGetErr)
-			mockStorageAuthorities.On("Put", authorities).Return()
 
-			err := target.BuildConfig([]byte(tt.gcJson))
-			assert.Equal(t, tt.expectedErr, err)
+			mockStorageCurrentSetId.On("Put", sc.U64(0)).Return(nil)
+			mockStorageAuthorities.On("Get").Return(testExample.storageAuthorities, testExample.storageAuthoritiesGetErr)
+			mockStorageAuthorities.On("Put", authorityList).Return(nil)
+			mockStorageSetIdSession.On("Put", sc.U64(0), sc.U32(0)).Return(nil)
 
-			if tt.shouldAssertCalled {
+			err := target.BuildConfig([]byte(testExample.gcJson))
+
+			assert.Equal(t, testExample.expectedErr, err)
+
+			if testExample.shouldAssertCalled {
+				mockStorageCurrentSetId.AssertCalled(t, "Put", sc.U64(0))
 				mockStorageAuthorities.AssertCalled(t, "Get")
-				mockStorageAuthorities.AssertCalled(t, "Put", authorities)
+				mockStorageAuthorities.AssertCalled(t, "Put", authorityList)
+				mockStorageSetIdSession.AssertCalled(t, "Put", sc.U64(0), sc.U32(0))
 			}
 		})
 	}

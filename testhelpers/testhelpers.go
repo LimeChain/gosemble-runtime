@@ -72,7 +72,6 @@ var (
 	KeyTimestampNowHash, _       = common.Twox128Hash([]byte("Now"))
 	KeyTimestampDidUpdateHash, _ = common.Twox128Hash([]byte("DidUpdate"))
 	KeyBlockWeightHash, _        = common.Twox128Hash([]byte("BlockWeight"))
-	KeyGrandpaAuthorities        = []byte(":grandpa_authorities")
 	KeyBalancesHash, _           = common.Twox128Hash([]byte("Balances"))
 	KeyTotalIssuanceHash, _      = common.Twox128Hash([]byte("TotalIssuance"))
 	KeyTransactionPaymentHash, _ = common.Twox128Hash([]byte("TransactionPayment"))
@@ -90,6 +89,13 @@ var (
 	KeyNextEpochConfigHash, _          = common.Twox128Hash([]byte("NextEpochConfig"))
 	KeyPendingEpochConfigChangeHash, _ = common.Twox128Hash([]byte("PendingEpochConfigChange"))
 	KeyRandomnessHash, _               = common.Twox128Hash([]byte("Randomness"))
+)
+
+// Grandpa storage keys
+var (
+	KeyGrandpaHash, _     = common.Twox128Hash([]byte("Grandpa"))
+	KeyGrandpaAuthorities = []byte(":grandpa_authorities")
+	KeyStalledHash, _     = common.Twox128Hash([]byte("Stalled"))
 )
 
 // Session storage keys

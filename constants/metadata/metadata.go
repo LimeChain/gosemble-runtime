@@ -194,7 +194,7 @@ const (
 	TypesSequenceAuthority
 	TypesBoundedVecAuthority
 
-	TypesRationalValueU64
+	TypesTuple2U64
 	TypesSlot
 	TypesOptionFixedSequence32U8
 	TypesVrfSignature
@@ -214,4 +214,10 @@ const (
 	TypesBabeSecondaryVRFPreDigest
 	TypesBabeErrors
 	TypesBabeCalls
+
+	TypesOptionU64
+	TypesGrandpaStoredState
+	TypesGrandpaStoredPendingChange
+	TypesGrandpaEvent
+	TypesGrandpaCalls
 )

@@ -62,6 +62,16 @@ func (m *GrandpaModule) Authorities() (sc.Sequence[primitives.Authority], error)
 	return args.Get(0).(sc.Sequence[primitives.Authority]), args.Get(1).(error)
 }
 
+func (m *GrandpaModule) CurrentSetId() (sc.U64, error) {
+	args := m.Called()
+
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.U64), nil
+	}
+
+	return args.Get(0).(sc.U64), args.Get(1).(error)
+}
+
 func (m *GrandpaModule) CreateInherent(inherent types.InherentData) (sc.Option[types.Call], error) {
 	args := m.Called(inherent)
 	if args.Get(1) == nil {

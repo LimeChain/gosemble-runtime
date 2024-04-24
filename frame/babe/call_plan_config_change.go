@@ -88,7 +88,7 @@ func (c callPlanConfigChange) Dispatch(origin primitives.RuntimeOrigin, args sc.
 	config := args[0].(NextConfigDescriptor)
 
 	if reflect.TypeOf(config) == reflect.TypeOf(NextConfigDescriptor{}) && reflect.TypeOf(config.V1) == reflect.TypeOf(babetypes.EpochConfiguration{}) {
-		if !((config.V1.C.Numerator != 0 || !reflect.DeepEqual(config.V1.AllowedSlots, babetypes.NewPrimarySlots())) && config.V1.C.Denominator != 0) {
+		if !((config.V1.C.First != 0 || !reflect.DeepEqual(config.V1.AllowedSlots, babetypes.NewPrimarySlots())) && config.V1.C.Second != 0) {
 			return primitives.PostDispatchInfo{}, NewDispatchErrorInvalidConfiguration(c.ModuleId)
 		}
 	}

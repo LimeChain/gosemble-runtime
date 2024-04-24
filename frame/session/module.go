@@ -9,6 +9,7 @@ import (
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -34,7 +35,7 @@ type Module interface {
 	IsDisabled(index sc.U32) (bool, error)
 	DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr25519PublicKey], error)
 
-	AppendHandlers(module OneSessionHandler)
+	AppendHandlers(module sessiontypes.OneSessionHandler)
 }
 
 type module struct {
@@ -159,7 +160,7 @@ func (m module) DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr
 	return m.handler.DecodeKeys(buffer)
 }
 
-func (m module) AppendHandlers(module OneSessionHandler) {
+func (m module) AppendHandlers(module sessiontypes.OneSessionHandler) {
 	m.handler.AppendHandlers(module)
 }
 

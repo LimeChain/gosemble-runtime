@@ -19,7 +19,7 @@ var (
 
 	slotDuration        = sc.U64(2000) // milliseconds
 	epochLength         = sc.U64(200)  // slots
-	probabilityConstant = primitives.RationalValue{Numerator: 2, Denominator: 3}
+	probabilityConstant = primitives.Tuple2U64{First: 2, Second: 3}
 	allowedSlots        = babetypes.NewPrimaryAndSecondaryVRFSlots()
 	authorities         = sc.Sequence[primitives.Authority]{
 		primitives.Authority{Id: primitives.AccountId(pubKey1), Weight: 1},

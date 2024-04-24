@@ -15,18 +15,6 @@ const (
 func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 	return sc.Sequence[primitives.MetadataType]{
 
-		// 161
-		primitives.NewMetadataType(
-			metadata.TypesRationalValueU64,
-			"RationalValue",
-			primitives.NewMetadataTypeDefinitionTuple(
-				sc.Sequence[sc.Compact]{
-					sc.ToCompact(metadata.PrimitiveTypesU64),
-					sc.ToCompact(metadata.PrimitiveTypesU64),
-				},
-			),
-		),
-
 		// 158
 		primitives.NewMetadataTypeWithPath(
 			metadata.TypesSlot,
@@ -49,43 +37,6 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 					primitives.NewMetadataTypeDefinitionField(metadata.TypesFixedSequence32U8),
 				},
 			),
-		),
-
-		// 521
-		primitives.NewMetadataType(
-			metadata.TypesAuthority,
-			"Authority",
-			primitives.NewMetadataTypeDefinitionTuple(
-				sc.Sequence[sc.Compact]{
-					sc.ToCompact(metadata.TypesSr25519PubKey),
-					sc.ToCompact(metadata.PrimitiveTypesU64),
-				},
-			),
-		),
-
-		// 522
-		primitives.NewMetadataType(
-			metadata.TypesSequenceAuthority,
-			"SequenceAuthority",
-			primitives.NewMetadataTypeDefinitionSequence(
-				sc.ToCompact(metadata.TypesAuthority),
-			),
-		),
-
-		// 520
-		primitives.NewMetadataTypeWithParams(
-			metadata.TypesBoundedVecAuthority,
-			"WeakBoundedVec<(AuthorityId, BabeAuthorityWeight), T::MaxAuthorities>",
-			sc.Sequence[sc.Str]{"bounded_collections", "weak_bounded_vec", "WeakBoundedVec"},
-			primitives.NewMetadataTypeDefinitionComposite(
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesSequenceAuthority, "Vec<T>"),
-				},
-			),
-			sc.Sequence[primitives.MetadataTypeParameter]{
-				primitives.NewMetadataTypeParameter(metadata.TypesAuthority, "T"),
-				primitives.NewMetadataEmptyTypeParameter("S"),
-			},
 		),
 
 		// 95
@@ -158,7 +109,7 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 			sc.Sequence[sc.Str]{"sp_consensus_babe", "BabeEpochConfiguration"},
 			primitives.NewMetadataTypeDefinitionComposite(
 				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesRationalValueU64, "(u64, u64)", "c"),
+					primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesTuple2U64, "(u64, u64)", "c"),
 					primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesAllowedSlots, "AllowedSlots", "allowed_slots"),
 				},
 			),
@@ -174,7 +125,7 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 					primitives.NewMetadataDefinitionVariant(
 						"V1",
 						sc.Sequence[primitives.MetadataTypeDefinitionField]{
-							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesRationalValueU64, "(u64, u64)", "c"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesTuple2U64, "(u64, u64)", "c"),
 							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesAllowedSlots, "AllowedSlots", "allowed_slots"),
 						},
 						NextConfigDescriptorV1,
@@ -427,7 +378,7 @@ func (m module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 			primitives.NewMetadataModuleStorageEntry( // TODO fix
 				"EpochStart",
 				primitives.MetadataModuleStorageEntryModifierDefault,
-				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesRationalValueU64)),
+				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.TypesTuple2U64)),
 				"The block numbers when the last and current epoch have started, respectively `N-1` and `N`. NOTE: We track this is in order to annotate the block number when a given pool of entropy was fixed (i.e. it was known to chain observers). Since epochs are defined in slots, which may be skipped, the block numbers may not line up with the slot numbers.",
 			),
 

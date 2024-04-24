@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	sc "github.com/LimeChain/goscale"
+	session "github.com/LimeChain/gosemble/primitives/session"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -23,14 +24,14 @@ type Handler interface {
 	// OnDisabled triggers hook for a disabled validator. Acts accordingly until a new session begins.
 	OnDisabled(validatorIndex sc.U32)
 
-	AppendHandlers(module OneSessionHandler)
+	AppendHandlers(module session.OneSessionHandler)
 }
 
 type handler struct {
-	modules []OneSessionHandler
+	modules []session.OneSessionHandler
 }
 
-func NewHandler(modules []OneSessionHandler) Handler {
+func NewHandler(modules []session.OneSessionHandler) Handler {
 	return handler{modules: modules}
 }
 
@@ -112,7 +113,7 @@ func (h handler) OnDisabled(validatorIndex sc.U32) {
 	}
 }
 
-func takeOutKeys(module OneSessionHandler, validators sc.Sequence[queuedKey]) (sc.Sequence[primitives.Validator], error) {
+func takeOutKeys(module session.OneSessionHandler, validators sc.Sequence[queuedKey]) (sc.Sequence[primitives.Validator], error) {
 	keyTypeId := module.KeyTypeId()
 	fixedKeyTypeId := sc.BytesToFixedSequenceU8(keyTypeId[:])
 
@@ -136,6 +137,6 @@ func takeOutKeys(module OneSessionHandler, validators sc.Sequence[queuedKey]) (s
 	return result, nil
 }
 
-func (h handler) AppendHandlers(module OneSessionHandler) {
+func (h handler) AppendHandlers(module session.OneSessionHandler) {
 	h.modules = append(h.modules, module)
 }

@@ -33,11 +33,17 @@ import (
 	"github.com/LimeChain/gosemble/hooks"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/log"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 const (
-	BabeMaxAuthorities sc.U32 = 100
+	BondingDuration               = 24 * 28
+	SessionsPerEra                = 6
+	BabeMaxAuthorities     sc.U32 = 100
+	GrandpaMaxAuthorities         = 100
+	GrandpaMaxNominators          = 64
+	MaxSetIdSessionEntries        = BondingDuration * SessionsPerEra
 )
 
 const (
@@ -156,7 +162,7 @@ func initializeModules() []primitives.Module {
 		logger,
 	)
 
-	handler := session.NewHandler([]session.OneSessionHandler{})
+	handler := session.NewHandler([]sessiontypes.OneSessionHandler{})
 
 	periodicSession := session.NewPeriodicSessions(Period, Offset)
 
@@ -195,13 +201,25 @@ func initializeModules() []primitives.Module {
 
 	sessionModule.AppendHandlers(babeModule)
 
+	grandpaModule := grandpa.New(
+		GrandpaIndex,
+		grandpa.NewConfig(
+			primitives.PublicKeyEd25519,
+			GrandpaMaxAuthorities,
+			GrandpaMaxNominators,
+			MaxSetIdSessionEntries,
+			systemModule,
+			sessionModule,
+		),
+		logger,
+		mdGenerator,
+	)
+
 	timestampModule := timestamp.New(
 		TimestampIndex,
 		timestamp.NewConfig(babeModule, DbWeight, TimestampMinimumPeriod),
 		mdGenerator,
 	)
-
-	grandpaModule := grandpa.New(GrandpaIndex, logger, mdGenerator)
 
 	balancesModule := balances.New(
 		BalancesIndex,
@@ -413,19 +431,20 @@ func BabeApiNextEpoch(_, _ int32) int64 {
 		NextEpoch()
 }
 
-//go:export BabeApi_generate_key_ownership_proof
-func BabeApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
-	return runtimeApi().
-		Module(apiBabe.ApiModuleName).(apiBabe.Module).
-		GenerateKeyOwnershipProof(dataPtr, dataLen)
-}
+// TODO: implement
+// //go:export BabeApi_generate_key_ownership_proof
+// func BabeApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
+// 	return runtimeApi().
+// 		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+// 		GenerateKeyOwnershipProof(dataPtr, dataLen)
+// }
 
-//go:export BabeApi_submit_report_equivocation_unsigned_extrinsic
-func BabeApiSubmitReportEquivocationUnsignedExtrinsic(dataPtr int32, dataLen int32) int64 {
-	return runtimeApi().
-		Module(apiBabe.ApiModuleName).(apiBabe.Module).
-		SubmitReportEquivocationUnsignedExtrinsic(dataPtr, dataLen)
-}
+// //go:export BabeApi_submit_report_equivocation_unsigned_extrinsic
+// func BabeApiSubmitReportEquivocationUnsignedExtrinsic(dataPtr int32, dataLen int32) int64 {
+// 	return runtimeApi().
+// 		Module(apiBabe.ApiModuleName).(apiBabe.Module).
+// 		SubmitReportEquivocationUnsignedExtrinsic(dataPtr, dataLen)
+// }
 
 //go:export AccountNonceApi_account_nonce
 func AccountNonceApiAccountNonce(dataPtr int32, dataLen int32) int64 {

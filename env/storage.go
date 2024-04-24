@@ -41,3 +41,8 @@ func ExtStorageCommitTransactionVersion()
 
 //go:wasmimport env ext_storage_rollback_transaction_version_1
 func ExtStorageRollbackTransactionVersion1()
+
+// TODO
+// ext_storage_changes_root_version_1
+// ext_storage_clear_prefix_version_1
+// ext_storage_root_version_1

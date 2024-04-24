@@ -32,11 +32,17 @@ import (
 	txExtensions "github.com/LimeChain/gosemble/frame/transaction_payment/extensions"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 const (
-	AuraMaxAuthorities = 100
+	BondingDuration        = 24 * 28
+	SessionsPerEra         = 6
+	AuraMaxAuthorities     = 100
+	GrandpaMaxAuthorities  = 100
+	GrandpaMaxNominators   = 64
+	MaxSetIdSessionEntries = BondingDuration * SessionsPerEra
 )
 
 const (
@@ -158,9 +164,7 @@ func initializeModules() []primitives.Module {
 		mdGenerator,
 	)
 
-	grandpaModule := grandpa.New(GrandpaIndex, logger, mdGenerator)
-
-	handler := session.NewHandler([]session.OneSessionHandler{auraModule})
+	handler := session.NewHandler([]sessiontypes.OneSessionHandler{auraModule})
 
 	periodicSession := session.NewPeriodicSessions(Period, Offset)
 	sessionModule := session.New(
@@ -168,6 +172,20 @@ func initializeModules() []primitives.Module {
 		session.NewConfig(DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
 		mdGenerator,
 		logger)
+
+	grandpaModule := grandpa.New(
+		GrandpaIndex,
+		grandpa.NewConfig(
+			primitives.PublicKeyEd25519,
+			GrandpaMaxAuthorities,
+			GrandpaMaxNominators,
+			MaxSetIdSessionEntries,
+			systemModule,
+			sessionModule,
+		),
+		logger,
+		mdGenerator,
+	)
 
 	balancesModule := balances.New(
 		BalancesIndex,
@@ -440,6 +458,35 @@ func GrandpaApiAuthorities(_, _ int32) int64 {
 		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
 		Authorities()
 }
+
+//go:export GrandpaApi_current_set_id
+func GrandpaApiCurrentSetId() int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		CurrentSetId()
+}
+
+// TODO: implement
+
+//go:export GrandpaApi_submit_report_equivocation_unsigned_extrinsic
+// func GrandpaApi_submit_report_equivocation_unsigned_extrinsic(dataPtr int32, dataLen int32) int64 {
+// 	return runtimeApi().
+// 		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+// 		SubmitUnsignedEquivocationReport(dataPtr, dataLen)
+// }
+
+// //go:export GrandpaApi_generate_key_ownership_proof
+// func GrandpaApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
+// 	// (_set_id sp_consensus_grandpa::SetId, authority_id GrandpaId)
+
+// 	// use codec::Encode;
+
+// 	// Historical::prove((sp_consensus_grandpa::KEY_TYPE, authority_id))
+// 	// 	.map(|p| p.encode())
+// 	// 	.map(sp_consensus_grandpa::OpaqueKeyOwnershipProof::new)
+
+// 	return 0 // Option<sp_consensus_grandpa::OpaqueKeyOwnershipProof>
+// }
 
 //go:export OffchainWorkerApi_offchain_worker
 func OffchainWorkerApiOffchainWorker(dataPtr int32, dataLen int32) int64 {

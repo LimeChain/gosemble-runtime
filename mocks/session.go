@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	sc "github.com/LimeChain/goscale"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/mock"
@@ -133,6 +134,6 @@ func (m *SessionModule) OffchainWorker(n sc.U64) {
 	m.Called(n)
 }
 
-func (m *SessionModule) AppendHandlers(module *OneSessionHandler) {
+func (m *SessionModule) AppendHandlers(module sessiontypes.OneSessionHandler) {
 	m.Called(module)
 }

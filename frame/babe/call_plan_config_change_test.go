@@ -15,7 +15,7 @@ import (
 var (
 	nextConfig = NextConfigDescriptor{
 		V1: babetypes.EpochConfiguration{
-			C:            types.RationalValue{Numerator: 1, Denominator: 2},
+			C:            types.Tuple2U64{First: 1, Second: 2},
 			AllowedSlots: babetypes.NewPrimarySlots(),
 		},
 	}
