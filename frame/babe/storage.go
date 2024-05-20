@@ -42,7 +42,7 @@ type storage struct {
 	EpochIndex               support.StorageValue[sc.U64]
 	EpochStart               support.StorageValue[babetypes.EpochStartBlocks]
 	GenesisSlot              support.StorageValue[babetypes.Slot]
-	Initialized              support.StorageValue[sc.Option[PreDigest]]
+	Initialized              support.StorageValue[sc.Option[babetypes.PreDigest]]
 	Lateness                 support.StorageValue[sc.U64]
 	NextAuthorities          support.StorageValue[sc.Sequence[primitives.Authority]]
 	NextEpochConfig          support.StorageValue[babetypes.EpochConfiguration]
@@ -86,8 +86,8 @@ func decodeOptionRandomness(buffer *bytes.Buffer) (sc.Option[sc.FixedSequence[sc
 	return sc.DecodeOptionWith(buffer, decodeRandomness)
 }
 
-func decodePreDigest(buffer *bytes.Buffer) (sc.Option[PreDigest], error) {
-	return sc.DecodeOptionWith(buffer, DecodePreDigest)
+func decodePreDigest(buffer *bytes.Buffer) (sc.Option[babetypes.PreDigest], error) {
+	return sc.DecodeOptionWith(buffer, babetypes.DecodePreDigest)
 }
 
 func decodeSkippedEpochs(buffer *bytes.Buffer) (sc.FixedSequence[babetypes.SkippedEpoch], error) {

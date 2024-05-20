@@ -1,11 +1,15 @@
 package grandpa
 
 import (
+	"bytes"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/grandpa"
+	grandpatypes "github.com/LimeChain/gosemble/primitives/grandpa"
 	"github.com/LimeChain/gosemble/primitives/hashing"
 	"github.com/LimeChain/gosemble/primitives/log"
+	"github.com/LimeChain/gosemble/primitives/session"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/utils"
 )
@@ -63,6 +67,52 @@ func (m Module) CurrentSetId() int64 {
 		m.logger.Critical(err.Error())
 	}
 	return m.memUtils.BytesToOffsetAndSize(setId.Bytes())
+}
+
+func (m Module) SubmitReportEquivocationUnsignedExtrinsic(dataPtr int32, dataLen int32) int64 {
+	b := m.memUtils.GetWasmMemorySlice(dataPtr, dataLen)
+	buffer := bytes.NewBuffer(b)
+
+	equivocationProof, err := grandpatypes.DecodeEquivocationProof(buffer)
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
+
+	opaqueKeyOwnershipProof, err := sc.DecodeSequence[sc.U8](buffer)
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
+
+	keyOwnerProof, err := session.DecodeMembershipProof(bytes.NewBuffer(sc.SequenceU8ToBytes(opaqueKeyOwnershipProof)))
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
+
+	res, err := m.grandpa.SubmitUnsignedEquivocationReport(equivocationProof, keyOwnerProof)
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
+
+	return m.memUtils.BytesToOffsetAndSize(res.Bytes())
+}
+
+func (m Module) GenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
+	b := m.memUtils.GetWasmMemorySlice(dataPtr, dataLen)
+	buffer := bytes.NewBuffer(b)
+
+	_, err := sc.DecodeU64(buffer)
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
+
+	authorityId, err := primitives.DecodeAccountId(buffer)
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
+
+	res := m.grandpa.HistoricalKeyOwnershipProof(authorityId)
+	return m.memUtils.BytesToOffsetAndSize(res.Bytes())
+
 }
 
 // Metadata returns the runtime api metadata of the module.

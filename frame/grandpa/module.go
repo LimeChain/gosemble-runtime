@@ -9,7 +9,9 @@ import (
 	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
+	grandpatypes "github.com/LimeChain/gosemble/primitives/grandpa"
 	"github.com/LimeChain/gosemble/primitives/log"
+	staking "github.com/LimeChain/gosemble/primitives/staking"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -40,36 +42,44 @@ type Module interface {
 	KeyTypeId() [4]byte
 	Authorities() (sc.Sequence[primitives.Authority], error)
 	CurrentSetId() (sc.U64, error)
+	SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) (sc.Option[sc.Empty], error)
+	HistoricalKeyOwnershipProof(authorityId primitives.AccountId) sc.Option[grandpatypes.OpaqueKeyOwnershipProof]
+
+	StorageSetIdSessionGet(sc.U64) (sc.U32, error)
 }
 
 type module struct {
 	primitives.DefaultInherentProvider
 	hooks.DefaultDispatchModule
 
-	index         sc.U8
-	config        *Config
-	constants     *consts
-	storage       *storage
-	functions     map[sc.U8]primitives.Call
-	systemModule  system.Module
-	sessionModule session.Module
-	mdGenerator   *primitives.MetadataTypeGenerator
-	logger        log.Logger
+	index                    sc.U8
+	config                   *Config
+	constants                *consts
+	storage                  *storage
+	functions                map[sc.U8]primitives.Call
+	keyOwnerProof            KeyOwnerProofSystem
+	equivocationReportSystem staking.OffenceReportSystem
+	systemModule             system.Module
+	sessionModule            session.Module
+	mdGenerator              *primitives.MetadataTypeGenerator
+	logger                   log.Logger
 }
 
 func New(index sc.U8, config *Config, logger log.Logger, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	functions := map[sc.U8]primitives.Call{}
 
 	moduleInstance := module{
-		index:         index,
-		config:        config,
-		constants:     newConstants(config.MaxAuthorities, config.MaxNominators, config.MaxSetIdSessionEntries),
-		storage:       newStorage(),
-		functions:     functions,
-		mdGenerator:   mdGenerator,
-		logger:        logger,
-		systemModule:  config.SystemModule,
-		sessionModule: config.SessionModule,
+		index:                    index,
+		config:                   config,
+		constants:                newConstants(config.MaxAuthorities, config.MaxNominators, config.MaxSetIdSessionEntries),
+		storage:                  newStorage(),
+		functions:                functions,
+		keyOwnerProof:            config.KeyOwnerProof,
+		equivocationReportSystem: config.EquivocationReportSystem,
+		mdGenerator:              mdGenerator,
+		logger:                   logger,
+		systemModule:             config.SystemModule,
+		sessionModule:            config.SessionModule,
 	}
 
 	functions[functionReportEquivocationIndex] = newCallReportEquivocation(index, functionReportEquivocationIndex)
@@ -79,6 +89,10 @@ func New(index sc.U8, config *Config, logger log.Logger, mdGenerator *primitives
 	moduleInstance.functions = functions
 
 	return moduleInstance
+}
+
+func (m module) StorageSetIdSessionGet(key sc.U64) (sc.U32, error) {
+	return m.storage.SetIdSession.Get(key)
 }
 
 func (m module) GetIndex() sc.U8 {
@@ -199,7 +213,7 @@ func (m module) OnNewSession(changed bool, validators sc.Sequence[primitives.Val
 func (m module) OnBeforeSessionEnding() {}
 
 func (m module) OnDisabled(validatorIndex sc.U32) {
-	m.depositLog(NewConsensusLogOnDisabled(sc.U64(validatorIndex)))
+	m.depositLog(grandpatypes.NewConsensusLogOnDisabled(sc.U64(validatorIndex)))
 }
 
 // Module hooks implementation
@@ -222,15 +236,15 @@ func (m module) OnFinalize(blockNumber sc.U64) error {
 		if blockNumber == pendingChange.ScheduledAt {
 			nextAuthorities := pendingChange.NextAuthorities
 
-			scheduledChange := ScheduledChange{
+			scheduledChange := grandpatypes.ScheduledChange{
 				NextAuthorities: nextAuthorities,
 				Delay:           pendingChange.Delay,
 			}
 
 			if median := pendingChange.Forced.Value; pendingChange.Forced.HasValue {
-				m.depositLog(NewConsensusLogForcedChange(median, scheduledChange))
+				m.depositLog(grandpatypes.NewConsensusLogForcedChange(median, scheduledChange))
 			} else {
-				m.depositLog(NewConsensusLogScheduledChange(scheduledChange))
+				m.depositLog(grandpatypes.NewConsensusLogScheduledChange(scheduledChange))
 			}
 		}
 
@@ -253,7 +267,7 @@ func (m module) OnFinalize(blockNumber sc.U64) error {
 		// signal change to pause
 		action := state.VaryingData[1].(ScheduledAction)
 		if blockNumber == action.ScheduledAt {
-			m.depositLog(NewConsensusLogPause(action.Delay))
+			m.depositLog(grandpatypes.NewConsensusLogPause(action.Delay))
 		}
 
 		// enact change to paused state
@@ -265,7 +279,7 @@ func (m module) OnFinalize(blockNumber sc.U64) error {
 		// signal change to resume
 		action := state.VaryingData[1].(ScheduledAction)
 		if blockNumber == action.ScheduledAt {
-			m.depositLog(NewConsensusLogResume(action.Delay))
+			m.depositLog(grandpatypes.NewConsensusLogResume(action.Delay))
 		}
 
 		// enact change to live state
@@ -345,7 +359,7 @@ func (m module) scheduleChange(nextAuthorities sc.Sequence[primitives.Authority]
 }
 
 // Deposit one of this module's logs.
-func (m module) depositLog(log ConsensusLog) {
+func (m module) depositLog(log grandpatypes.ConsensusLog) {
 	m.systemModule.DepositLog(
 		primitives.NewDigestItemConsensusMessage(
 			sc.BytesToFixedSequenceU8(EngineId[:]),
@@ -381,7 +395,25 @@ func (m module) initialize(authorities sc.Sequence[primitives.Authority]) error 
 	return nil
 }
 
-func (m module) onStalled(furtherWait sc.U64, median sc.U64) {
+// Submits an extrinsic to report an equivocation. This method will create
+// an unsigned extrinsic with a call to `report_equivocation_unsigned` and
+// will push the transaction to the pool. Only useful in an offchain
+// context.
+func (m module) SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) (sc.Option[sc.Empty], error) {
+	err := m.equivocationReportSystem.PublishEvidence(equivocationProof, keyOwnerProof)
+	if err != nil {
+		return sc.NewOption[sc.Empty](nil), err
+	}
+	return sc.NewOption[sc.Empty](sc.Empty{}), nil
+}
+
+func (m module) HistoricalKeyOwnershipProof(authorityId primitives.AccountId) sc.Option[grandpatypes.OpaqueKeyOwnershipProof] {
+	bytes := m.keyOwnerProof.Prove(KeyTypeId, authorityId).Bytes()
+	proof := grandpatypes.OpaqueKeyOwnershipProof(sc.BytesToSequenceU8(bytes))
+	return sc.NewOption[grandpatypes.OpaqueKeyOwnershipProof](proof)
+}
+
+func (m module) OnStalled(furtherWait sc.U64, median sc.U64) {
 	// when we record old authority sets we could try to figure out _who_
 	// failed. until then, we can't meaningfully guard against
 	// `next == last` the way that normal session changes do.

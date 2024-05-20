@@ -5,52 +5,16 @@ import (
 	"errors"
 
 	sc "github.com/LimeChain/goscale"
+	"github.com/LimeChain/gosemble/primitives/session"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
-// type BoundedList[T sc.Encodable] struct {
-// 	List  sc.Sequence[T]
-// 	Limit sc.U32
-// }
+var (
+	errInvalidStoredStateType = errors.New("invalid 'StoredState' index")
+)
 
 type StaleNotifier interface {
-	onStalled(furtherWait sc.U64, median sc.U64)
-}
-
-// A scheduled change of authority set.
-type ScheduledChange struct {
-	// The new authorities after the change, along with their respective weights.
-	NextAuthorities sc.Sequence[primitives.Authority]
-	// The number of blocks to delay.
-	Delay sc.U64
-}
-
-func (s ScheduledChange) Encode(buffer *bytes.Buffer) error {
-	return sc.EncodeEach(buffer,
-		s.NextAuthorities,
-		s.Delay,
-	)
-}
-
-func (s ScheduledChange) Bytes() []byte {
-	return sc.EncodedBytes(s)
-}
-
-func DecodeScheduledChange(buffer *bytes.Buffer) (ScheduledChange, error) {
-	nextAuthorities, err := sc.DecodeSequenceWith(buffer, primitives.DecodeAuthority)
-	if err != nil {
-		return ScheduledChange{}, err
-	}
-
-	delay, err := sc.DecodeU64(buffer)
-	if err != nil {
-		return ScheduledChange{}, err
-	}
-
-	return ScheduledChange{
-		NextAuthorities: nextAuthorities,
-		Delay:           delay,
-	}, nil
+	OnStalled(furtherWait sc.U64, median sc.U64)
 }
 
 // A stored pending change. `Limit` is the bound for `next_authorities`
@@ -65,8 +29,6 @@ type StoredPendingChange struct {
 	// indicates the median last finalized block when the change was signaled.
 	Forced sc.Option[sc.U64]
 }
-
-// #[codec(mel_bound(N: MaxEncodedLen, Limit: Get<u32>))]
 
 func (s StoredPendingChange) Encode(buffer *bytes.Buffer) error {
 	return sc.EncodeEach(buffer,
@@ -208,6 +170,31 @@ func DecodeStoredState(buffer *bytes.Buffer) (StoredState, error) {
 		}
 		return NewStoredStatePendingResume(scheduledAction), nil
 	default:
-		return StoredState{}, errors.New("invalid 'StoredState' index")
+		return StoredState{}, errInvalidStoredStateType
 	}
+}
+
+// Something which can compute and check proofs of
+// a historical key owner and return full identification data of that
+// key owner.
+type KeyOwnerProofSystem interface {
+	// Prove membership of a key owner in the current block-state.
+	//
+	// This should typically only be called off-chain, since it may be
+	// computationally heavy.
+	//
+	// Returns `Some` iff the key owner referred to by the given `key` is a
+	// member of the current set.
+	Prove(key [4]byte, authorityId primitives.AccountId) sc.Option[session.MembershipProof]
+
+	// TODO
+	// Check a proof of membership on-chain. Return `Some` iff the proof is
+	// valid and recent enough to check.
+	// CheckProof(key Key, proof session.MembershipProof) sc.Option[IdentificationTuple]
+}
+
+type DefaultKeyOwnerProofSystem struct{}
+
+func (d DefaultKeyOwnerProofSystem) Prove(key [4]byte, authorityId primitives.AccountId) sc.Option[session.MembershipProof] {
+	return sc.NewOption[session.MembershipProof](nil)
 }

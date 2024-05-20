@@ -201,7 +201,7 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 						sc.Sequence[primitives.MetadataTypeDefinitionField]{
 							primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesBabePrimaryPreDigest, "PrimaryPreDigest"),
 						},
-						Primary,
+						babetypes.Primary,
 						"",
 					),
 					primitives.NewMetadataDefinitionVariant(
@@ -209,7 +209,7 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 						sc.Sequence[primitives.MetadataTypeDefinitionField]{
 							primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesBabeSecondaryPlainPreDigest, "SecondaryPlainPreDigest"),
 						},
-						SecondaryPlain,
+						babetypes.SecondaryPlain,
 						"",
 					),
 					primitives.NewMetadataDefinitionVariant(
@@ -217,7 +217,7 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 						sc.Sequence[primitives.MetadataTypeDefinitionField]{
 							primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesBabeSecondaryVRFPreDigest, "SecondaryVRFPreDigest"),
 						},
-						SecondaryVRF,
+						babetypes.SecondaryVRF,
 						"",
 					),
 				},

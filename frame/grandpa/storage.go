@@ -7,9 +7,14 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
+// TODO:
+// Gossamer uses ":grandpa_authorities" as storage key which
+// is different from the key used in the Substrate node which
+// is "Authorities"
+
 var (
 	keyGrandpa       = []byte("Grandpa")
-	keyAuthorities   = []byte("Authorities") // TODO: Gossamer uses ":grandpa_authorities"
+	keyAuthorities   = []byte(":grandpa_authorities")
 	keyCurrentSetId  = []byte("CurrentSetId")
 	keyStalled       = []byte("Stalled")
 	keyPendingChange = []byte("PendingChange")
@@ -32,8 +37,8 @@ func newStorage() *storage {
 	hashing := io.NewHashing()
 
 	return &storage{
-		// Authorities:   support.NewSimpleStorageValue(keyAuthorities, primitives.DecodeAuthorityList),
-		Authorities:   support.NewHashStorageValue(keyGrandpa, keyAuthorities, primitives.DecodeAuthorityList),
+		Authorities: support.NewSimpleStorageValue(keyAuthorities, primitives.DecodeAuthorityList),
+		// Authorities:   support.NewHashStorageValue(keyGrandpa, keyAuthorities, primitives.DecodeAuthorityList),
 		CurrentSetId:  support.NewHashStorageValue(keyGrandpa, keyCurrentSetId, sc.DecodeU64),
 		Stalled:       support.NewHashStorageValue(keyGrandpa, keyStalled, primitives.DecodeTuple2U64),
 		PendingChange: support.NewHashStorageValue(keyGrandpa, keyPendingChange, DecodeStoredPendingChange),

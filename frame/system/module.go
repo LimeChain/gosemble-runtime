@@ -1208,3 +1208,13 @@ func EnsureSignedOrRoot(origin primitives.RawOrigin) (sc.Option[primitives.Accou
 
 	return sc.Option[primitives.AccountId]{}, primitives.NewDispatchErrorBadOrigin()
 }
+
+// Ensure that the origin `o` represents an unsigned extrinsic. Returns `Ok` or an `Err` otherwise.
+func EnsureNone(origin primitives.RawOrigin) (sc.Option[primitives.AccountId], error) {
+	switch origin.IsNoneOrigin() {
+	case true:
+		return sc.Option[primitives.AccountId]{}, nil
+	default:
+		return sc.Option[primitives.AccountId]{}, primitives.NewDispatchErrorBadOrigin()
+	}
+}

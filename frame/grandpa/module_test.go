@@ -10,6 +10,8 @@ import (
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/mocks"
+	"github.com/LimeChain/gosemble/primitives/grandpa"
+	grandpatypes "github.com/LimeChain/gosemble/primitives/grandpa"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
@@ -25,18 +27,20 @@ const (
 )
 
 var (
-	target                   module
-	mockSystemModule         *mocks.SystemModule
-	mockSessionModule        *mocks.SessionModule
-	mockStorageAuthorities   *mocks.StorageValue[sc.Sequence[primitives.Authority]]
-	mockStorageSetIdSession  *mocks.StorageMap[sc.U64, SessionIndex]
-	mockStorageStalled       *mocks.StorageValue[primitives.Tuple2U64]
-	mockStorageCurrentSetId  *mocks.StorageValue[sc.U64]
-	mockStoragePendingChange *mocks.StorageValue[StoredPendingChange]
-	mockStorageNextForced    *mocks.StorageValue[sc.U64]
-	mockStorageState         *mocks.StorageValue[StoredState]
-	logger                   = log.NewLogger()
-	mdGenerator              = primitives.NewMetadataTypeGenerator()
+	target                       module
+	mockSystemModule             *mocks.SystemModule
+	mockSessionModule            *mocks.SessionModule
+	mockEquivocationReportSystem *mocks.EquivocationReportSystem
+	mockKeyOwnerProofSystem      *mocks.KeyOwnerProofSystem
+	mockStorageAuthorities       *mocks.StorageValue[sc.Sequence[primitives.Authority]]
+	mockStorageSetIdSession      *mocks.StorageMap[sc.U64, sc.U32]
+	mockStorageStalled           *mocks.StorageValue[primitives.Tuple2U64]
+	mockStorageCurrentSetId      *mocks.StorageValue[sc.U64]
+	mockStoragePendingChange     *mocks.StorageValue[StoredPendingChange]
+	mockStorageNextForced        *mocks.StorageValue[sc.U64]
+	mockStorageState             *mocks.StorageValue[StoredState]
+	logger                       = log.NewLogger()
+	mdGenerator                  = primitives.NewMetadataTypeGenerator()
 )
 
 var (
@@ -75,8 +79,10 @@ var (
 func setup() {
 	mockSystemModule = new(mocks.SystemModule)
 	mockSessionModule = new(mocks.SessionModule)
+	mockEquivocationReportSystem = new(mocks.EquivocationReportSystem)
+	mockKeyOwnerProofSystem = new(mocks.KeyOwnerProofSystem)
 	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[primitives.Authority]])
-	mockStorageSetIdSession = new(mocks.StorageMap[sc.U64, SessionIndex])
+	mockStorageSetIdSession = new(mocks.StorageMap[sc.U64, sc.U32])
 	mockStorageStalled = new(mocks.StorageValue[primitives.Tuple2U64])
 	mockStorageCurrentSetId = new(mocks.StorageValue[sc.U64])
 	mockStoragePendingChange = new(mocks.StorageValue[StoredPendingChange])
@@ -88,6 +94,8 @@ func setup() {
 		maxAuthorities,
 		maxNominators,
 		maxSetIdSessionEntries,
+		mockKeyOwnerProofSystem,
+		mockEquivocationReportSystem,
 		mockSystemModule,
 		mockSessionModule,
 	)
@@ -101,30 +109,6 @@ func setup() {
 	target.storage.NextForced = mockStorageNextForced
 	target.storage.State = mockStorageState
 }
-
-// func Test_Grandpa_Module_New(t *testing.T) {
-// 	setup()
-
-// 	assert.Equal(t,
-// 		module{
-// 			DefaultInherentProvider: primitives.DefaultInherentProvider{},
-// 			DefaultDispatchModule:   hooks.DefaultDispatchModule{},
-// 			index:                   moduleId,
-// 			config:                  &Config{},
-// 			constants:               &consts{},
-// 			storage: &storage{
-// 				Authorities:  mockStorageAuthorities,
-// 				SetIdSession: mockStorageSetIdSession,
-// 			},
-// 			functions:     map[sc.U8]primitives.Call{},
-// 			systemModule:  mockSystemModule,
-// 			sessionModule: mockSessionModule,
-// 			mdGenerator:   mdGenerator,
-// 			logger:        logger,
-// 		},
-// 		target,
-// 	)
-// }
 
 func Test_Grandpa_Module_GetIndex(t *testing.T) {
 	setup()
@@ -191,14 +175,14 @@ func Test_Grandpa_Module_OnGenesisSession(t *testing.T) {
 
 	mockStorageAuthorities.On("Get").Return(emptyAuthorities, nil)
 	mockStorageAuthorities.On("Put", authorities).Return(nil)
-	mockStorageSetIdSession.On("Put", sc.U64(0), SessionIndex(0)).Return(nil)
+	mockStorageSetIdSession.On("Put", sc.U64(0), sc.U32(0)).Return(nil)
 
 	err := target.OnGenesisSession(validators)
 
 	assert.NoError(t, err)
 	mockStorageAuthorities.AssertCalled(t, "Get")
 	mockStorageAuthorities.AssertCalled(t, "Put", authorities)
-	mockStorageSetIdSession.AssertCalled(t, "Put", sc.U64(0), SessionIndex(0))
+	mockStorageSetIdSession.AssertCalled(t, "Put", sc.U64(0), sc.U32(0))
 }
 
 func Test_Grandpa_Module_OnGenesisSession_Decode_Error(t *testing.T) {
@@ -211,7 +195,7 @@ func Test_Grandpa_Module_OnGenesisSession_Decode_Error(t *testing.T) {
 	assert.Error(t, err)
 	mockStorageAuthorities.AssertCalled(t, "Get")
 	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
-	mockStorageSetIdSession.AssertNotCalled(t, "Put", sc.U64(0), SessionIndex(0))
+	mockStorageSetIdSession.AssertNotCalled(t, "Put", sc.U64(0), sc.U32(0))
 }
 
 func Test_Grandpa_Module_OnGenesisSession_Initialized_Authorities_Error(t *testing.T) {
@@ -224,7 +208,7 @@ func Test_Grandpa_Module_OnGenesisSession_Initialized_Authorities_Error(t *testi
 	assert.Equal(t, errAuthoritiesAlreadyInitialized, err)
 	mockStorageAuthorities.AssertCalled(t, "Get")
 	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
-	mockStorageSetIdSession.AssertNotCalled(t, "Put", sc.U64(0), SessionIndex(0))
+	mockStorageSetIdSession.AssertNotCalled(t, "Put", sc.U64(0), sc.U32(0))
 }
 
 func Test_Grandpa_Module_OnGenesisSession_MaxAuthorities_Error(t *testing.T) {
@@ -237,7 +221,7 @@ func Test_Grandpa_Module_OnGenesisSession_MaxAuthorities_Error(t *testing.T) {
 	assert.Equal(t, errAuthoritiesAlreadyInitialized, err)
 	mockStorageAuthorities.AssertCalled(t, "Get")
 	mockStorageAuthorities.AssertNotCalled(t, "Put", authorities)
-	mockStorageSetIdSession.AssertNotCalled(t, "Put", sc.U64(0), SessionIndex(0))
+	mockStorageSetIdSession.AssertNotCalled(t, "Put", sc.U64(0), sc.U32(0))
 }
 
 func Test_Grandpa_Module_OnNewSession_NoChanges(t *testing.T) {
@@ -335,7 +319,7 @@ func Test_Grandpa_Module_OnDisabled(t *testing.T) {
 
 	digest := primitives.NewDigestItemConsensusMessage(
 		sc.BytesToFixedSequenceU8([]byte{'F', 'R', 'N', 'K'}),
-		sc.BytesToSequenceU8(NewConsensusLogOnDisabled(sc.U64(validatorIndex)).Bytes()),
+		sc.BytesToSequenceU8(grandpatypes.NewConsensusLogOnDisabled(sc.U64(validatorIndex)).Bytes()),
 	)
 	mockSystemModule.On("DepositLog", digest).Return(nil)
 
@@ -355,20 +339,10 @@ func Test_Grandpa_Module_OnFinalize_With_Delay_After_Current_Block(t *testing.T)
 	}
 	pendingChangeBytes := sc.BytesToSequenceU8(pendingChange.Bytes())
 
-	// scheduledChange := ScheduledChange{
-	// 	NextAuthorities: authorities,
-	// 	Delay:           pendingChange.Delay,
-	// }
-	// digest := primitives.NewDigestItemConsensusMessage(
-	// 	sc.BytesToFixedSequenceU8([]byte{'F', 'R', 'N', 'K'}),
-	// 	sc.BytesToSequenceU8(NewConsensusLogForcedChange(forcedAtBlock, scheduledChange).Bytes()),
-	// )
-
 	mockStoragePendingChange.On("GetBytes").Return(sc.NewOption[sc.Sequence[sc.U8]](pendingChangeBytes), nil)
 	mockStorageAuthorities.On("Put", authorities).Return(nil)
 	mockSystemModule.On("DepositEvent", newEventNewAuthorities(moduleId, authorities)).Return(nil)
 	mockStoragePendingChange.On("Clear").Return(nil)
-
 	mockStorageState.On("Get").Return(NewStoredStateLive(), nil)
 
 	err := target.OnFinalize(currentBlock + waitInBlocks)
@@ -376,7 +350,42 @@ func Test_Grandpa_Module_OnFinalize_With_Delay_After_Current_Block(t *testing.T)
 	assert.Nil(t, err)
 
 	mockStoragePendingChange.AssertCalled(t, "GetBytes")
-	// mockSystemModule.AssertCalled(t, "DepositLog", digest)
+	mockStorageAuthorities.AssertCalled(t, "Put", authorities)
+	mockSystemModule.AssertCalled(t, "DepositEvent", newEventNewAuthorities(moduleId, authorities))
+	mockStoragePendingChange.AssertCalled(t, "Clear")
+	mockStorageState.AssertCalled(t, "Get")
+}
+
+func Test_Grandpa_Module_OnFinalize_At_Current_Block(t *testing.T) {
+	setup()
+
+	pendingChange := StoredPendingChange{
+		Delay:           waitInBlocks,
+		ScheduledAt:     currentBlock,
+		NextAuthorities: authorities,
+		Forced:          sc.NewOption[sc.U64](forcedAtBlock),
+	}
+	pendingChangeBytes := sc.BytesToSequenceU8(pendingChange.Bytes())
+
+	scheduledChange := grandpa.ScheduledChange{
+		NextAuthorities: authorities,
+		Delay:           pendingChange.Delay,
+	}
+	digest := primitives.NewDigestItemConsensusMessage(
+		sc.BytesToFixedSequenceU8([]byte{'F', 'R', 'N', 'K'}),
+		sc.BytesToSequenceU8(grandpatypes.NewConsensusLogForcedChange(forcedAtBlock, scheduledChange).Bytes()),
+	)
+
+	mockStoragePendingChange.On("GetBytes").Return(sc.NewOption[sc.Sequence[sc.U8]](pendingChangeBytes), nil)
+	mockSystemModule.On("DepositLog", digest).Return(nil)
+	mockStorageState.On("Get").Return(NewStoredStateLive(), nil)
+
+	err := target.OnFinalize(currentBlock)
+
+	assert.Nil(t, err)
+
+	mockStoragePendingChange.AssertCalled(t, "GetBytes")
+	mockSystemModule.AssertCalled(t, "DepositLog", digest)
 	mockStorageState.AssertCalled(t, "Get")
 }
 

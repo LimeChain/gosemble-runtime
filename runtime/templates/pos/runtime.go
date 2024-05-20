@@ -18,11 +18,13 @@ import (
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/execution/extrinsic"
 	"github.com/LimeChain/gosemble/execution/types"
+	"github.com/LimeChain/gosemble/frame/authorship"
 	babe "github.com/LimeChain/gosemble/frame/babe"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"
 	"github.com/LimeChain/gosemble/frame/session"
+	session_historical "github.com/LimeChain/gosemble/frame/session_historical"
 	"github.com/LimeChain/gosemble/frame/sudo"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
@@ -91,6 +93,8 @@ const (
 	BalancesIndex
 	TxPaymentsIndex
 	SudoIndex
+	SessionHistoricalIndex
+	AuthorshipIndex
 	TestableIndex = 255
 )
 
@@ -198,8 +202,29 @@ func initializeModules() []primitives.Module {
 		mdGenerator,
 		logger,
 	)
-
 	sessionModule.AppendHandlers(babeModule)
+
+	sessionHistoricalModule := session_historical.New(
+		SessionHistoricalIndex,
+		session_historical.NewConfig(sessionModule),
+		mdGenerator,
+		logger,
+	)
+
+	sessionFindAccount := session.NewFindAccountFromAuthorIndex(sessionModule, babeModule)
+
+	authorshipModule := authorship.New(
+		AuthorshipIndex,
+		authorship.NewConfig(
+			sessionFindAccount,
+			authorship.DefaulthEventHandler{}, // TODO: implemented by "imonline" module
+			systemModule,
+		),
+		mdGenerator,
+		logger,
+	)
+
+	grandpaEquivocationReportSystem := grandpa.NewEquivocationReportSystem(sessionHistoricalModule, authorshipModule, logger)
 
 	grandpaModule := grandpa.New(
 		GrandpaIndex,
@@ -208,12 +233,15 @@ func initializeModules() []primitives.Module {
 			GrandpaMaxAuthorities,
 			GrandpaMaxNominators,
 			MaxSetIdSessionEntries,
+			sessionHistoricalModule,
+			grandpaEquivocationReportSystem,
 			systemModule,
 			sessionModule,
 		),
 		logger,
 		mdGenerator,
 	)
+	grandpaEquivocationReportSystem.SetModule(grandpaModule)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
@@ -523,6 +551,27 @@ func GrandpaApiAuthorities(_, _ int32) int64 {
 	return runtimeApi().
 		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
 		Authorities()
+}
+
+//go:export GrandpaApi_current_set_id
+func GrandpaApiCurrentSetId() int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		CurrentSetId()
+}
+
+//go:export GrandpaApi_submit_report_equivocation_unsigned_extrinsic
+func GrandpaApi_submit_report_equivocation_unsigned_extrinsic(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		SubmitReportEquivocationUnsignedExtrinsic(dataPtr, dataLen)
+}
+
+//go:export GrandpaApi_generate_key_ownership_proof
+func GrandpaApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		GenerateKeyOwnershipProof(dataPtr, dataLen)
 }
 
 //go:export OffchainWorkerApi_offchain_worker

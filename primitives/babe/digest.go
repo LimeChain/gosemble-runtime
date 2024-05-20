@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	sc "github.com/LimeChain/goscale"
-	babetypes "github.com/LimeChain/gosemble/primitives/babe"
+	// babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -31,7 +31,7 @@ type PreDigest struct {
 	sc.VaryingData
 }
 
-func NewPrimaryPreDigest(authorityIndex babetypes.AuthorityIndex, slot babetypes.Slot, vrfSignature types.VrfSignature) PreDigest {
+func NewPrimaryPreDigest(authorityIndex AuthorityIndex, slot Slot, vrfSignature types.VrfSignature) PreDigest {
 	return PreDigest{sc.NewVaryingData(Primary, PrimaryPreDigest{
 		AuthorityIndex: authorityIndex,
 		Slot:           slot,
@@ -39,14 +39,14 @@ func NewPrimaryPreDigest(authorityIndex babetypes.AuthorityIndex, slot babetypes
 	})}
 }
 
-func NewSecondaryPlainPreDigest(authorityIndex babetypes.AuthorityIndex, slot babetypes.Slot) PreDigest {
+func NewSecondaryPlainPreDigest(authorityIndex AuthorityIndex, slot Slot) PreDigest {
 	return PreDigest{sc.NewVaryingData(SecondaryPlain, SecondaryPlainPreDigest{
 		AuthorityIndex: authorityIndex,
 		Slot:           slot,
 	})}
 }
 
-func NewSecondaryVRFPreDigest(authorityIndex babetypes.AuthorityIndex, slot babetypes.Slot, vrfSignature types.VrfSignature) PreDigest {
+func NewSecondaryVRFPreDigest(authorityIndex AuthorityIndex, slot Slot, vrfSignature types.VrfSignature) PreDigest {
 	return PreDigest{sc.NewVaryingData(SecondaryVRF, SecondaryVRFPreDigest{
 		AuthorityIndex: authorityIndex,
 		Slot:           slot,
@@ -86,8 +86,8 @@ func DecodePreDigest(buffer *bytes.Buffer) (PreDigest, error) {
 
 // Raw BABE primary slot assignment pre-digest.
 type PrimaryPreDigest struct {
-	AuthorityIndex babetypes.AuthorityIndex
-	Slot           babetypes.Slot
+	AuthorityIndex AuthorityIndex
+	Slot           Slot
 	VrfSignature   types.VrfSignature
 }
 
@@ -132,8 +132,8 @@ type SecondaryPlainPreDigest struct {
 	// are assigned based on slot number and epoch randomness. But including
 	// it makes things easier for higher-level users of the chain data to
 	// be aware of the author of a secondary-slot block.
-	AuthorityIndex babetypes.AuthorityIndex
-	Slot           babetypes.Slot
+	AuthorityIndex AuthorityIndex
+	Slot           Slot
 }
 
 func (d SecondaryPlainPreDigest) Encode(buffer *bytes.Buffer) error {
@@ -166,8 +166,8 @@ func DecodeSecondaryPlainPreDigest(buffer *bytes.Buffer) (SecondaryPlainPreDiges
 
 // BABE secondary deterministic slot assignment with VRF outputs.
 type SecondaryVRFPreDigest struct {
-	AuthorityIndex babetypes.AuthorityIndex
-	Slot           babetypes.Slot
+	AuthorityIndex AuthorityIndex
+	Slot           Slot
 	VrfSignature   types.VrfSignature
 }
 
@@ -207,7 +207,7 @@ func DecodeSecondaryVRFPreDigest(buffer *bytes.Buffer) (SecondaryVRFPreDigest, e
 }
 
 // Returns the slot number of the pre digest.
-func (d PreDigest) AuthorityIndex() (babetypes.AuthorityIndex, error) {
+func (d PreDigest) AuthorityIndex() (AuthorityIndex, error) {
 	switch d.VaryingData[0] {
 	case Primary:
 		return d.VaryingData[1].(PrimaryPreDigest).AuthorityIndex, nil
@@ -221,7 +221,7 @@ func (d PreDigest) AuthorityIndex() (babetypes.AuthorityIndex, error) {
 }
 
 // Returns the slot of the pre digest.
-func (d PreDigest) Slot() (babetypes.Slot, error) {
+func (d PreDigest) Slot() (Slot, error) {
 	switch d.VaryingData[0] {
 	case Primary:
 		return d.VaryingData[1].(PrimaryPreDigest).Slot, nil

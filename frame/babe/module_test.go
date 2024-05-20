@@ -46,7 +46,13 @@ var (
 	randomness     = sc.NewFixedSequence[sc.U8](32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 	nextRandomness = sc.NewFixedSequence[sc.U8](32, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 
-	preDigest = PreDigest{sc.NewVaryingData(Primary, primaryPreDigest)}
+	primaryPreDigest = babetypes.PrimaryPreDigest{
+		AuthorityIndex: authorityIndex,
+		Slot:           slot,
+		VrfSignature:   vrfSignature,
+	}
+
+	preDigest = babetypes.PreDigest{sc.NewVaryingData(babetypes.Primary, primaryPreDigest)}
 
 	digestsPreRuntime = sc.Sequence[primitives.DigestPreRuntime]{
 		{
@@ -123,7 +129,7 @@ var (
 	mockStorageNextAuthorities          *mocks.StorageValue[sc.Sequence[primitives.Authority]]
 	mockStorageNextRandomness           *mocks.StorageValue[babetypes.Randomness]
 	mockStoragePendingEpochConfigChange *mocks.StorageValue[NextConfigDescriptor]
-	mockStorageInitialized              *mocks.StorageValue[sc.Option[PreDigest]]
+	mockStorageInitialized              *mocks.StorageValue[sc.Option[babetypes.PreDigest]]
 	mockStorageLateness                 *mocks.StorageValue[sc.U64]
 	mockStorageSkippedEpochs            *mocks.StorageValue[sc.FixedSequence[babetypes.SkippedEpoch]]
 )
@@ -153,7 +159,7 @@ func setupModule() module {
 	mockStorageNextAuthorities = new(mocks.StorageValue[sc.Sequence[primitives.Authority]])
 	mockStorageNextRandomness = new(mocks.StorageValue[babetypes.Randomness])
 	mockStoragePendingEpochConfigChange = new(mocks.StorageValue[NextConfigDescriptor])
-	mockStorageInitialized = new(mocks.StorageValue[sc.Option[PreDigest]])
+	mockStorageInitialized = new(mocks.StorageValue[sc.Option[babetypes.PreDigest]])
 	mockStorageLateness = new(mocks.StorageValue[sc.U64])
 	mockStorageSkippedEpochs = new(mocks.StorageValue[sc.FixedSequence[babetypes.SkippedEpoch]])
 
@@ -325,7 +331,7 @@ func Test_Module_ShouldEndSession(t *testing.T) {
 	currentSlot := sc.U64(126)
 	lateness := sc.U64(3)
 
-	mockStorageInitialized.On("Get").Return(sc.NewOption[PreDigest](nil), nil)
+	mockStorageInitialized.On("Get").Return(sc.NewOption[babetypes.PreDigest](nil), nil)
 	mockStorageGenesisSlot.On("Get").Return(genesisSlot, nil)
 
 	mockStorageGenesisSlot.On("Put", slot).Return(nil)
@@ -337,7 +343,7 @@ func Test_Module_ShouldEndSession(t *testing.T) {
 	mockStorageCurrentSlot.On("Get").Return(currentSlot, nil)
 	mockStorageLateness.On("Put", lateness).Return(nil)
 	mockStorageCurrentSlot.On("Put", slot).Return(nil)
-	mockStorageInitialized.On("Put", sc.NewOption[PreDigest](preDigest)).Return(nil)
+	mockStorageInitialized.On("Put", sc.NewOption[babetypes.PreDigest](preDigest)).Return(nil)
 	mockEpochChangeTrigger.On("Trigger", now).Return(nil)
 
 	mockStorageCurrentSlot.On("Get").Return(slot, nil)
@@ -354,7 +360,7 @@ func Test_Module_ShouldEndSession(t *testing.T) {
 	mockStorageEpochIndex.AssertCalled(t, "Get")
 
 	mockStorageInitialized.AssertCalled(t, "Get")
-	mockStorageInitialized.AssertCalled(t, "Put", sc.NewOption[PreDigest](preDigest))
+	mockStorageInitialized.AssertCalled(t, "Put", sc.NewOption[babetypes.PreDigest](preDigest))
 
 	mockStorageCurrentSlot.AssertNumberOfCalls(t, "Get", 2)
 	mockStorageCurrentSlot.AssertCalled(t, "Put", slot)

@@ -53,6 +53,8 @@ type Module interface {
 	hooks.OnTimestampSet[sc.U64]
 	sessiontypes.OneSessionHandler
 
+	FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc.Option[sc.U32], error)
+
 	StorageAuthorities() (sc.Sequence[primitives.Authority], error)
 	StorageRandomness() (babetypes.Randomness, error)
 	StorageSegmentIndexSet(sc.U32)
@@ -174,7 +176,7 @@ func (m module) FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc
 		if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(preRuntime.ConsensusEngineId), EngineId[:]) {
 			buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(preRuntime.Message))
 
-			preDigest, err := DecodePreDigest(buffer)
+			preDigest, err := babetypes.DecodePreDigest(buffer)
 			if err != nil {
 				return sc.NewOption[sc.U32](nil), err
 			}
@@ -629,18 +631,18 @@ func (m module) initialize(now sc.U64) error {
 		return err
 	}
 
-	preDigest := sc.NewOption[PreDigest](nil)
+	preDigest := sc.NewOption[babetypes.PreDigest](nil)
 
 	for _, digest := range preRuntimeDigests {
 		if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(digest.ConsensusEngineId), EngineId[:]) {
 			buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(digest.Message))
 
-			pre, err := DecodePreDigest(buffer)
+			pre, err := babetypes.DecodePreDigest(buffer)
 			if err != nil {
 				return err
 			}
 
-			preDigest = sc.NewOption[PreDigest](pre)
+			preDigest = sc.NewOption[babetypes.PreDigest](pre)
 			break
 		}
 	}

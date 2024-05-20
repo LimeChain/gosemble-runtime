@@ -6,10 +6,21 @@ import (
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/types"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
+	slot           = sc.U64(130)
+	authorityIndex = sc.U32(1)
+	output         = sc.NewFixedSequence(32, make([]sc.U8, 32)...)
+	proof          = sc.NewFixedSequence(64, make([]sc.U8, 64)...)
+
+	vrfSignature = primitives.VrfSignature{
+		PreOutput: output,
+		Proof:     proof,
+	}
+
 	primaryPreDigest = PrimaryPreDigest{
 		AuthorityIndex: authorityIndex,
 		Slot:           slot,

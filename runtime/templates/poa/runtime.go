@@ -33,6 +33,7 @@ import (
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
 	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
+	"github.com/LimeChain/gosemble/primitives/staking"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -180,6 +181,8 @@ func initializeModules() []primitives.Module {
 			GrandpaMaxAuthorities,
 			GrandpaMaxNominators,
 			MaxSetIdSessionEntries,
+			grandpa.DefaultKeyOwnerProofSystem{},
+			staking.DefaultOffenceReportSystem{},
 			systemModule,
 			sessionModule,
 		),
@@ -466,27 +469,19 @@ func GrandpaApiCurrentSetId() int64 {
 		CurrentSetId()
 }
 
-// TODO: implement
-
 //go:export GrandpaApi_submit_report_equivocation_unsigned_extrinsic
-// func GrandpaApi_submit_report_equivocation_unsigned_extrinsic(dataPtr int32, dataLen int32) int64 {
-// 	return runtimeApi().
-// 		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
-// 		SubmitUnsignedEquivocationReport(dataPtr, dataLen)
-// }
+func GrandpaApi_submit_report_equivocation_unsigned_extrinsic(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		SubmitReportEquivocationUnsignedExtrinsic(dataPtr, dataLen)
+}
 
-// //go:export GrandpaApi_generate_key_ownership_proof
-// func GrandpaApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
-// 	// (_set_id sp_consensus_grandpa::SetId, authority_id GrandpaId)
-
-// 	// use codec::Encode;
-
-// 	// Historical::prove((sp_consensus_grandpa::KEY_TYPE, authority_id))
-// 	// 	.map(|p| p.encode())
-// 	// 	.map(sp_consensus_grandpa::OpaqueKeyOwnershipProof::new)
-
-// 	return 0 // Option<sp_consensus_grandpa::OpaqueKeyOwnershipProof>
-// }
+//go:export GrandpaApi_generate_key_ownership_proof
+func GrandpaApiGenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		GenerateKeyOwnershipProof(dataPtr, dataLen)
+}
 
 //go:export OffchainWorkerApi_offchain_worker
 func OffchainWorkerApiOffchainWorker(dataPtr int32, dataLen int32) int64 {

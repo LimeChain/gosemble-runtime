@@ -28,7 +28,7 @@ func newCallNoteStalled(moduleId sc.U8, functionId sc.U8, staleNotifier StaleNot
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
-			Arguments:  sc.NewVaryingData(sc.U64(0), sc.U64(0)),
+			Arguments:  sc.NewVaryingData(),
 		},
 		staleNotifier: staleNotifier,
 	}
@@ -96,7 +96,7 @@ func (c callNoteStalled) Dispatch(origin primitives.RuntimeOrigin, args sc.Varyi
 	delay := args[0].(sc.U64)
 	bestFinalizedBlockNumber := args[1].(sc.U64)
 
-	c.staleNotifier.onStalled(delay, bestFinalizedBlockNumber)
+	c.staleNotifier.OnStalled(delay, bestFinalizedBlockNumber)
 
 	return primitives.PostDispatchInfo{}, nil
 }

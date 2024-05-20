@@ -81,15 +81,15 @@ func (m *BabeModule) OnInitialize(n sc.U64) (primitives.Weight, error) {
 	return args.Get(0).(primitives.Weight), args.Get(1).(error)
 }
 
-// func (m *BabeModule) FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc.Option[sc.U32], error) {
-// 	args := m.Called(digests)
+func (m *BabeModule) FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc.Option[sc.U32], error) {
+	args := m.Called(digests)
 
-// 	if args.Error(1) == nil {
-// 		return args.Get(0).(sc.Option[sc.U32]), nil
-// 	}
+	if args.Error(1) == nil {
+		return args.Get(0).(sc.Option[sc.U32]), nil
+	}
 
-// 	return args.Get(0).(sc.Option[sc.U32]), args.Error(1)
-// }
+	return args.Get(0).(sc.Option[sc.U32]), args.Error(1)
+}
 
 func (m *BabeModule) OnTimestampSet(now sc.U64) error {
 	args := m.Called(now)

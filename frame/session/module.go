@@ -32,6 +32,7 @@ type Module interface {
 	types.InherentProvider
 
 	CurrentIndex() (sc.U32, error)
+	Validators() (sc.Sequence[primitives.AccountId], error)
 	IsDisabled(index sc.U32) (bool, error)
 	DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr25519PublicKey], error)
 
@@ -78,6 +79,10 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 
 func (m module) CurrentIndex() (sc.U32, error) {
 	return m.storage.CurrentIndex.Get()
+}
+
+func (m module) Validators() (sc.Sequence[primitives.AccountId], error) {
+	return m.storage.Validators.Get()
 }
 
 func (m module) name() sc.Str { return name }
