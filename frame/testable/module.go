@@ -3,6 +3,7 @@ package testable
 import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/hooks"
+	"github.com/LimeChain/gosemble/primitives/io"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -18,9 +19,9 @@ type Module struct {
 	mdGenerator *primitives.MetadataTypeGenerator
 }
 
-func New(index sc.U8, mdGenerator *primitives.MetadataTypeGenerator) Module {
+func New(index sc.U8, ioStorage io.Storage, ioTransactionBroker io.TransactionBroker, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	functions := make(map[sc.U8]primitives.Call)
-	functions[functionTestIndex] = newCallTest(index, functionTestIndex)
+	functions[functionTestIndex] = newCallTest(index, functionTestIndex, ioStorage, ioTransactionBroker)
 
 	return Module{
 		Index:       index,

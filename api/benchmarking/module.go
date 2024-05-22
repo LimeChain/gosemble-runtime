@@ -27,14 +27,14 @@ type Module struct {
 	logger        log.Logger
 }
 
-func New(systemIndex sc.U8, modules []primitives.Module, decoder types.RuntimeDecoder, logger log.Logger) Module {
+func New(systemIndex sc.U8, modules []primitives.Module, decoder types.RuntimeDecoder, storage io.Storage, transactionBroker io.TransactionBroker, logger log.Logger) Module {
 	systemModule := primitives.MustGetModule(systemIndex, modules).(system.Module)
 
 	return Module{
 		modules:       modules,
 		systemModule:  systemModule,
 		decoder:       decoder,
-		transactional: support.NewTransactional[primitives.PostDispatchInfo](logger),
+		transactional: support.NewTransactional[primitives.PostDispatchInfo](storage, transactionBroker, logger),
 		memUtils:      utils.NewMemoryTranslator(),
 		hashing:       io.NewHashing(),
 		logger:        logger,

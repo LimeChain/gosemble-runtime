@@ -65,3 +65,51 @@ func DecodeCollationInfo(buffer *bytes.Buffer) (CollationInfo, error) {
 func (ci CollationInfo) Bytes() []byte {
 	return sc.EncodedBytes(ci)
 }
+
+type ParachainInherentData struct {
+	ValidationData     parachain.PersistedValidationData
+	RelayChainState    parachain.StorageProof
+	DownwardMessages   sc.Sequence[parachain.InboundDownwardMessage]
+	HorizontalMessages parachain.HorizontalMessages
+}
+
+func (pid ParachainInherentData) Encode(buffer *bytes.Buffer) error {
+	return sc.EncodeEach(buffer,
+		pid.ValidationData,
+		pid.RelayChainState,
+		pid.DownwardMessages,
+		pid.HorizontalMessages)
+}
+
+func DecodeParachainInherentData(buffer *bytes.Buffer) (ParachainInherentData, error) {
+	validationData, err := parachain.DecodePersistedValidationData(buffer)
+	if err != nil {
+		return ParachainInherentData{}, err
+	}
+
+	storageProof, err := parachain.DecodeStorageProof(buffer)
+	if err != nil {
+		return ParachainInherentData{}, err
+	}
+
+	downwardMessages, err := sc.DecodeSequenceWith(buffer, parachain.DecodeInboundDownwardMessage)
+	if err != nil {
+		return ParachainInherentData{}, err
+	}
+
+	horizontalMessages, err := parachain.DecodeHorizontalMessages(buffer)
+	if err != nil {
+		return ParachainInherentData{}, err
+	}
+
+	return ParachainInherentData{
+		ValidationData:     validationData,
+		RelayChainState:    storageProof,
+		DownwardMessages:   downwardMessages,
+		HorizontalMessages: horizontalMessages,
+	}, nil
+}
+
+func (pid ParachainInherentData) Bytes() []byte {
+	return sc.EncodedBytes(pid)
+}

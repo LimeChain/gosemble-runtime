@@ -12,9 +12,9 @@ type RawStorageValue struct {
 	key     []byte
 }
 
-func NewRawStorageValue(key []byte) StorageRawValue {
+func NewRawStorageValue(storage io.Storage, key []byte) StorageRawValue {
 	return RawStorageValue{
-		storage: io.NewStorage(),
+		storage: storage,
 		key:     key,
 	}
 }

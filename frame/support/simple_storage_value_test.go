@@ -219,8 +219,7 @@ func Test_SimpleStorageValue_key(t *testing.T) {
 func setupSimpleStorageValue() SimpleStorageValue[sc.U32] {
 	mockStorage = new(mocks.IoStorage)
 
-	target := NewSimpleStorageValue(key, decodeFunc).(SimpleStorageValue[sc.U32])
-	target.storage = mockStorage
+	target := NewSimpleStorageValue(mockStorage, key, decodeFunc).(SimpleStorageValue[sc.U32])
 
 	return target
 }

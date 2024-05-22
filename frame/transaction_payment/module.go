@@ -32,7 +32,7 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 		index:       index,
 		config:      config,
 		constants:   newConstants(config.OperationalFeeMultiplier),
-		storage:     newStorage(),
+		storage:     newStorage(config.Storage),
 		mdGenerator: mdGenerator,
 	}
 }

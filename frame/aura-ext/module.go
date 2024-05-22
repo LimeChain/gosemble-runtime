@@ -2,18 +2,14 @@ package aura_ext
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
-	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/aura"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/hooks"
-	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"reflect"
 )
 
 type Module struct {
@@ -25,14 +21,12 @@ type Module struct {
 	storage    *storage
 	auraModule aura.AuraModule
 	executive  executive.Module
-	hashing    io.Hashing
-	crypto     io.Crypto
 	logger     log.TraceLogger
 }
 
 func New(index sc.U8, config Config, aura aura.AuraModule, logger log.TraceLogger) Module {
-	storage := newStorage()
-	constants := newConstants(config.DbWeight, config.RelayChainSlotDurationMillis, config.BlockProcessingVelocity, config.NotIncludedSegmentCapacity)
+	storage := newStorage(config.Storage)
+	constants := newConstants(config.DbWeight)
 
 	return Module{
 		index:      index,
@@ -40,8 +34,6 @@ func New(index sc.U8, config Config, aura aura.AuraModule, logger log.TraceLogge
 		constants:  constants,
 		storage:    storage,
 		auraModule: aura,
-		hashing:    io.NewHashing(),
-		crypto:     io.NewCrypto(),
 		logger:     logger,
 	}
 }
@@ -125,70 +117,6 @@ func (m Module) OnFinalize(_ sc.U64) error {
 	m.storage.Authorities.Put(authorities)
 
 	return nil
-}
-
-func (m Module) ExecuteBlock(block primitives.Block) error {
-	header := block.Header()
-
-	authorities, err := m.storage.Authorities.Get()
-	if err != nil {
-		return err
-	}
-
-	var seal *primitives.DigestSeal
-	digestItems := sc.Sequence[primitives.DigestItem]{}
-	for _, digestItem := range header.Digest.Sequence {
-		if digestItem.IsSeal() {
-			s, err := digestItem.AsSeal()
-			if err != nil {
-				return err
-			}
-			if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(s.ConsensusEngineId), aura.EngineId[:]) {
-				if seal != nil {
-					return errors.New("found multiple AuRa seals digests")
-				} else {
-					seal = &s
-				}
-			}
-		} else {
-			digestItems = append(digestItems, digestItem)
-		}
-	}
-
-	if seal == nil {
-		return errors.New("could not find AuRa author index")
-	}
-
-	header.Digest = primitives.NewDigest(digestItems)
-
-	preRuntimes, err := header.Digest.PreRuntimes()
-	if err != nil {
-		return err
-	}
-
-	authorIndex, err := m.auraModule.FindAuthor(preRuntimes)
-	if err != nil {
-		return err
-	}
-	if authorIndex.HasValue {
-		return errors.New("could not find AuRa author index")
-	}
-
-	preHash := m.hashing.Blake256(header.Bytes())
-
-	// sanity check
-	if int(authorIndex.Value) > len(authorities) {
-		return fmt.Errorf("invalid AuRa author index [%d]", authorIndex.Value)
-	}
-
-	bytesAuthority := sc.FixedSequenceU8ToBytes(authorities[authorIndex.Value].FixedSequence)
-
-	verified := m.crypto.Sr25519Verify(preHash, sc.SequenceU8ToBytes(seal.Message), bytesAuthority)
-	if !verified {
-		return fmt.Errorf("invalid AuRa seal")
-	}
-
-	return m.executive.ExecuteBlock(types.NewBlock(header, block.Extrinsics()))
 }
 
 func (m Module) OnStateProof() {

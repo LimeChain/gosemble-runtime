@@ -38,7 +38,7 @@ type Module struct {
 
 func New(index sc.U8, config *Config, logger log.DebugLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	constants := newConstants(config.DbWeight, config.MaxLocks, config.MaxReserves, config.ExistentialDeposit)
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 
 	module := Module{
 		Index:       index,

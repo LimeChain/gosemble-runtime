@@ -3,6 +3,7 @@ package parachain_info
 import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/support"
+	"github.com/LimeChain/gosemble/primitives/io"
 )
 
 var (
@@ -14,8 +15,8 @@ type storage struct {
 	ParachainId support.StorageValue[sc.U32]
 }
 
-func newStorage() *storage {
+func newStorage(s io.Storage) *storage {
 	return &storage{
-		ParachainId: support.NewHashStorageValueWithDefault(keyParachainInfo, keyParachainId, sc.DecodeU32, &defaultParachainId),
+		ParachainId: support.NewHashStorageValueWithDefault(s, keyParachainInfo, keyParachainId, sc.DecodeU32, &defaultParachainId),
 	}
 }

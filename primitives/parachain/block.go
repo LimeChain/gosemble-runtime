@@ -8,7 +8,7 @@ import (
 
 type BlockData struct {
 	Block        types.Block
-	CompactProof sc.Sequence[sc.Sequence[sc.U8]]
+	CompactProof StorageProof
 }
 
 func (bd BlockData) Encode(buffer *bytes.Buffer) error {

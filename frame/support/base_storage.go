@@ -13,9 +13,9 @@ type baseStorage[T sc.Encodable] struct {
 	defaultValue *T
 }
 
-func newBaseStorage[T sc.Encodable](decodeFunc func(buffer *bytes.Buffer) (T, error), defaultValue *T) baseStorage[T] {
+func newBaseStorage[T sc.Encodable](storage io.Storage, decodeFunc func(buffer *bytes.Buffer) (T, error), defaultValue *T) baseStorage[T] {
 	return baseStorage[T]{
-		storage:      io.NewStorage(),
+		storage:      storage,
 		decodeFunc:   decodeFunc,
 		defaultValue: defaultValue,
 	}

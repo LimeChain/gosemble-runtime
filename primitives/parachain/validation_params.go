@@ -7,18 +7,18 @@ import (
 )
 
 type ValidationParams struct {
-	ParentHead       sc.Sequence[sc.U8]
-	BlockData        sc.Sequence[sc.U8]
-	RelayBlockNumber RelayChainBlockNumber
-	RelayStorageRoot primitives.H256
+	ParentHead             sc.Sequence[sc.U8]
+	BlockData              sc.Sequence[sc.U8]
+	RelayParentBlockNumber RelayChainBlockNumber
+	RelayParentStorageRoot primitives.H256
 }
 
 func (vp ValidationParams) Encode(buffer *bytes.Buffer) error {
 	return sc.EncodeEach(buffer,
 		vp.ParentHead,
 		vp.BlockData,
-		vp.RelayBlockNumber,
-		vp.RelayStorageRoot,
+		vp.RelayParentBlockNumber,
+		vp.RelayParentStorageRoot,
 	)
 }
 
@@ -31,20 +31,20 @@ func DecodeValidationParams(buffer *bytes.Buffer) (ValidationParams, error) {
 	if err != nil {
 		return ValidationParams{}, err
 	}
-	relayBlockNumber, err := sc.DecodeU32(buffer)
+	relayParentBlockNumber, err := sc.DecodeU32(buffer)
 	if err != nil {
 		return ValidationParams{}, err
 	}
-	relayStorageRoot, err := primitives.DecodeH256(buffer)
+	relayParentStorageRoot, err := primitives.DecodeH256(buffer)
 	if err != nil {
 		return ValidationParams{}, err
 	}
 
 	return ValidationParams{
-		ParentHead:       parentHead,
-		BlockData:        blockData,
-		RelayBlockNumber: relayBlockNumber,
-		RelayStorageRoot: relayStorageRoot,
+		ParentHead:             parentHead,
+		BlockData:              blockData,
+		RelayParentBlockNumber: relayParentBlockNumber,
+		RelayParentStorageRoot: relayParentStorageRoot,
 	}, nil
 }
 

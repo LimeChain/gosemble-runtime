@@ -28,16 +28,16 @@ type storage struct {
 	KeyOwner           support.StorageMap[primitives.SessionKey, primitives.AccountId]
 }
 
-func newStorage(m Module) *storage {
+func newStorage(s io.Storage, m Module) *storage {
 	hashing := io.NewHashing()
 
 	return &storage{
-		Validators:         support.NewHashStorageValue(keySession, keyValidators, primitives.DecodeSequenceAccountId),
-		CurrentIndex:       support.NewHashStorageValue(keySession, keyCurrentIndex, sc.DecodeU32),
-		QueueChanged:       support.NewHashStorageValue(keySession, keyQueuedChanged, sc.DecodeBool),
-		QueuedKeys:         support.NewHashStorageValue(keySession, keyQueuedKeys, DecodeQueuedKeys),
-		DisabledValidators: support.NewHashStorageValue(keySession, keyDisabledValidators, sc.DecodeSequence[sc.U32]),
-		NextKeys:           support.NewHashStorageMap[primitives.AccountId, sc.FixedSequence[primitives.Sr25519PublicKey]](keySession, keyNextKeys, hashing.Twox64, m.handler.DecodeKeys),
-		KeyOwner:           support.NewHashStorageMap[primitives.SessionKey, primitives.AccountId](keySession, keyKeyOwner, hashing.Twox64, primitives.DecodeAccountId),
+		Validators:         support.NewHashStorageValue(s, keySession, keyValidators, primitives.DecodeSequenceAccountId),
+		CurrentIndex:       support.NewHashStorageValue(s, keySession, keyCurrentIndex, sc.DecodeU32),
+		QueueChanged:       support.NewHashStorageValue(s, keySession, keyQueuedChanged, sc.DecodeBool),
+		QueuedKeys:         support.NewHashStorageValue(s, keySession, keyQueuedKeys, DecodeQueuedKeys),
+		DisabledValidators: support.NewHashStorageValue(s, keySession, keyDisabledValidators, sc.DecodeSequence[sc.U32]),
+		NextKeys:           support.NewHashStorageMap[primitives.AccountId, sc.FixedSequence[primitives.Sr25519PublicKey]](s, keySession, keyNextKeys, hashing.Twox64, m.handler.DecodeKeys),
+		KeyOwner:           support.NewHashStorageMap[primitives.SessionKey, primitives.AccountId](s, keySession, keyKeyOwner, hashing.Twox64, primitives.DecodeAccountId),
 	}
 }

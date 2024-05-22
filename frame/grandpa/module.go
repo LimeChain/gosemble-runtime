@@ -4,6 +4,7 @@ import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/hooks"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -46,11 +47,10 @@ type Module struct {
 	logger      log.WarnLogger
 }
 
-func New(index sc.U8, logger log.WarnLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
-
+func New(index sc.U8, storage io.Storage, logger log.WarnLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	return Module{
 		Index:       index,
-		storage:     newStorage(),
+		storage:     newStorage(storage),
 		mdGenerator: mdGenerator,
 		logger:      logger,
 	}

@@ -15,13 +15,13 @@ type HashStorageValue[T sc.Encodable] struct {
 	hashing io.Hashing
 }
 
-func NewHashStorageValue[T sc.Encodable](prefix []byte, name []byte, decodeFunc func(buffer *bytes.Buffer) (T, error)) StorageValue[T] {
-	return NewHashStorageValueWithDefault(prefix, name, decodeFunc, nil)
+func NewHashStorageValue[T sc.Encodable](storage io.Storage, prefix []byte, name []byte, decodeFunc func(buffer *bytes.Buffer) (T, error)) StorageValue[T] {
+	return NewHashStorageValueWithDefault(storage, prefix, name, decodeFunc, nil)
 }
 
-func NewHashStorageValueWithDefault[T sc.Encodable](prefix []byte, name []byte, decodeFunc func(buffer *bytes.Buffer) (T, error), defaultValue *T) StorageValue[T] {
+func NewHashStorageValueWithDefault[T sc.Encodable](storage io.Storage, prefix []byte, name []byte, decodeFunc func(buffer *bytes.Buffer) (T, error), defaultValue *T) StorageValue[T] {
 	return HashStorageValue[T]{
-		baseStorage: newBaseStorage[T](decodeFunc, defaultValue),
+		baseStorage: newBaseStorage[T](storage, decodeFunc, defaultValue),
 		prefix:      prefix,
 		name:        name,
 		hashing:     io.NewHashing(),

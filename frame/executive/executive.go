@@ -1,6 +1,7 @@
 package executive
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -95,8 +96,10 @@ func (m module) ExecuteBlock(block primitives.Block) error {
 		return err
 	}
 
-	// todo: handle err
-	m.executeExtrinsicsWithBookKeeping(block)
+	err = m.executeExtrinsicsWithBookKeeping(block)
+	if err != nil {
+		return err
+	}
 
 	header := block.Header()
 	err = m.finalChecks(&header)
@@ -168,7 +171,6 @@ func (m module) FinalizeBlock() (primitives.Header, error) {
 	if err != nil {
 		return primitives.Header{}, err
 	}
-
 	err = m.idleAndFinalizeHook(blockNumber)
 	if err != nil {
 		return primitives.Header{}, err
@@ -342,6 +344,7 @@ func (m module) finalChecks(header *primitives.Header) error {
 		}
 	}
 
+	m.logger.Tracef("expected: [%s], got: [%s]", hex.EncodeToString(header.StateRoot.Bytes()), hex.EncodeToString(newHeader.StateRoot.Bytes()))
 	if !reflect.DeepEqual(header.StateRoot, newHeader.StateRoot) {
 		return errInvalidStorageRoot
 	}

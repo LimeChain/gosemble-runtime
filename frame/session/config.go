@@ -2,10 +2,12 @@ package session
 
 import (
 	"github.com/LimeChain/gosemble/frame/system"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
 type Config struct {
+	Storage      io.Storage
 	DbWeight     types.RuntimeDbWeight
 	BlockWeights types.BlockWeights
 	Module       system.Module
@@ -14,8 +16,9 @@ type Config struct {
 	Manager      Manager
 }
 
-func NewConfig(dbWeight types.RuntimeDbWeight, blockWeights types.BlockWeights, module system.Module, sessionEnder ShouldEndSession, handler Handler, manager Manager) Config {
+func NewConfig(storage io.Storage, dbWeight types.RuntimeDbWeight, blockWeights types.BlockWeights, module system.Module, sessionEnder ShouldEndSession, handler Handler, manager Manager) Config {
 	return Config{
+		storage,
 		dbWeight,
 		blockWeights,
 		module,

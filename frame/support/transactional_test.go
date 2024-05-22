@@ -269,7 +269,7 @@ func setupTransactional() transactional[sc.U32] {
 	mockStorageValue = new(mocks.StorageValue[sc.U32])
 	mockTransactionBroker = new(mocks.IoTransactionBroker)
 
-	target := NewTransactional[sc.U32](log.NewLogger()).(transactional[sc.U32])
+	target := NewTransactional[sc.U32](new(mocks.IoStorage), mockTransactionBroker, log.NewLogger()).(transactional[sc.U32])
 	target.storage = mockStorageValue
 	target.transactionBroker = mockTransactionBroker
 

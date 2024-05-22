@@ -37,7 +37,7 @@ type Module struct {
 
 func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	functions := make(map[sc.U8]primitives.Call)
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 	constants := newConstants(config.DbWeight, config.MinimumPeriod)
 	functions[functionSetIndex] = newCallSet(index, functionSetIndex, storage, constants, config.OnTimestampSet)
 

@@ -2,6 +2,7 @@ package support
 
 import (
 	"bytes"
+	"github.com/LimeChain/gosemble/primitives/io"
 
 	sc "github.com/LimeChain/goscale"
 )
@@ -12,9 +13,9 @@ type SimpleStorageValue[T sc.Encodable] struct {
 	key []byte
 }
 
-func NewSimpleStorageValue[T sc.Encodable](key []byte, decodeFunc func(buffer *bytes.Buffer) (T, error)) StorageValue[T] {
+func NewSimpleStorageValue[T sc.Encodable](storage io.Storage, key []byte, decodeFunc func(buffer *bytes.Buffer) (T, error)) StorageValue[T] {
 	return SimpleStorageValue[T]{
-		baseStorage: newBaseStorage[T](decodeFunc, nil),
+		baseStorage: newBaseStorage[T](storage, decodeFunc, nil),
 		key:         key,
 	}
 }

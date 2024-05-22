@@ -57,6 +57,7 @@ type Module interface {
 	IncConsumers(who primitives.AccountId) error
 	IncConsumersWithoutLimit(who primitives.AccountId) error
 	IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error)
+	UpdateCodeInStorage(code sc.Sequence[sc.U8])
 
 	TryMutateExists(who primitives.AccountId, f func(who *primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error)
 	Metadata() primitives.MetadataModule
@@ -88,6 +89,8 @@ type Module interface {
 	StorageAllExtrinsicsLen() (sc.U32, error)
 	StorageAllExtrinsicsLenSet(value sc.U32)
 
+	StorageParentHash() (types.Blake2bHash, error)
+
 	StorageCodeSet(codeBlob sc.Sequence[sc.U8])
 }
 
@@ -111,9 +114,8 @@ type module struct {
 
 func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
 	functions := make(map[sc.U8]primitives.Call)
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 	constants := newConstants(config.BlockHashCount, config.BlockWeights, config.BlockLength, config.DbWeight, *config.Version)
-	ioStorage := io.NewStorage()
 	ioHashing := io.NewHashing()
 
 	moduleInstance := module{
@@ -123,7 +125,7 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 		constants:   constants,
 		functions:   functions,
 		trie:        io.NewTrie(),
-		ioStorage:   ioStorage,
+		ioStorage:   config.Storage,
 		ioHashing:   ioHashing,
 		ioMisc:      io.NewMisc(),
 		mdGenerator: mdGenerator,
@@ -138,9 +140,9 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	functions[functionSetHeapPagesIndex] = newCallSetHeapPages(index, functionSetHeapPagesIndex, storage.HeapPages, moduleInstance)
 	functions[functionSetCodeIndex] = newCallSetCode(index, functionSetCodeIndex, *constants, defaultOnSetCode, moduleInstance)
 	functions[functionSetCodeWithoutChecksIndex] = newCallSetCodeWithoutChecks(index, functionSetCodeWithoutChecksIndex, *constants, defaultOnSetCode)
-	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, ioStorage)
-	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, ioStorage)
-	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, ioStorage)
+	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, config.Storage)
+	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, config.Storage)
+	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, config.Storage)
 	functions[functionRemarkWithEventIndex] = newCallRemarkWithEvent(index, functionRemarkWithEventIndex, ioHashing, moduleInstance)
 	functions[functionAuthorizeUpgradeIndex] = newCallAuthorizeUpgrade(index, functionAuthorizeUpgradeIndex, moduleInstance)
 	functions[functionAuthorizeUpgradeWithoutChecksIndex] = newCallAuthorizeUpgradeWithoutChecks(index, functionAuthorizeUpgradeWithoutChecksIndex, moduleInstance)
@@ -263,6 +265,10 @@ func (m module) StorageAllExtrinsicsLen() (sc.U32, error) {
 
 func (m module) StorageAllExtrinsicsLenSet(value sc.U32) {
 	m.storage.AllExtrinsicsLen.Put(value)
+}
+
+func (m module) StorageParentHash() (types.Blake2bHash, error) {
+	return m.storage.ParentHash.Get()
 }
 
 func (m module) StorageCodeSet(codeBlob sc.Sequence[sc.U8]) {
@@ -581,6 +587,12 @@ func (m module) IncProviders(who primitives.AccountId) (primitives.IncRefStatus,
 	})
 
 	return result.(primitives.IncRefStatus), err
+}
+
+func (m module) UpdateCodeInStorage(code sc.Sequence[sc.U8]) {
+	m.storage.Code.Put(code)
+	m.DepositLog(primitives.NewDigestItemRuntimeEnvironmentUpgrade())
+	m.DepositEvent(newEventCodeUpdated(m.Index))
 }
 
 func (m module) decrementProviders(who primitives.AccountId, maybeAccount *sc.Option[primitives.AccountInfo]) (sc.Encodable, error) {

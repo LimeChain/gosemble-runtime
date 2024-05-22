@@ -308,9 +308,8 @@ func setupHashStorageValue() HashStorageValue[sc.U32] {
 	mockHashing = new(mocks.IoHashing)
 	mockStorage = new(mocks.IoStorage)
 
-	target := NewHashStorageValue(prefix, name, decodeFunc).(HashStorageValue[sc.U32])
+	target := NewHashStorageValue(mockStorage, prefix, name, decodeFunc).(HashStorageValue[sc.U32])
 	target.hashing = mockHashing
-	target.storage = mockStorage
 
 	return target
 }

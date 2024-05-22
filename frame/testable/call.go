@@ -12,15 +12,19 @@ import (
 
 type callTest struct {
 	primitives.Callable
+	storage           io.Storage
+	transactionBroker io.TransactionBroker
 }
 
-func newCallTest(moduleId, functionId sc.U8) primitives.Call {
+func newCallTest(moduleId, functionId sc.U8, storage io.Storage, transactionBroker io.TransactionBroker) primitives.Call {
 	call := callTest{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
 		},
+		storage:           storage,
+		transactionBroker: transactionBroker,
 	}
 
 	return call
@@ -71,11 +75,11 @@ func (_ callTest) PaysFee(baseWeight primitives.Weight) primitives.Pays {
 	return primitives.PaysYes
 }
 
-func (_ callTest) Dispatch(origin primitives.RuntimeOrigin, _ sc.VaryingData) (primitives.PostDispatchInfo, error) {
+func (c callTest) Dispatch(origin primitives.RuntimeOrigin, _ sc.VaryingData) (primitives.PostDispatchInfo, error) {
 	storage := io.NewStorage()
 	storage.Set([]byte("testvalue"), []byte{1})
 
-	transactional := support.NewTransactional[primitives.PostDispatchInfo](log.NewLogger())
+	transactional := support.NewTransactional[primitives.PostDispatchInfo](c.storage, c.transactionBroker, log.NewLogger())
 	// TODO: handle err
 	transactional.WithStorageLayer(func() (primitives.PostDispatchInfo, error) {
 		storage.Set([]byte("testvalue"), []byte{2})

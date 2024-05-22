@@ -38,7 +38,9 @@ import (
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
 	txExtensions "github.com/LimeChain/gosemble/frame/transaction_payment/extensions"
 	"github.com/LimeChain/gosemble/hooks"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
+	"github.com/LimeChain/gosemble/primitives/pvf"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -91,16 +93,26 @@ const (
 
 const (
 	SystemIndex sc.U8 = iota
-	ParachainSystem
+	//ParachainSystemIndex
+	//TimestampIndex
+	//SessionIndex
+	//ParachainInfoIndex
+	//AuraIndex
+	//AuraExtIndex
+	//GrandpaIndex
+	//BalancesIndex
+	//TxPaymentsIndex
+	//TestableIndex = 255
 	TimestampIndex
-	SessionIndex
-	ParachainInfo
-	AuraIndex
-	AuraExtIndex
-	GrandpaIndex
-	BalancesIndex
-	TxPaymentsIndex
-	TestableIndex = 255
+	ParachainSystemIndex = 20
+	SessionIndex         = 21
+	ParachainInfoIndex   = 22
+	AuraIndex            = 23
+	AuraExtIndex         = 24
+	GrandpaIndex         = 25
+	BalancesIndex        = 26
+	TxPaymentsIndex      = 27
+	TestableIndex        = 255
 )
 
 var (
@@ -122,12 +134,14 @@ var (
 )
 
 var (
-	logger      = log.NewLogger()
-	mdGenerator = primitives.NewMetadataTypeGenerator()
+	logger              = log.NewLogger()
+	mdGenerator         = primitives.NewMetadataTypeGenerator()
+	ioStorage           = io.NewStorage()
+	ioTransactionBroker = io.NewTransactionBroker()
 	// Modules contains all the modules used by the runtime.
-	modules = initializeModules()
-	extra   = newSignedExtra()
-	decoder = types.NewRuntimeDecoder(modules, extra, logger)
+	modules = initializeModules(io.NewStorage(), ioTransactionBroker)
+	extra   = newSignedExtra(modules)
+	decoder = types.NewRuntimeDecoder(modules, extra, ioStorage, ioTransactionBroker, logger)
 )
 
 func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength) {
@@ -144,20 +158,18 @@ func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength)
 	return weights, length
 }
 
-func initializeModules() []primitives.Module {
+func initializeModules(storage io.Storage, transactionBroker io.TransactionBroker) []primitives.Module {
 	systemModule := system.New(
 		SystemIndex,
-		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion, maxConsumers),
+		system.NewConfig(storage, primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion, maxConsumers),
 		mdGenerator,
 		logger,
 	)
 
-	parachainSystemModule := parachain_system.New(ParachainSystem, parachain_system.NewConfig(DbWeight))
-	parachainInfoModule := parachain_info.New(ParachainInfo)
-
 	auraModule := aura.New(
 		AuraIndex,
 		aura.NewConfig(
+			storage,
 			primitives.PublicKeySr25519,
 			DbWeight,
 			TimestampMinimumPeriod,
@@ -171,39 +183,42 @@ func initializeModules() []primitives.Module {
 		logger,
 	)
 
-	auraExtModule := aura_ext.New(AuraExtIndex, aura_ext.NewConfig(DbWeight, RelayChainSlotDurationMillis, BlockProcessingVelocity, UnincludedSegmentCapacity), auraModule, logger)
+	auraExtModule := aura_ext.New(AuraExtIndex, aura_ext.NewConfig(storage, DbWeight), auraModule, logger)
+	consensusHook := aura_ext.NewFixedVelocityConsensusHook(RelayChainSlotDurationMillis, BlockProcessingVelocity, UnincludedSegmentCapacity, DbWeight, auraExtModule, logger)
+	parachainInfoModule := parachain_info.New(ParachainInfoIndex, storage)
+	parachainSystemModule := parachain_system.New(ParachainSystemIndex, parachain_system.NewConfig(storage, DbWeight, parachain_system.RelayNumberStrictlyIncreases{}, parachainInfoModule, systemModule, consensusHook), logger)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
-		timestamp.NewConfig(auraModule, DbWeight, TimestampMinimumPeriod),
+		timestamp.NewConfig(storage, auraModule, DbWeight, TimestampMinimumPeriod),
 		mdGenerator,
 	)
 
-	grandpaModule := grandpa.New(GrandpaIndex, logger, mdGenerator)
+	grandpaModule := grandpa.New(GrandpaIndex, storage, logger, mdGenerator)
 
 	handler := session.NewHandler([]session.OneSessionHandler{auraModule})
 
 	periodicSession := session.NewPeriodicSessions(Period, Offset)
 	sessionModule := session.New(
 		SessionIndex,
-		session.NewConfig(DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
+		session.NewConfig(storage, DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
 		mdGenerator,
 		logger)
 
 	balancesModule := balances.New(
 		BalancesIndex,
-		balances.NewConfig(DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
+		balances.NewConfig(storage, DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
 		logger,
 		mdGenerator,
 	)
 
 	tpmModule := transaction_payment.New(
 		TxPaymentsIndex,
-		transaction_payment.NewConfig(OperationalFeeMultiplier, WeightToFee, LengthToFee, blockWeights),
+		transaction_payment.NewConfig(storage, OperationalFeeMultiplier, WeightToFee, LengthToFee, blockWeights),
 		mdGenerator,
 	)
 
-	testableModule := tm.New(TestableIndex, mdGenerator)
+	testableModule := tm.New(TestableIndex, storage, transactionBroker, mdGenerator)
 
 	return []primitives.Module{
 		systemModule,
@@ -220,7 +235,7 @@ func initializeModules() []primitives.Module {
 	}
 }
 
-func newSignedExtra() primitives.SignedExtra {
+func newSignedExtra(modules []primitives.Module) primitives.SignedExtra {
 	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
 	balancesModule := primitives.MustGetModule(BalancesIndex, modules).(balances.Module)
 	txPaymentModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
@@ -245,7 +260,7 @@ func runtimeApi() types.RuntimeApi {
 	auraModule := primitives.MustGetModule(AuraIndex, modules).(aura.Module)
 	grandpaModule := primitives.MustGetModule(GrandpaIndex, modules).(grandpa.Module)
 	txPaymentsModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
-	parachainSystemModule := primitives.MustGetModule(ParachainSystem, modules).(parachain_system.Module)
+	parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
 
 	executiveModule := executive.New(
 		systemModule,
@@ -253,7 +268,6 @@ func runtimeApi() types.RuntimeApi {
 		hooks.DefaultOnRuntimeUpgrade{},
 		logger,
 	)
-	// TODO: Aura ext uses executive
 
 	sessions := []primitives.Session{
 		auraModule,
@@ -272,8 +286,6 @@ func runtimeApi() types.RuntimeApi {
 	offchainWorkerApi := offchain_worker.New(executiveModule, logger)
 	genesisBuilderApi := genesisbuilder.New(modules, logger)
 	collectCollationInfoApi := collect_collation_info.New(parachainSystemModule, logger)
-	// TODO: Check if this API module has metadata as well
-	parachainApi := parachain.New(parachainSystemModule, decoder, logger)
 
 	metadataApi := metadata.New(
 		runtimeExtrinsic,
@@ -308,7 +320,6 @@ func runtimeApi() types.RuntimeApi {
 		offchainWorkerApi,
 		genesisBuilderApi,
 		collectCollationInfoApi,
-		parachainApi,
 	}
 
 	runtimeApi := types.NewRuntimeApi(apis, logger)
@@ -502,17 +513,38 @@ func CollectCollationInfoCollectCollationInfo(dataPtr int32, dataLen int32) int6
 
 //go:export validate_block
 func ParachainValidateBlock(dataPtr int32, dataLen int32) int64 {
-	return runtimeApi().
-		Module(parachain.ApiModuleName).(parachain.Module).
+	hostEnv := pvf.NewHostEnvironment(logger)
+	modules := initializeModules(hostEnv, hostEnv)
+
+	extra := newSignedExtra(modules)
+	decoder := types.NewRuntimeDecoder(modules, extra, hostEnv, hostEnv, logger)
+	runtimeExtrinsic := extrinsic.New(modules, extra, mdGenerator, logger)
+	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
+	auraExtModule := primitives.MustGetModule(AuraExtIndex, modules).(aura_ext.Module)
+	parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
+
+	executiveModule := executive.New(
+		systemModule,
+		runtimeExtrinsic,
+		hooks.DefaultOnRuntimeUpgrade{},
+		logger,
+	)
+	blockExecutor := aura_ext.NewBlockExecutor(auraExtModule, executiveModule)
+
+	parachainApi := parachain.New(parachainSystemModule, blockExecutor, decoder, hostEnv, logger)
+
+	return parachainApi.
 		ValidateBlock(dataPtr, dataLen)
 }
 
-//go:export Benchmark_dispatch
+// go:export Benchmark_dispatch
 func BenchmarkDispatch(dataPtr int32, dataLen int32) int64 {
 	return benchmarking.New(
 		SystemIndex,
 		modules,
 		decoder,
+		ioStorage,
+		ioTransactionBroker,
 		logger,
 	).BenchmarkDispatch(dataPtr, dataLen)
 }
@@ -523,6 +555,8 @@ func BenchmarkHook(dataPtr int32, dataLen int32) int64 {
 		SystemIndex,
 		modules,
 		decoder,
+		ioStorage,
+		ioTransactionBroker,
 		logger,
 	).BenchmarkHook(dataPtr, dataLen)
 }

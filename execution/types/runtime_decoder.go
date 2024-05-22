@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/LimeChain/gosemble/primitives/io"
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/log"
@@ -23,16 +24,20 @@ type RuntimeDecoder interface {
 }
 
 type runtimeDecoder struct {
-	modules []types.Module
-	extra   primitives.SignedExtra
-	logger  log.WarnLogger
+	modules           []types.Module
+	extra             primitives.SignedExtra
+	storage           io.Storage
+	transactionBroker io.TransactionBroker
+	logger            log.WarnLogger
 }
 
-func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, logger log.WarnLogger) RuntimeDecoder {
+func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, storage io.Storage, transactionBroker io.TransactionBroker, logger log.WarnLogger) RuntimeDecoder {
 	return runtimeDecoder{
-		modules: modules,
-		extra:   extra,
-		logger:  logger,
+		modules:           modules,
+		extra:             extra,
+		storage:           storage,
+		transactionBroker: transactionBroker,
+		logger:            logger,
 	}
 }
 
@@ -100,7 +105,7 @@ func (rd runtimeDecoder) DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (primiti
 		return nil, errInvalidLengthPrefix
 	}
 
-	return NewUncheckedExtrinsic(sc.U8(version), extSignature, function, extra, rd.logger), nil
+	return NewUncheckedExtrinsic(sc.U8(version), extSignature, function, extra, rd.storage, rd.transactionBroker, rd.logger), nil
 }
 
 func (rd runtimeDecoder) DecodeCall(buffer *bytes.Buffer) (primitives.Call, error) {

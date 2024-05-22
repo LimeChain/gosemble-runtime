@@ -17,9 +17,9 @@ type HashStorageMap[K, V sc.Encodable] struct {
 	hashing     io.Hashing
 }
 
-func NewHashStorageMap[K, V sc.Encodable](prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error)) StorageMap[K, V] {
+func NewHashStorageMap[K, V sc.Encodable](storage io.Storage, prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error)) StorageMap[K, V] {
 	return HashStorageMap[K, V]{
-		newBaseStorage[V](decodeFunc, nil),
+		newBaseStorage[V](storage, decodeFunc, nil),
 		prefix,
 		name,
 		keyHashFunc,

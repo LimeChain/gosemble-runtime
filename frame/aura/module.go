@@ -53,7 +53,7 @@ type Module struct {
 }
 
 func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 
 	return Module{
 		index:              index,
@@ -113,10 +113,14 @@ func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 	if slot.HasValue {
 		newSlot := slot.Value
 
+		m.logger.Infof("new slot: %d", uint64(slot.Value))
+
 		currentSlot, err := m.storage.CurrentSlot.Get()
 		if err != nil {
 			return primitives.Weight{}, err
 		}
+
+		m.logger.Infof("current slot: %d", slot.Value)
 
 		if currentSlot >= newSlot {
 			return primitives.Weight{}, errSlotMustIncrease
