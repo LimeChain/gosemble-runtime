@@ -15,7 +15,7 @@ import (
 )
 
 func BenchmarkSessionSetKeys(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/session/call_set_keys_weight.go", func(i *benchmarking.Instance) {
+	benchmarking.RunDispatchCall(b, "../../../frame/session/call_set_keys_weight.go", func(i *benchmarking.Instance) {
 		accountInfo := gossamertypes.AccountInfo{
 			Producers: 1,
 			Data: gossamertypes.AccountData{
