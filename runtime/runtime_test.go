@@ -73,7 +73,7 @@ var (
 var (
 	parentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
 	stateRoot      = common.MustHexToHash("0x14cf3fe7f5666e63d0981d80c69b6b8bebbb7c94e3eeacaeca27ae6cfa328631")
-	extrinsicsRoot = common.MustHexToHash("0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314")
+	extrinsicsRoot = common.MustHexToHash("0x105165e71964828f2b8d1fd89904602cfb9b8930951d87eb249aa2d7c4b51ee7")
 	blockNumber    = uint64(1)
 	sealDigest     = gossamertypes.SealDigest{
 		ConsensusEngineID: gossamertypes.BabeEngineID,
