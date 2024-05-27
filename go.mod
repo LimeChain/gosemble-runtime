@@ -10,7 +10,7 @@ require (
 	github.com/gtank/merlin v0.1.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/montanaflynn/stats v0.7.1
-	github.com/shirou/gopsutil/v3 v3.24.3
+	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/stretchr/testify v1.9.0
 	github.com/vedhavyas/go-subkey v1.0.4
 	golang.org/x/crypto v0.22.0
