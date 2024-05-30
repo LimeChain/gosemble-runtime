@@ -128,12 +128,33 @@ benchmark-overhead: build-benchmarking
 	-generate-weight-files=$(GENERATE_WEIGHT_FILES)
 
 # substrate node configuration
-start-network:
+SUBSTRATE_CHAIN_SPEC = local
+substrate-build:
 	cp $(BUILD_PATH) polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
 	cd polkadot-sdk/substrate/bin/node-template/node; \
-	cargo build --release; \
-	cd ../../../..; \
-	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
+	cargo build --release
+
+substrate-start-alice:
+	cd polkadot-sdk; \
+	./target/release/node-template purge-chain --base-path /tmp/alice --chain $(SUBSTRATE_CHAIN_SPEC) -y; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --execution=wasm \
+	--base-path /tmp/alice \
+	--chain $(SUBSTRATE_CHAIN_SPEC) \
+	--alice \
+	--port 30333 \
+	--rpc-port 9945 \
+	--validator
+
+substrate-start-bob:
+	cd polkadot-sdk; \
+	./target/release/node-template purge-chain --base-path /tmp/bob --chain $(SUBSTRATE_CHAIN_SPEC) -y; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --execution=wasm \
+	--base-path /tmp/bob \
+	--chain $(SUBSTRATE_CHAIN_SPEC) \
+	--bob \
+	--port 30334 \
+	--rpc-port 9946 \
+	--validator
 
 start-network-babe:
 	cd polkadot-sdk/substrate/bin/node/cli; \
