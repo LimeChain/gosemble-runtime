@@ -80,6 +80,37 @@ func Test_Authorities_Panics(t *testing.T) {
 	mockGrandpa.AssertCalled(t, "Authorities")
 }
 
+func Test_CurrentSetId(t *testing.T) {
+	setup()
+
+	id := sc.U64(1)
+
+	mockGrandpa.On("CurrentSetId").Return(id, nil)
+	mockMemoryUtils.On("BytesToOffsetAndSize", id.Bytes()).Return(int64(13))
+
+	target.CurrentSetId()
+
+	mockGrandpa.AssertCalled(t, "CurrentSetId")
+	mockMemoryUtils.AssertCalled(t, "BytesToOffsetAndSize", id.Bytes())
+	mockMemoryUtils.AssertNumberOfCalls(t, "BytesToOffsetAndSize", 1)
+}
+
+func Test_CurrentSetId_Error(t *testing.T) {
+	setup()
+
+	expectedErr := errors.New("error")
+
+	mockGrandpa.On("CurrentSetId").Return(sc.U64(0), expectedErr)
+
+	assert.PanicsWithValue(t,
+		expectedErr.Error(),
+		func() { target.CurrentSetId() },
+	)
+
+	mockGrandpa.AssertCalled(t, "CurrentSetId")
+	mockMemoryUtils.AssertNumberOfCalls(t, "BytesToOffsetAndSize", 0)
+}
+
 func Test_Module_Metadata(t *testing.T) {
 	setup()
 

@@ -14,6 +14,3 @@ func ExtMiscPrintUtf8Version1(data int64)
 
 //go:wasmimport env ext_misc_runtime_version_version_1
 func ExtMiscRuntimeVersionVersion1(data int64) int64
-
-// TODO
-// ext_misc_print_num_version_1

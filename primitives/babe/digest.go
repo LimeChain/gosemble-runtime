@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	sc "github.com/LimeChain/goscale"
-	// babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 

@@ -9,6 +9,10 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
+var (
+	errInvalidEquivocationType = errors.New("invalid 'Equivocation' type")
+)
+
 // Proof of voter misbehavior on a given set id. Misbehavior/equivocation in
 // GRANDPA happens when a voter votes on the same round (either at prevote or
 // precommit stage) for different blocks. Proving is achieved by collecting the
@@ -56,7 +60,7 @@ func (e EquivocationProof) Round() (sc.U64, error) {
 		equivocation := e.Equivocation.VaryingData[1].(grandpafinality.Equivocation)
 		return equivocation.RoundNumber, nil
 	default:
-		return 0, errors.New("invalid 'Equivocation' type")
+		return 0, errInvalidEquivocationType
 	}
 }
 
@@ -70,7 +74,7 @@ func (e EquivocationProof) Offender() (primitives.AccountId, error) {
 		equivocation := e.Equivocation.VaryingData[1].(grandpafinality.Equivocation)
 		return primitives.AccountId(equivocation.Identity), nil
 	default:
-		return primitives.AccountId{}, errors.New("invalid 'Equivocation' type")
+		return primitives.AccountId{}, errInvalidEquivocationType
 	}
 }
 

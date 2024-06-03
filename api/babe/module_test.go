@@ -28,7 +28,7 @@ var (
 	}
 
 	authorities = sc.Sequence[primitives.Authority]{
-		primitives.Authority{Id: primitives.AccountId(pubKey1), Weight: sc.U64(1)}, // []byte{1, 2, 3}
+		primitives.Authority{Id: primitives.AccountId(pubKey1), Weight: sc.U64(1)},
 	}
 
 	randomness = babetypes.Randomness(sc.BytesToFixedSequenceU8([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}))
