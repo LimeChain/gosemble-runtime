@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	"github.com/LimeChain/gosemble/frame/session"
 	"math/big"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"github.com/ChainSafe/gossamer/lib/runtime"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
 	"github.com/ChainSafe/gossamer/pkg/scale"
-	"github.com/ChainSafe/gossamer/pkg/trie"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/system"
@@ -31,6 +31,8 @@ import (
 const POLKADOT_RUNTIME = "../build/polkadot_runtime-v9400.compact.compressed.wasm"
 const NODE_TEMPLATE_RUNTIME = "../build/node_template_runtime.wasm"
 const WASM_RUNTIME = "../build/runtime.wasm"
+const PARACHAIN_RUNTIME = "../build/parachain_runtime.wasm"
+const ROCOCO_PARACHAIN_RUNTIME = "../build/rococo_parachain_runtime.wasm"
 
 var (
 	keySystemHash, _             = common.Twox128Hash([]byte("System"))
@@ -129,7 +131,7 @@ var (
 	dispatchOutcomeSessionNoKeysErr, _ = primitives.NewDispatchOutcome(
 		primitives.NewDispatchErrorModule(
 			primitives.CustomModuleError{
-				Index: SessionIndex,
+				Index: 7,
 				Err:   sc.U32(session.ErrorNoKeys),
 			}))
 
@@ -144,8 +146,24 @@ var (
 )
 
 func newTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
-	tt := trie.NewEmptyTrie()
-	runtime := wazero_runtime.NewTestInstance(t, WASM_RUNTIME, wazero_runtime.TestWithTrie(tt))
+	tt := inmemory.NewEmptyTrie()
+	runtime := wazero_runtime.NewTestInstance(t, PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(tt))
+	return runtime, &runtime.Context.Storage
+}
+
+func newRococoRustTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
+	tt := inmemory.NewEmptyTrie()
+	runtime := wazero_runtime.NewTestInstance(t, ROCOCO_PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(tt))
+	return runtime, &runtime.Context.Storage
+}
+
+func newRococoTestRuntimeWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
+	runtime := wazero_runtime.NewTestInstance(t, ROCOCO_PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(trie))
+	return runtime, &runtime.Context.Storage
+}
+
+func newTestRuntimeWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
+	runtime := wazero_runtime.NewTestInstance(t, PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(trie))
 	return runtime, &runtime.Context.Storage
 }
 

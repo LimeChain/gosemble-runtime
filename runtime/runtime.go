@@ -1,6 +1,3 @@
-/*
-Targets WebAssembly MVP
-*/
 package main
 
 import (
@@ -12,9 +9,9 @@ import (
 	"github.com/LimeChain/gosemble/api/collect_collation_info"
 	"github.com/LimeChain/gosemble/api/core"
 	genesisbuilder "github.com/LimeChain/gosemble/api/genesis_builder"
-	apiGrandpa "github.com/LimeChain/gosemble/api/grandpa"
 	"github.com/LimeChain/gosemble/api/metadata"
 	"github.com/LimeChain/gosemble/api/offchain_worker"
+	"github.com/LimeChain/gosemble/api/parachain"
 	"github.com/LimeChain/gosemble/api/session_keys"
 	taggedtransactionqueue "github.com/LimeChain/gosemble/api/tagged_transaction_queue"
 	apiTxPayments "github.com/LimeChain/gosemble/api/transaction_payment"
@@ -23,19 +20,20 @@ import (
 	"github.com/LimeChain/gosemble/execution/extrinsic"
 	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/aura"
+	aura_ext "github.com/LimeChain/gosemble/frame/aura-ext"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
-	"github.com/LimeChain/gosemble/frame/grandpa"
-	"github.com/LimeChain/gosemble/frame/session"
+	"github.com/LimeChain/gosemble/frame/parachain_info"
+	"github.com/LimeChain/gosemble/frame/parachain_system"
 	"github.com/LimeChain/gosemble/frame/system"
 	sysExtensions "github.com/LimeChain/gosemble/frame/system/extensions"
-	tm "github.com/LimeChain/gosemble/frame/testable"
 	"github.com/LimeChain/gosemble/frame/timestamp"
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
 	txExtensions "github.com/LimeChain/gosemble/frame/transaction_payment/extensions"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
+	"github.com/LimeChain/gosemble/primitives/pvf"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -89,22 +87,12 @@ const (
 const (
 	SystemIndex sc.U8 = iota
 	TimestampIndex
-	SessionIndex
-	AuraIndex
-	GrandpaIndex
-	BalancesIndex
 	TxPaymentsIndex
-	TestableIndex = 255
-	//TimestampIndex
-	//ParachainSystemIndex = 20
-	//SessionIndex         = 21
-	//ParachainInfoIndex   = 22
-	//AuraIndex            = 23
-	//AuraExtIndex         = 24
-	//GrandpaIndex         = 25
-	//BalancesIndex        = 26
-	//TxPaymentsIndex      = 27
-	//TestableIndex        = 255
+	ParachainSystemIndex = 20
+	ParachainInfoIndex   = 21
+	BalancesIndex        = 30
+	AuraIndex            = 32
+	AuraExtIndex         = 33
 )
 
 var (
@@ -175,27 +163,16 @@ func initializeModules(storage io.Storage, transactionBroker io.TransactionBroke
 		logger,
 	)
 
-	//auraExtModule := aura_ext.New(AuraExtIndex, aura_ext.NewConfig(storage, DbWeight), auraModule, logger)
-	//consensusHook := aura_ext.NewFixedVelocityConsensusHook(RelayChainSlotDurationMillis, BlockProcessingVelocity, UnincludedSegmentCapacity, DbWeight, auraExtModule, logger)
-	//parachainInfoModule := parachain_info.New(ParachainInfoIndex, storage)
-	//parachainSystemModule := parachain_system.New(ParachainSystemIndex, parachain_system.NewConfig(storage, DbWeight, parachain_system.RelayNumberStrictlyIncreases{}, parachainInfoModule, systemModule, consensusHook), logger)
+	auraExtModule := aura_ext.New(AuraExtIndex, aura_ext.NewConfig(storage, DbWeight), auraModule, logger)
+	consensusHook := aura_ext.NewFixedVelocityConsensusHook(RelayChainSlotDurationMillis, BlockProcessingVelocity, UnincludedSegmentCapacity, DbWeight, auraExtModule, logger)
+	parachainInfoModule := parachain_info.New(ParachainInfoIndex, storage)
+	parachainSystemModule := parachain_system.New(ParachainSystemIndex, parachain_system.NewConfig(storage, DbWeight, parachain_system.RelayNumberStrictlyIncreases{}, parachainInfoModule, systemModule, consensusHook), logger)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
 		timestamp.NewConfig(storage, auraModule, DbWeight, TimestampMinimumPeriod),
 		mdGenerator,
 	)
-
-	grandpaModule := grandpa.New(GrandpaIndex, storage, logger, mdGenerator)
-
-	handler := session.NewHandler([]session.OneSessionHandler{auraModule})
-
-	periodicSession := session.NewPeriodicSessions(Period, Offset)
-	sessionModule := session.New(
-		SessionIndex,
-		session.NewConfig(storage, DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
-		mdGenerator,
-		logger)
 
 	balancesModule := balances.New(
 		BalancesIndex,
@@ -210,20 +187,15 @@ func initializeModules(storage io.Storage, transactionBroker io.TransactionBroke
 		mdGenerator,
 	)
 
-	testableModule := tm.New(TestableIndex, storage, transactionBroker, mdGenerator)
-
 	return []primitives.Module{
 		systemModule,
-		//parachainSystemModule,
+		parachainSystemModule,
 		timestampModule,
-		sessionModule,
-		//parachainInfoModule,
+		parachainInfoModule,
 		auraModule,
-		//auraExtModule,
-		grandpaModule,
+		auraExtModule,
 		balancesModule,
 		tpmModule,
-		testableModule,
 	}
 }
 
@@ -250,9 +222,8 @@ func runtimeApi() types.RuntimeApi {
 	runtimeExtrinsic := extrinsic.New(modules, extra, mdGenerator, logger)
 	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
 	auraModule := primitives.MustGetModule(AuraIndex, modules).(aura.Module)
-	grandpaModule := primitives.MustGetModule(GrandpaIndex, modules).(grandpa.Module)
 	txPaymentsModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
-	//parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
+	parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
 
 	executiveModule := executive.New(
 		systemModule,
@@ -261,23 +232,16 @@ func runtimeApi() types.RuntimeApi {
 		logger,
 	)
 
-	sessions := []primitives.Session{
-		auraModule,
-		grandpaModule,
-	}
-
 	coreApi := core.New(executiveModule, decoder, RuntimeVersion, mdGenerator, logger)
 	blockBuilderApi := blockbuilder.New(runtimeExtrinsic, executiveModule, decoder, mdGenerator, logger)
 	taggedTxQueueApi := taggedtransactionqueue.New(executiveModule, decoder, mdGenerator, logger)
 	auraApi := apiAura.New(auraModule, logger)
-	grandpaApi := apiGrandpa.New(grandpaModule, logger)
 	accountNonceApi := account_nonce.New(systemModule, logger)
 	txPaymentsApi := apiTxPayments.New(decoder, txPaymentsModule, logger)
 	txPaymentsCallApi := apiTxPaymentsCall.New(decoder, txPaymentsModule, logger)
-	sessionKeysApi := session_keys.New(sessions, logger)
 	offchainWorkerApi := offchain_worker.New(executiveModule, logger)
 	genesisBuilderApi := genesisbuilder.New(modules, logger)
-	//collectCollationInfoApi := collect_collation_info.New(parachainSystemModule, logger)
+	collectCollationInfoApi := collect_collation_info.New(parachainSystemModule, logger)
 
 	metadataApi := metadata.New(
 		runtimeExtrinsic,
@@ -286,13 +250,11 @@ func runtimeApi() types.RuntimeApi {
 			blockBuilderApi,
 			taggedTxQueueApi,
 			auraApi,
-			grandpaApi,
 			accountNonceApi,
 			txPaymentsApi,
 			txPaymentsCallApi,
-			sessionKeysApi,
 			offchainWorkerApi,
-			//collectCollationInfoApi,
+			collectCollationInfoApi,
 		},
 		logger,
 		mdGenerator,
@@ -304,14 +266,12 @@ func runtimeApi() types.RuntimeApi {
 		taggedTxQueueApi,
 		metadataApi,
 		auraApi,
-		grandpaApi,
 		accountNonceApi,
 		txPaymentsApi,
 		txPaymentsCallApi,
-		sessionKeysApi,
 		offchainWorkerApi,
 		genesisBuilderApi,
-		//collectCollationInfoApi,
+		collectCollationInfoApi,
 	}
 
 	runtimeApi := types.NewRuntimeApi(apis, logger)
@@ -466,13 +426,6 @@ func SessionKeysDecodeSessionKeys(dataPtr int32, dataLen int32) int64 {
 		DecodeSessionKeys(dataPtr, dataLen)
 }
 
-//go:export GrandpaApi_grandpa_authorities
-func GrandpaApiAuthorities(_, _ int32) int64 {
-	return runtimeApi().
-		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
-		Authorities()
-}
-
 //go:export OffchainWorkerApi_offchain_worker
 func OffchainWorkerApiOffchainWorker(dataPtr int32, dataLen int32) int64 {
 	runtimeApi().
@@ -505,29 +458,28 @@ func CollectCollationInfoCollectCollationInfo(dataPtr int32, dataLen int32) int6
 
 //go:export validate_block
 func ParachainValidateBlock(dataPtr int32, dataLen int32) int64 {
-	//hostEnv := pvf.NewHostEnvironment(logger)
-	//modules := initializeModules(hostEnv, hostEnv)
-	//
-	//extra := newSignedExtra(modules)
-	//decoder := types.NewRuntimeDecoder(modules, extra, hostEnv, hostEnv, logger)
-	//runtimeExtrinsic := extrinsic.New(modules, extra, mdGenerator, logger)
-	//systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
-	//auraExtModule := primitives.MustGetModule(AuraExtIndex, modules).(aura_ext.Module)
-	//parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
-	//
-	//executiveModule := executive.New(
-	//	systemModule,
-	//	runtimeExtrinsic,
-	//	hooks.DefaultOnRuntimeUpgrade{},
-	//	logger,
-	//)
-	//blockExecutor := aura_ext.NewBlockExecutor(auraExtModule, executiveModule)
-	//
-	//parachainApi := parachain.New(parachainSystemModule, blockExecutor, decoder, hostEnv, logger)
-	//
-	//return parachainApi.
-	//	ValidateBlock(dataPtr, dataLen)
-	return 0
+	hostEnv := pvf.NewHostEnvironment(logger)
+	modules := initializeModules(hostEnv, hostEnv)
+
+	extra := newSignedExtra(modules)
+	decoder := types.NewRuntimeDecoder(modules, extra, hostEnv, hostEnv, logger)
+	runtimeExtrinsic := extrinsic.New(modules, extra, mdGenerator, logger)
+	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
+	auraExtModule := primitives.MustGetModule(AuraExtIndex, modules).(aura_ext.Module)
+	parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
+
+	executiveModule := executive.New(
+		systemModule,
+		runtimeExtrinsic,
+		hooks.DefaultOnRuntimeUpgrade{},
+		logger,
+	)
+	blockExecutor := aura_ext.NewBlockExecutor(auraExtModule, executiveModule)
+
+	parachainApi := parachain.New(parachainSystemModule, blockExecutor, decoder, hostEnv, logger)
+
+	return parachainApi.
+		ValidateBlock(dataPtr, dataLen)
 }
 
 // go:export Benchmark_dispatch

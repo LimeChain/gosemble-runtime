@@ -8,13 +8,13 @@ import (
 // If only runtime implementation changes and behavior does not,
 // then leave spec_version as is and increment impl_version.
 
-const SpecName = "node-template"
-const ImplName = "node-template"
+const SpecName = "test-parachain"
+const ImplName = "test-parachain"
 const AuthoringVersion = 1
-const SpecVersion = 100
-const ImplVersion = 1
-const TransactionVersion = 1
-const StateVersion = 1
+const SpecVersion = 1_007_000
+const ImplVersion = 0
+const TransactionVersion = 6
+const StateVersion = 0
 const StorageVersion = 0
 
 const BlockHashCount = sc.U64(2400)

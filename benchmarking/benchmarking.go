@@ -3,11 +3,11 @@ package benchmarking
 import (
 	"bytes"
 	"fmt"
+	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	"testing"
 
 	"github.com/ChainSafe/gossamer/lib/runtime"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
-	"github.com/ChainSafe/gossamer/pkg/trie"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/benchmarking"
 	benchmarkingtypes "github.com/LimeChain/gosemble/primitives/benchmarking"
@@ -64,7 +64,7 @@ func RunHook(b *testing.B,
 	validateFn func(storage *runtime.Storage),
 ) benchmarkingtypes.BenchmarkResult {
 	// todo set heapPages and dbCache when gosammer starts supporting db caching
-	runtime := wazero_runtime.NewBenchInstanceWithTrie(b, Config.WasmRuntime, trie.NewEmptyTrie())
+	runtime := wazero_runtime.NewBenchInstanceWithTrie(b, Config.WasmRuntime, inmemory.NewEmptyTrie())
 	defer runtime.Stop()
 
 	instance, err := newBenchmarkingInstance(runtime, Config.Repeat)
@@ -100,7 +100,7 @@ func RunHook(b *testing.B,
 
 func runTestFn(b *testing.B, testFn func(i *Instance)) benchmarkingtypes.BenchmarkResult {
 	// todo set heapPages and dbCache when gosammer starts supporting db caching
-	runtime := wazero_runtime.NewBenchInstanceWithTrie(b, Config.WasmRuntime, trie.NewEmptyTrie())
+	runtime := wazero_runtime.NewBenchInstanceWithTrie(b, Config.WasmRuntime, inmemory.NewEmptyTrie())
 	defer runtime.Stop()
 
 	instance, err := newBenchmarkingInstance(runtime, Config.Repeat)

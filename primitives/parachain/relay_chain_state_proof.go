@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ChainSafe/gossamer/lib/common"
-	"github.com/ChainSafe/gossamer/pkg/trie"
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
+	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	"github.com/ChainSafe/gossamer/pkg/trie/node"
 	"github.com/ChainSafe/gossamer/pkg/trie/pools"
 	sc "github.com/LimeChain/goscale"
@@ -31,7 +31,7 @@ var (
 
 type RelayChainStateProof struct {
 	ParachainId sc.U32
-	Trie        *trie.Trie
+	Trie        *inmemory.InMemoryTrie
 	hashing     io.Hashing
 }
 
@@ -129,7 +129,7 @@ func (rlcsp RelayChainStateProof) ReadMessagingStateSnapshot(ahc AbridgedHostCon
 	}, nil
 }
 
-func BuildTrie(encodedProofNodes [][]byte, rootHash []byte, db db.Database) (t *trie.Trie, err error) {
+func BuildTrie(encodedProofNodes [][]byte, rootHash []byte, db db.Database) (t *inmemory.InMemoryTrie, err error) {
 	if len(encodedProofNodes) == 0 {
 		return nil, fmt.Errorf("%w: for Merkle root hash 0x%x",
 			errEmptyProof, rootHash)
@@ -197,7 +197,7 @@ func BuildTrie(encodedProofNodes [][]byte, rootHash []byte, db db.Database) (t *
 		return nil, fmt.Errorf("loading proof: %w", err)
 	}
 
-	return trie.NewTrie(root, db), nil
+	return inmemory.NewTrie(root, db), nil
 }
 
 // loadProof is a recursive function that will create all the trie paths based
