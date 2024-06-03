@@ -11,7 +11,7 @@ import (
 )
 
 func BenchmarkSudoSudoAs(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../frame/sudo/call_sudo_as_weight.go", func(i *benchmarking.Instance) {
+	benchmarking.RunDispatchCall(b, "../../../frame/sudo/call_sudo_as_weight.go", func(i *benchmarking.Instance) {
 		err := (*i.Storage()).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), aliceAddress.AsID.ToBytes())
 		assert.NoError(b, err)
 
