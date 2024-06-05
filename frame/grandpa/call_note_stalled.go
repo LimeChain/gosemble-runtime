@@ -20,16 +20,18 @@ import (
 // Only callable by root.
 type callNoteStalled struct {
 	primitives.Callable
+	dbWeight      primitives.RuntimeDbWeight
 	staleNotifier StaleNotifier
 }
 
-func newCallNoteStalled(moduleId sc.U8, functionId sc.U8, staleNotifier StaleNotifier) primitives.Call {
+func newCallNoteStalled(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, staleNotifier StaleNotifier) primitives.Call {
 	call := callNoteStalled{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(),
 		},
+		dbWeight:      dbWeight,
 		staleNotifier: staleNotifier,
 	}
 
@@ -72,7 +74,7 @@ func (c callNoteStalled) Args() sc.VaryingData {
 }
 
 func (c callNoteStalled) BaseWeight() primitives.Weight {
-	return callNoteStalledWeight(primitives.RuntimeDbWeight{})
+	return callNoteStalledWeight(c.dbWeight)
 }
 
 func (_ callNoteStalled) WeighData(baseWeight primitives.Weight) primitives.Weight {

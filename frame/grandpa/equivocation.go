@@ -85,8 +85,13 @@ func (e EquivocationReportSystem) ProcessEvidence(reporterAccount sc.Option[prim
 	if reporterAccount.HasValue {
 		reporter = reporterAccount.Value
 	} else {
-		// TODO: check if it has value
-		reporter = e.authorshipModule.Author().Value
+		author, err := e.authorshipModule.Author()
+		if err != nil {
+			return err
+		}
+		if author.HasValue {
+			reporter = author.Value
+		}
 	}
 
 	// TODO: handle errors

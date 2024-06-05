@@ -35,6 +35,7 @@ func Test_Call_PlanConfigChange_New(t *testing.T) {
 			FunctionId: functionPlanConfigChangeIndex,
 			Arguments:  defaultPlanConfigChangeArgs,
 		},
+		dbWeight:                        dbWeight,
 		storagePendingEpochConfigChange: mockStoragePendingEpochConfigChange,
 	}
 
@@ -97,7 +98,7 @@ func Test_Call_PlanConfigChange_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallPlanConfigChange(tc, functionPlanConfigChangeIndex, mockStoragePendingEpochConfigChange)
+		call := newCallPlanConfigChange(tc, functionPlanConfigChangeIndex, dbWeight, mockStoragePendingEpochConfigChange)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -114,7 +115,7 @@ func Test_Call_PlanConfigChange_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallPlanConfigChange(moduleId, tc, mockStoragePendingEpochConfigChange)
+		call := newCallPlanConfigChange(moduleId, tc, dbWeight, mockStoragePendingEpochConfigChange)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -123,7 +124,7 @@ func Test_Call_PlanConfigChange_FunctionIndex(t *testing.T) {
 func Test_Call_PlanConfigChange_BaseWeight(t *testing.T) {
 	call := setupCallPlanConfigChange()
 
-	assert.Equal(t, callPlanConfigChangeWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callPlanConfigChangeWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_PlanConfigChange_WeighData(t *testing.T) {
@@ -162,5 +163,5 @@ func Test_Call_PlanConfigChange_Dispatch(t *testing.T) {
 func setupCallPlanConfigChange() primitives.Call {
 	mockStoragePendingEpochConfigChange = new(mocks.StorageValue[NextConfigDescriptor])
 
-	return newCallPlanConfigChange(moduleId, functionPlanConfigChangeIndex, mockStoragePendingEpochConfigChange)
+	return newCallPlanConfigChange(moduleId, functionPlanConfigChangeIndex, dbWeight, mockStoragePendingEpochConfigChange)
 }

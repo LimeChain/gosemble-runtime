@@ -5,10 +5,12 @@ import (
 	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	staking "github.com/LimeChain/gosemble/primitives/staking"
+	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 type Config struct {
+	DbWeight                 types.RuntimeDbWeight
 	KeyType                  primitives.PublicKeyType
 	MaxAuthorities           sc.U32
 	MaxNominators            sc.U32
@@ -20,6 +22,7 @@ type Config struct {
 }
 
 func NewConfig(
+	dbWeight types.RuntimeDbWeight,
 	keyType primitives.PublicKeyType,
 	maxAuthorities sc.U32,
 	maxNominators sc.U32,
@@ -30,6 +33,7 @@ func NewConfig(
 	sessionModule session.Module,
 ) *Config {
 	return &Config{
+		DbWeight:                 dbWeight,
 		KeyType:                  keyType,
 		MaxAuthorities:           maxAuthorities,
 		MaxNominators:            maxNominators,

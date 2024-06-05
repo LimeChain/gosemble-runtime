@@ -62,7 +62,7 @@ func (m Module) Authorities() int64 {
 }
 
 func (m Module) CurrentSetId() int64 {
-	setId, err := m.grandpa.CurrentSetId()
+	setId, err := m.grandpa.StorageSetId()
 	if err != nil {
 		m.logger.Critical(err.Error())
 	}
@@ -88,12 +88,12 @@ func (m Module) SubmitReportEquivocationUnsignedExtrinsic(dataPtr int32, dataLen
 		m.logger.Critical(err.Error())
 	}
 
-	res, err := m.grandpa.SubmitUnsignedEquivocationReport(equivocationProof, keyOwnerProof)
+	err = m.grandpa.SubmitUnsignedEquivocationReport(equivocationProof, keyOwnerProof)
 	if err != nil {
 		m.logger.Critical(err.Error())
 	}
 
-	return m.memUtils.BytesToOffsetAndSize(res.Bytes())
+	return m.memUtils.BytesToOffsetAndSize(sc.NewOption[sc.Empty](nil).Bytes())
 }
 
 func (m Module) GenerateKeyOwnershipProof(dataPtr int32, dataLen int32) int64 {

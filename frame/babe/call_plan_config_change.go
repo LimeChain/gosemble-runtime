@@ -16,16 +16,18 @@ import (
 // not been enacted yet.
 type callPlanConfigChange struct {
 	primitives.Callable
+	dbWeight                        primitives.RuntimeDbWeight
 	storagePendingEpochConfigChange support.StorageValue[NextConfigDescriptor]
 }
 
-func newCallPlanConfigChange(moduleId sc.U8, functionId sc.U8, storagePendingEpochConfigChange support.StorageValue[NextConfigDescriptor]) primitives.Call {
+func newCallPlanConfigChange(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, storagePendingEpochConfigChange support.StorageValue[NextConfigDescriptor]) primitives.Call {
 	call := callPlanConfigChange{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(NextConfigDescriptor{}),
 		},
+		dbWeight:                        dbWeight,
 		storagePendingEpochConfigChange: storagePendingEpochConfigChange,
 	}
 
@@ -62,7 +64,7 @@ func (c callPlanConfigChange) Args() sc.VaryingData {
 }
 
 func (c callPlanConfigChange) BaseWeight() primitives.Weight {
-	return callPlanConfigChangeWeight(primitives.RuntimeDbWeight{})
+	return callPlanConfigChangeWeight(c.dbWeight)
 }
 
 func (_ callPlanConfigChange) WeighData(baseWeight primitives.Weight) primitives.Weight {

@@ -189,6 +189,7 @@ func initializeModules() []primitives.Module {
 	babeModule := babe.New(
 		BabeIndex,
 		babe.NewConfig(
+			DbWeight,
 			primitives.PublicKeySr25519,
 			BabeGenesisEpochConfig,
 			EpochDuration,
@@ -229,6 +230,7 @@ func initializeModules() []primitives.Module {
 	grandpaModule := grandpa.New(
 		GrandpaIndex,
 		grandpa.NewConfig(
+			DbWeight,
 			primitives.PublicKeyEd25519,
 			GrandpaMaxAuthorities,
 			GrandpaMaxNominators,

@@ -85,12 +85,12 @@ func Test_CurrentSetId(t *testing.T) {
 
 	id := sc.U64(1)
 
-	mockGrandpa.On("CurrentSetId").Return(id, nil)
+	mockGrandpa.On("StorageSetId").Return(id, nil)
 	mockMemoryUtils.On("BytesToOffsetAndSize", id.Bytes()).Return(int64(13))
 
 	target.CurrentSetId()
 
-	mockGrandpa.AssertCalled(t, "CurrentSetId")
+	mockGrandpa.AssertCalled(t, "StorageSetId")
 	mockMemoryUtils.AssertCalled(t, "BytesToOffsetAndSize", id.Bytes())
 	mockMemoryUtils.AssertNumberOfCalls(t, "BytesToOffsetAndSize", 1)
 }
@@ -100,14 +100,14 @@ func Test_CurrentSetId_Error(t *testing.T) {
 
 	expectedErr := errors.New("error")
 
-	mockGrandpa.On("CurrentSetId").Return(sc.U64(0), expectedErr)
+	mockGrandpa.On("StorageSetId").Return(sc.U64(0), expectedErr)
 
 	assert.PanicsWithValue(t,
 		expectedErr.Error(),
 		func() { target.CurrentSetId() },
 	)
 
-	mockGrandpa.AssertCalled(t, "CurrentSetId")
+	mockGrandpa.AssertCalled(t, "StorageSetId")
 	mockMemoryUtils.AssertNumberOfCalls(t, "BytesToOffsetAndSize", 0)
 }
 

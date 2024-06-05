@@ -23,7 +23,7 @@ var (
 func setupCallNoteStalled() primitives.Call {
 	staleNotifier = new(mocks.StaleNotifier)
 
-	return newCallNoteStalled(moduleId, functionNoteStalledIndex, staleNotifier)
+	return newCallNoteStalled(moduleId, functionNoteStalledIndex, dbWeight, staleNotifier)
 }
 
 func Test_Call_NoteStalled_New(t *testing.T) {
@@ -35,6 +35,7 @@ func Test_Call_NoteStalled_New(t *testing.T) {
 			FunctionId: functionNoteStalledIndex,
 			Arguments:  sc.NewVaryingData(),
 		},
+		dbWeight:      dbWeight,
 		staleNotifier: staleNotifier,
 	}
 
@@ -87,7 +88,7 @@ func Test_Call_NoteStalled_FunctionIndex(t *testing.T) {
 func Test_Call_NoteStalled_BaseWeight(t *testing.T) {
 	target := setupCallNoteStalled()
 
-	assert.Equal(t, callNoteStalledWeight(primitives.RuntimeDbWeight{}), target.BaseWeight())
+	assert.Equal(t, callNoteStalledWeight(dbWeight), target.BaseWeight())
 }
 
 func Test_Call_NoteStalled_WeighData(t *testing.T) {

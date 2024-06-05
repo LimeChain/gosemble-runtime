@@ -96,7 +96,7 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	storage := newStorage()
 
 	functions := map[sc.U8]primitives.Call{
-		functionPlanConfigChangeIndex: newCallPlanConfigChange(index, functionPlanConfigChangeIndex, storage.PendingEpochConfigChange),
+		functionPlanConfigChangeIndex: newCallPlanConfigChange(index, functionPlanConfigChangeIndex, config.DbWeight, storage.PendingEpochConfigChange),
 	}
 
 	return module{

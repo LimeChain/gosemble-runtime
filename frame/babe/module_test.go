@@ -93,6 +93,11 @@ var (
 	}
 
 	skippedEpoch = babetypes.SkippedEpoch{}
+
+	dbWeight = primitives.RuntimeDbWeight{
+		Read:  1,
+		Write: 2,
+	}
 )
 
 var (
@@ -170,6 +175,7 @@ func setupModule() module {
 	mockIoHashing = new(mocks.IoHashing)
 
 	config := NewConfig(
+		dbWeight,
 		primitives.PublicKeySr25519,
 		epochConfig,
 		epochDuration,

@@ -84,8 +84,9 @@ func Test_Authorship_Module_Author_Fails_To_Get_Storage_Author(t *testing.T) {
 
 	mockStorageAuthor.On("GetBytes").Return(sc.NewOption[sc.Sequence[sc.U8]](nil), errors.New("get author error"))
 
-	result := target.Author()
+	result, err := target.Author()
 
+	assert.Error(t, err)
 	assert.Equal(t, sc.NewOption[primitives.AccountId](nil), result)
 
 	mockStorageAuthor.AssertCalled(t, "GetBytes")
@@ -99,8 +100,9 @@ func Test_Authorship_Module_No_Author(t *testing.T) {
 	mockFindAccountFromAuthorIndex.On("FindAuthor", sc.Sequence[primitives.DigestPreRuntime]{}).
 		Return(sc.NewOption[primitives.AccountId](nil), errors.New("find author error"))
 
-	result := target.Author()
+	result, err := target.Author()
 
+	assert.Error(t, err)
 	assert.Equal(t, sc.NewOption[primitives.AccountId](nil), result)
 
 	mockStorageAuthor.AssertCalled(t, "GetBytes")
@@ -118,8 +120,9 @@ func Test_Authorship_Module_Author(t *testing.T) {
 		Return(sc.NewOption[primitives.AccountId](constants.OneAccountId), nil)
 	mockStorageAuthor.On("Put", constants.OneAccountId).Return(nil)
 
-	result := target.Author()
+	result, err := target.Author()
 
+	assert.NoError(t, err)
 	assert.Equal(t, sc.NewOption[primitives.AccountId](constants.OneAccountId), result)
 
 	mockStorageAuthor.AssertCalled(t, "GetBytes")

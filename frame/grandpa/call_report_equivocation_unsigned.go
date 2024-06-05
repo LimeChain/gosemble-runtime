@@ -22,16 +22,18 @@ import (
 // reporter.
 type callReportEquivocationUnsigned struct {
 	primitives.Callable
+	dbWeight            primitives.RuntimeDbWeight
 	offenceReportSystem staking.OffenceReportSystem
 }
 
-func newCallReportEquivocationUnsigned(moduleId sc.U8, functionId sc.U8) primitives.Call {
+func newCallReportEquivocationUnsigned(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight) primitives.Call {
 	call := callReportEquivocationUnsigned{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(),
 		},
+		dbWeight: dbWeight,
 	}
 
 	return call
@@ -73,7 +75,7 @@ func (c callReportEquivocationUnsigned) Args() sc.VaryingData {
 }
 
 func (c callReportEquivocationUnsigned) BaseWeight() primitives.Weight {
-	return callReportEquivocationUnsignedWeight(primitives.RuntimeDbWeight{})
+	return callReportEquivocationUnsignedWeight(c.dbWeight)
 }
 
 func (_ callReportEquivocationUnsigned) WeighData(baseWeight primitives.Weight) primitives.Weight {

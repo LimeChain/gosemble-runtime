@@ -16,7 +16,7 @@ const name = sc.Str("Authorship")
 type Module interface {
 	primitives.Module
 
-	Author() sc.Option[primitives.AccountId]
+	Author() (sc.Option[primitives.AccountId], error)
 }
 
 type module struct {
@@ -25,7 +25,6 @@ type module struct {
 	index        sc.U8
 	config       *Config
 	storage      *storage
-	constants    *consts
 	functions    map[sc.U8]primitives.Call
 	systemModule system.Module
 	mdGenerator  *primitives.MetadataTypeGenerator
@@ -39,7 +38,6 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 		index:       index,
 		config:      config,
 		storage:     storage,
-		constants:   newConstants(),
 		mdGenerator: mdGenerator,
 		logger:      logger,
 	}
@@ -66,7 +64,12 @@ func (m module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Ca
 }
 
 func (m module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
-	if author := m.Author(); author.HasValue {
+	author, err := m.Author()
+	if err != nil {
+		return primitives.WeightZero(), err
+	}
+
+	if author.HasValue {
 		m.config.EventHandler.NoteAuthor(author.Value)
 	}
 	return primitives.WeightZero(), nil
@@ -82,38 +85,38 @@ func (m module) OnFinalize(_ sc.U64) error {
 //
 // This is safe to invoke in `on_initialize` implementations, as well
 // as afterwards.
-func (m module) Author() sc.Option[primitives.AccountId] {
+func (m module) Author() (sc.Option[primitives.AccountId], error) {
 	// Check the memorized storage value.
 	author, err := m.storage.Author.GetBytes()
 	if err != nil {
-		return sc.NewOption[primitives.AccountId](nil)
+		return sc.NewOption[primitives.AccountId](nil), err
 	}
 
 	if author.HasValue {
 		author, err := primitives.DecodeAccountId(bytes.NewBuffer(sc.SequenceU8ToBytes(author.Value)))
 		if err != nil {
-			return sc.NewOption[primitives.AccountId](nil)
+			return sc.NewOption[primitives.AccountId](nil), err
 		}
-		return sc.NewOption[primitives.AccountId](author)
+		return sc.NewOption[primitives.AccountId](author), err
 	}
 
 	digest, err := m.config.SystemModule.StorageDigest()
 	if err != nil {
-		return sc.NewOption[primitives.AccountId](nil)
+		return sc.NewOption[primitives.AccountId](nil), err
 	}
 
 	preRuntimeDigests, err := digest.PreRuntimes()
 	if err != nil {
-		return sc.NewOption[primitives.AccountId](nil)
+		return sc.NewOption[primitives.AccountId](nil), err
 	}
 
 	authorId, err := m.config.FindAuthor.FindAuthor(preRuntimeDigests)
 	if err != nil {
-		return sc.NewOption[primitives.AccountId](nil)
+		return sc.NewOption[primitives.AccountId](nil), err
 	}
 
 	m.storage.Author.Put(authorId.Value)
-	return authorId
+	return authorId, err
 }
 
 type EventHandler interface {

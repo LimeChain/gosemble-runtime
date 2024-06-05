@@ -41,8 +41,8 @@ type Module interface {
 	KeyType() primitives.PublicKeyType
 	KeyTypeId() [4]byte
 	Authorities() (sc.Sequence[primitives.Authority], error)
-	CurrentSetId() (sc.U64, error)
-	SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) (sc.Option[sc.Empty], error)
+	StorageSetId() (sc.U64, error)
+	SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) error
 	HistoricalKeyOwnershipProof(authorityId primitives.AccountId) sc.Option[grandpatypes.OpaqueKeyOwnershipProof]
 
 	StorageSetIdSessionGet(sc.U64) (sc.U32, error)
@@ -82,9 +82,9 @@ func New(index sc.U8, config *Config, logger log.Logger, mdGenerator *primitives
 		sessionModule:            config.SessionModule,
 	}
 
-	functions[functionReportEquivocationIndex] = newCallReportEquivocation(index, functionReportEquivocationIndex)
-	functions[functionReportEquivocationUnsignedIndex] = newCallReportEquivocationUnsigned(index, functionReportEquivocationUnsignedIndex)
-	functions[functionNoteStalledIndex] = newCallNoteStalled(index, functionNoteStalledIndex, moduleInstance)
+	functions[functionReportEquivocationIndex] = newCallReportEquivocation(index, functionReportEquivocationIndex, config.DbWeight)
+	functions[functionReportEquivocationUnsignedIndex] = newCallReportEquivocationUnsigned(index, functionReportEquivocationUnsignedIndex, config.DbWeight)
+	functions[functionNoteStalledIndex] = newCallNoteStalled(index, functionNoteStalledIndex, config.DbWeight, moduleInstance)
 
 	moduleInstance.functions = functions
 
@@ -304,7 +304,7 @@ func (m module) Authorities() (sc.Sequence[primitives.Authority], error) {
 }
 
 // Get current GRANDPA authority set id.
-func (m module) CurrentSetId() (sc.U64, error) {
+func (m module) StorageSetId() (sc.U64, error) {
 	return m.storage.CurrentSetId.Get()
 }
 
@@ -399,17 +399,17 @@ func (m module) initialize(authorities sc.Sequence[primitives.Authority]) error 
 // an unsigned extrinsic with a call to `report_equivocation_unsigned` and
 // will push the transaction to the pool. Only useful in an offchain
 // context.
-func (m module) SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) (sc.Option[sc.Empty], error) {
+func (m module) SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) error {
 	err := m.equivocationReportSystem.PublishEvidence(equivocationProof, keyOwnerProof)
 	if err != nil {
-		return sc.NewOption[sc.Empty](nil), err
+		return err
 	}
-	return sc.NewOption[sc.Empty](sc.Empty{}), nil
+	return nil
 }
 
 func (m module) HistoricalKeyOwnershipProof(authorityId primitives.AccountId) sc.Option[grandpatypes.OpaqueKeyOwnershipProof] {
 	bytes := m.keyOwnerProof.Prove(KeyTypeId, authorityId).Bytes()
-	proof := grandpatypes.OpaqueKeyOwnershipProof(sc.BytesToSequenceU8(bytes))
+	proof := sc.BytesToSequenceU8(bytes)
 	return sc.NewOption[grandpatypes.OpaqueKeyOwnershipProof](proof)
 }
 

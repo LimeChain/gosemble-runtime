@@ -73,6 +73,11 @@ var (
 	medianLastFinalizedBlock = sc.U64(18)
 	forcedAtBlock            = medianLastFinalizedBlock
 
+	dbWeight = primitives.RuntimeDbWeight{
+		Read:  1,
+		Write: 2,
+	}
+
 	unknownTransactionNoUnsignedValidator = primitives.NewTransactionValidityError(primitives.NewUnknownTransactionNoUnsignedValidator())
 )
 
@@ -90,6 +95,7 @@ func setup() {
 	mockStorageState = new(mocks.StorageValue[StoredState])
 
 	config := NewConfig(
+		dbWeight,
 		primitives.PublicKeyEd25519,
 		maxAuthorities,
 		maxNominators,
@@ -112,6 +118,7 @@ func setup() {
 
 func Test_Grandpa_Module_GetIndex(t *testing.T) {
 	setup()
+
 	assert.Equal(t, moduleId, target.GetIndex())
 }
 
@@ -389,14 +396,14 @@ func Test_Grandpa_Module_OnFinalize_At_Current_Block(t *testing.T) {
 	mockStorageState.AssertCalled(t, "Get")
 }
 
-func Test_Grandpa_Module_CurrentSetId(t *testing.T) {
+func Test_Grandpa_Module_StorageSetId(t *testing.T) {
 	setup()
 
 	currentSetId := sc.U64(1)
 
 	mockStorageCurrentSetId.On("Get").Return(currentSetId, nil)
 
-	result, err := target.CurrentSetId()
+	result, err := target.StorageSetId()
 
 	assert.NoError(t, err)
 	assert.Equal(t, currentSetId, result)

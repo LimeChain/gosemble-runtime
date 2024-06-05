@@ -177,6 +177,7 @@ func initializeModules() []primitives.Module {
 	grandpaModule := grandpa.New(
 		GrandpaIndex,
 		grandpa.NewConfig(
+			DbWeight,
 			primitives.PublicKeyEd25519,
 			GrandpaMaxAuthorities,
 			GrandpaMaxNominators,
