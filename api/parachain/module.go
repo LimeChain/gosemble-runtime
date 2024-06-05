@@ -102,11 +102,11 @@ func (m Module) ValidateBlock(dataPtr int32, dataLen int32) int64 {
 	}
 
 	database, err := db.NewMemoryDBFromProof(blockData.CompactProof.ToBytes())
-	trie, err := parachain.BuildTrie(blockData.CompactProof.ToBytes(), parentHeader.StateRoot.Bytes(), database)
+	trie, err := parachain.BuildTrie(parentHeader.StateRoot.Bytes(), database)
 	if err != nil {
 		m.logger.Critical(err.Error())
 	}
-	//trie.SetVersion(1)
+
 	trieState := storage.NewTrieState(trie)
 	m.hostEnvironment.SetTrieState(trieState)
 

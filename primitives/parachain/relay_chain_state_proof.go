@@ -7,18 +7,14 @@ import (
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
 	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
-	"github.com/ChainSafe/gossamer/pkg/trie/node"
-	"github.com/ChainSafe/gossamer/pkg/trie/pools"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/primitives/io"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/utils/decoder"
-	"strings"
 )
 
 var (
-	errEmptyProof       = errors.New("proof slice empty")
 	errRootNodeNotFound = errors.New("root node not found in proof")
 )
 
@@ -41,7 +37,7 @@ func NewRelayChainStateProof(parachainId sc.U32, relayChainHash primitives.H256,
 		return RelayChainStateProof{}, err
 	}
 
-	t, err := BuildTrie(proof.ToBytes(), relayChainHash.Bytes(), database)
+	t, err := BuildTrie(relayChainHash.Bytes(), database)
 	if err != nil {
 		return RelayChainStateProof{}, err
 	}
@@ -129,132 +125,20 @@ func (rlcsp RelayChainStateProof) ReadMessagingStateSnapshot(ahc AbridgedHostCon
 	}, nil
 }
 
-func BuildTrie(encodedProofNodes [][]byte, rootHash []byte, db db.Database) (t *inmemory.InMemoryTrie, err error) {
-	if len(encodedProofNodes) == 0 {
-		return nil, fmt.Errorf("%w: for Merkle root hash 0x%x",
-			errEmptyProof, rootHash)
+// BuildTrie sets a partial trie based on the proof slice of encoded nodes.
+func BuildTrie(rootHash []byte, db db.Database) (t *inmemory.InMemoryTrie, err error) {
+	// buildTrie sets a partial trie based on the proof slice of encoded nodes.
+	if _, err := db.Get(rootHash); err != nil {
+		return nil, fmt.Errorf("%w: for root hash 0x%x",
+			errRootNodeNotFound, rootHash)
 	}
 
-	digestToEncoding := make(map[string][]byte, len(encodedProofNodes))
+	tr := inmemory.NewEmptyTrie()
+	err = tr.LoadWithDecoder(db, common.BytesToHash(rootHash), decoder.DecodeNode)
 
-	// note we can use a buffer from the pool since
-	// the calculated root hash digest is not used after
-	// the function completes.
-	buffer := pools.DigestBuffers.Get().(*bytes.Buffer)
-	defer pools.DigestBuffers.Put(buffer)
-
-	// This loop does two things:
-	// 1. It finds the root node by comparing it with the root hash and decodes it.
-	// 2. It stores other encoded nodes in a mapping from their encoding digest to
-	//    their encoding. They are only decoded later if the root or one of its
-	//    descendant nodes reference their hash digest.
-	var root *node.Node
-	for _, encodedProofNode := range encodedProofNodes {
-		// Note all encoded proof nodes are one of the following:
-		// - trie root node
-		// - child trie root node
-		// - child node with an encoding larger than 32 bytes
-		// In all cases, their Merkle value is the encoding hash digest,
-		// so we use MerkleValueRoot to force hashing the node in case
-		// it is a root node smaller or equal to 32 bytes.
-		buffer.Reset()
-		err = node.MerkleValueRoot(encodedProofNode, buffer)
-		if err != nil {
-			return nil, fmt.Errorf("calculating node hash: %w", err)
-		}
-		digest := buffer.Bytes()
-
-		if root != nil || !bytes.Equal(digest, rootHash) {
-			// root node already found or the hash doesn't match the root hash.
-			digestToEncoding[string(digest)] = encodedProofNode
-			continue
-			// Note: no need to add the root node to the map of hash to encoding
-		}
-
-		root, err = decoder.DecodeNode(bytes.NewBuffer(encodedProofNode))
-		//root, err = decoder.DecodeNode(bytes.NewBuffer(encodedProofNode))
-		if err != nil {
-			return nil, fmt.Errorf("decoding root node: %w", err)
-		}
-		// The built proof trie is not used with a database, but just in case
-		// it becomes used with a database in the future, we set the dirty flag
-		// to true.
-		root.Dirty = true
-	}
-
-	if root == nil {
-		proofHashDigests := make([]string, 0, len(digestToEncoding))
-		for hashDigestString := range digestToEncoding {
-			hashDigestHex := common.BytesToHex([]byte(hashDigestString))
-			proofHashDigests = append(proofHashDigests, hashDigestHex)
-		}
-		return nil, fmt.Errorf("%w: for root hash 0x%x in proof hash digests %s",
-			errRootNodeNotFound, rootHash, strings.Join(proofHashDigests, ", "))
-	}
-
-	err = loadProof(digestToEncoding, root)
 	if err != nil {
-		return nil, fmt.Errorf("loading proof: %w", err)
+		return nil, err
 	}
 
-	return inmemory.NewTrie(root, db), nil
-}
-
-// loadProof is a recursive function that will create all the trie paths based
-// on the map from node hash digest to node encoding, starting from the node `n`.
-func loadProof(digestToEncoding map[string][]byte, n *node.Node) (err error) {
-	if n.Kind() != node.Branch {
-		return nil
-	}
-
-	branch := n
-	for i, child := range branch.Children {
-		if child == nil {
-			continue
-		}
-
-		merkleValue := child.MerkleValue
-		encoding, ok := digestToEncoding[string(merkleValue)]
-
-		if !ok {
-			inlinedChild := len(child.StorageValue) > 0 || child.HasChild()
-			if inlinedChild {
-				// The built proof trie is not used with a database, but just in case
-				// it becomes used with a database in the future, we set the dirty flag
-				// to true.
-				child.Dirty = true
-			} else {
-				// hash not found and the child is not inlined,
-				// so clear the child from the branch.
-				branch.Descendants -= 1 + child.Descendants
-				branch.Children[i] = nil
-				if !branch.HasChild() {
-					// Convert branch to a leaf if all its children are nil.
-					branch.Children = nil
-				}
-			}
-			continue
-		}
-
-		child, err := decoder.DecodeNode(bytes.NewBuffer(encoding))
-		//child, err := decoder.DecodeNode(bytes.NewBuffer(encoding))
-		if err != nil {
-			return fmt.Errorf("decoding child node for hash digest 0x%x: %w",
-				merkleValue, err)
-		}
-
-		// The built proof trie is not used with a database, but just in case
-		// it becomes used with a database in the future, we set the dirty flag
-		// to true.
-		child.Dirty = true
-
-		branch.Children[i] = child
-		branch.Descendants += child.Descendants
-		err = loadProof(digestToEncoding, child)
-		if err != nil {
-			return err // do not wrap error since this is recursive
-		}
-	}
-
-	return nil
+	return tr, nil
 }

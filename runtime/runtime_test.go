@@ -147,7 +147,7 @@ var (
 
 func newTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
 	tt := inmemory.NewEmptyTrie()
-	runtime := wazero_runtime.NewTestInstance(t, PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(tt))
+	runtime := wazero_runtime.NewTestInstance(t, WASM_RUNTIME, wazero_runtime.TestWithTrie(tt))
 	return runtime, &runtime.Context.Storage
 }
 
@@ -163,7 +163,7 @@ func newRococoTestRuntimeWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*w
 }
 
 func newTestRuntimeWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
-	runtime := wazero_runtime.NewTestInstance(t, PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(trie))
+	runtime := wazero_runtime.NewTestInstance(t, WASM_RUNTIME, wazero_runtime.TestWithTrie(trie))
 	return runtime, &runtime.Context.Storage
 }
 

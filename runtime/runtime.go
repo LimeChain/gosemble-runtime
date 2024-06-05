@@ -9,6 +9,7 @@ import (
 	"github.com/LimeChain/gosemble/api/collect_collation_info"
 	"github.com/LimeChain/gosemble/api/core"
 	genesisbuilder "github.com/LimeChain/gosemble/api/genesis_builder"
+	apiGrandpa "github.com/LimeChain/gosemble/api/grandpa"
 	"github.com/LimeChain/gosemble/api/metadata"
 	"github.com/LimeChain/gosemble/api/offchain_worker"
 	"github.com/LimeChain/gosemble/api/parachain"
@@ -23,6 +24,7 @@ import (
 	aura_ext "github.com/LimeChain/gosemble/frame/aura-ext"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
+	"github.com/LimeChain/gosemble/frame/grandpa"
 	"github.com/LimeChain/gosemble/frame/parachain_info"
 	"github.com/LimeChain/gosemble/frame/parachain_system"
 	"github.com/LimeChain/gosemble/frame/system"
@@ -93,6 +95,7 @@ const (
 	BalancesIndex        = 30
 	AuraIndex            = 32
 	AuraExtIndex         = 33
+	GrandpaIndex         = 34
 )
 
 var (
@@ -146,6 +149,8 @@ func initializeModules(storage io.Storage, transactionBroker io.TransactionBroke
 		logger,
 	)
 
+	grandpaModule := grandpa.New(GrandpaIndex, storage, logger, mdGenerator)
+
 	auraModule := aura.New(
 		AuraIndex,
 		aura.NewConfig(
@@ -194,6 +199,7 @@ func initializeModules(storage io.Storage, transactionBroker io.TransactionBroke
 		parachainInfoModule,
 		auraModule,
 		auraExtModule,
+		grandpaModule,
 		balancesModule,
 		tpmModule,
 	}
@@ -222,6 +228,7 @@ func runtimeApi() types.RuntimeApi {
 	runtimeExtrinsic := extrinsic.New(modules, extra, mdGenerator, logger)
 	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
 	auraModule := primitives.MustGetModule(AuraIndex, modules).(aura.Module)
+	grandpaModule := primitives.MustGetModule(GrandpaIndex, modules).(grandpa.Module)
 	txPaymentsModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
 	parachainSystemModule := primitives.MustGetModule(ParachainSystemIndex, modules).(parachain_system.Module)
 
@@ -232,13 +239,20 @@ func runtimeApi() types.RuntimeApi {
 		logger,
 	)
 
+	sessions := []primitives.Session{
+		auraModule,
+		grandpaModule,
+	}
+
 	coreApi := core.New(executiveModule, decoder, RuntimeVersion, mdGenerator, logger)
 	blockBuilderApi := blockbuilder.New(runtimeExtrinsic, executiveModule, decoder, mdGenerator, logger)
 	taggedTxQueueApi := taggedtransactionqueue.New(executiveModule, decoder, mdGenerator, logger)
 	auraApi := apiAura.New(auraModule, logger)
+	grandpaApi := apiGrandpa.New(grandpaModule, logger)
 	accountNonceApi := account_nonce.New(systemModule, logger)
 	txPaymentsApi := apiTxPayments.New(decoder, txPaymentsModule, logger)
 	txPaymentsCallApi := apiTxPaymentsCall.New(decoder, txPaymentsModule, logger)
+	sessionKeysApi := session_keys.New(sessions, logger)
 	offchainWorkerApi := offchain_worker.New(executiveModule, logger)
 	genesisBuilderApi := genesisbuilder.New(modules, logger)
 	collectCollationInfoApi := collect_collation_info.New(parachainSystemModule, logger)
@@ -250,9 +264,11 @@ func runtimeApi() types.RuntimeApi {
 			blockBuilderApi,
 			taggedTxQueueApi,
 			auraApi,
+			grandpaApi,
 			accountNonceApi,
 			txPaymentsApi,
 			txPaymentsCallApi,
+			sessionKeysApi,
 			offchainWorkerApi,
 			collectCollationInfoApi,
 		},
@@ -266,9 +282,11 @@ func runtimeApi() types.RuntimeApi {
 		taggedTxQueueApi,
 		metadataApi,
 		auraApi,
+		grandpaApi,
 		accountNonceApi,
 		txPaymentsApi,
 		txPaymentsCallApi,
+		sessionKeysApi,
 		offchainWorkerApi,
 		genesisBuilderApi,
 		collectCollationInfoApi,
@@ -410,6 +428,13 @@ func MetadataVersions(_, _ int32) int64 {
 	return runtimeApi().
 		Module(metadata.ApiModuleName).(metadata.Module).
 		MetadataVersions()
+}
+
+//go:export GrandpaApi_grandpa_authorities
+func GrandpaApiAuthorities(_, _ int32) int64 {
+	return runtimeApi().
+		Module(apiGrandpa.ApiModuleName).(apiGrandpa.Module).
+		Authorities()
 }
 
 //go:export SessionKeys_generate_session_keys

@@ -204,6 +204,7 @@ func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin
 	//	horizontal_messages,
 	//	vfp.relay_parent_number,
 	//));
+	c.module.storage.HrmpWatermark.Put(data.ValidationData.RelayParentNumber)
 
 	return primitives.PostDispatchInfo{
 		ActualWeight: sc.NewOption[primitives.Weight](totalWeight),
