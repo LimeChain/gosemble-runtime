@@ -134,17 +134,17 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	defaultOnSetCode := NewDefaultOnSetCode(moduleInstance)
 	moduleInstance.OnSetCode = defaultOnSetCode
 
-	functions[functionRemarkIndex] = newCallRemark(index, functionRemarkIndex)
-	functions[functionSetHeapPagesIndex] = newCallSetHeapPages(index, functionSetHeapPagesIndex, storage.HeapPages, moduleInstance)
-	functions[functionSetCodeIndex] = newCallSetCode(index, functionSetCodeIndex, *constants, defaultOnSetCode, moduleInstance)
-	functions[functionSetCodeWithoutChecksIndex] = newCallSetCodeWithoutChecks(index, functionSetCodeWithoutChecksIndex, *constants, defaultOnSetCode)
-	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, ioStorage)
-	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, ioStorage)
-	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, ioStorage)
-	functions[functionRemarkWithEventIndex] = newCallRemarkWithEvent(index, functionRemarkWithEventIndex, ioHashing, moduleInstance)
-	functions[functionAuthorizeUpgradeIndex] = newCallAuthorizeUpgrade(index, functionAuthorizeUpgradeIndex, moduleInstance)
-	functions[functionAuthorizeUpgradeWithoutChecksIndex] = newCallAuthorizeUpgradeWithoutChecks(index, functionAuthorizeUpgradeWithoutChecksIndex, moduleInstance)
-	functions[functionApplyAuthorizedUpgradeIndex] = newCallApplyAuthorizedUpgrade(index, functionApplyAuthorizedUpgradeIndex, moduleInstance)
+	functions[functionRemarkIndex] = newCallRemark(index, functionRemarkIndex, config.DbWeight)
+	functions[functionSetHeapPagesIndex] = newCallSetHeapPages(index, functionSetHeapPagesIndex, config.DbWeight, storage.HeapPages, moduleInstance)
+	functions[functionSetCodeIndex] = newCallSetCode(index, functionSetCodeIndex, config.DbWeight, *constants, defaultOnSetCode, moduleInstance)
+	functions[functionSetCodeWithoutChecksIndex] = newCallSetCodeWithoutChecks(index, functionSetCodeWithoutChecksIndex, config.DbWeight, *constants, defaultOnSetCode)
+	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, config.DbWeight, ioStorage)
+	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, config.DbWeight, ioStorage)
+	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, config.DbWeight, ioStorage)
+	functions[functionRemarkWithEventIndex] = newCallRemarkWithEvent(index, functionRemarkWithEventIndex, config.DbWeight, ioHashing, moduleInstance)
+	functions[functionAuthorizeUpgradeIndex] = newCallAuthorizeUpgrade(index, functionAuthorizeUpgradeIndex, config.DbWeight, moduleInstance)
+	functions[functionAuthorizeUpgradeWithoutChecksIndex] = newCallAuthorizeUpgradeWithoutChecks(index, functionAuthorizeUpgradeWithoutChecksIndex, config.DbWeight, moduleInstance)
+	functions[functionApplyAuthorizedUpgradeIndex] = newCallApplyAuthorizedUpgrade(index, functionApplyAuthorizedUpgradeIndex, config.DbWeight, moduleInstance)
 
 	moduleInstance.functions = functions
 

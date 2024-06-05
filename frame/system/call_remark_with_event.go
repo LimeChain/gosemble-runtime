@@ -12,6 +12,7 @@ import (
 // Can be executed by any origin.
 type callRemarkWithEvent struct {
 	primitives.Callable
+	dbWeight       primitives.RuntimeDbWeight
 	eventDepositor primitives.EventDepositor
 	ioHashing      io.Hashing
 }
@@ -19,6 +20,7 @@ type callRemarkWithEvent struct {
 func newCallRemarkWithEvent(
 	moduleId sc.U8,
 	functionId sc.U8,
+	dbWeight primitives.RuntimeDbWeight,
 	ioHashing io.Hashing,
 	eventDepositor primitives.EventDepositor,
 ) primitives.Call {
@@ -28,6 +30,7 @@ func newCallRemarkWithEvent(
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
 		},
+		dbWeight:       dbWeight,
 		eventDepositor: eventDepositor,
 		ioHashing:      ioHashing,
 	}
@@ -66,7 +69,7 @@ func (c callRemarkWithEvent) Args() sc.VaryingData {
 
 func (c callRemarkWithEvent) BaseWeight() primitives.Weight {
 	message := c.Arguments[0].(sc.Sequence[sc.U8])
-	return callRemarkWithEventWeight(primitives.RuntimeDbWeight{}, sc.U64(len(message)))
+	return callRemarkWithEventWeight(c.dbWeight, sc.U64(len(message)))
 }
 
 func (_ callRemarkWithEvent) WeighData(baseWeight primitives.Weight) primitives.Weight {

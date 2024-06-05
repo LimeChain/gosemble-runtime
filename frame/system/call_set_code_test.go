@@ -31,6 +31,7 @@ func Test_Call_SetCode_New(t *testing.T) {
 			Arguments:  defaultSetCodeArgs,
 		},
 		constants:     *moduleConstants,
+		dbWeight:      dbWeight,
 		hookOnSetCode: mockOnSetCode,
 		codeUpgrader:  mockCodeUpgrader,
 	}
@@ -92,7 +93,7 @@ func Test_Call_SetCode_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetCode(tc, functionSetCodeIndex, *moduleConstants, mockOnSetCode, mockCodeUpgrader)
+		call := newCallSetCode(tc, functionSetCodeIndex, dbWeight, *moduleConstants, mockOnSetCode, mockCodeUpgrader)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -107,7 +108,7 @@ func Test_Call_SetCode_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetCode(moduleId, tc, *moduleConstants, mockOnSetCode, mockCodeUpgrader)
+		call := newCallSetCode(moduleId, tc, dbWeight, *moduleConstants, mockOnSetCode, mockCodeUpgrader)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -116,7 +117,7 @@ func Test_Call_SetCode_FunctionIndex(t *testing.T) {
 func Test_Call_SetCode_BaseWeight(t *testing.T) {
 	call := setupCallSetCode()
 
-	assert.Equal(t, callSetCodeWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callSetCodeWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_SetCode_WeighData(t *testing.T) {
@@ -198,5 +199,5 @@ func Test_Call_SetCode_Dispatch(t *testing.T) {
 func setupCallSetCode() primitives.Call {
 	mockCodeUpgrader = new(mocks.SystemModule)
 	mockOnSetCode = new(mocks.DefaultOnSetCode)
-	return newCallSetCode(moduleId, functionSetCodeIndex, *moduleConstants, mockOnSetCode, mockCodeUpgrader)
+	return newCallSetCode(moduleId, functionSetCodeIndex, dbWeight, *moduleConstants, mockOnSetCode, mockCodeUpgrader)
 }

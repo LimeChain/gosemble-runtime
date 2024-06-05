@@ -11,15 +11,17 @@ import (
 // Can be executed by any origin.
 type callRemark struct {
 	primitives.Callable
+	dbWeight primitives.RuntimeDbWeight
 }
 
-func newCallRemark(moduleId sc.U8, functionId sc.U8) primitives.Call {
+func newCallRemark(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight) primitives.Call {
 	call := callRemark{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
 		},
+		dbWeight: dbWeight,
 	}
 
 	return call
@@ -56,7 +58,7 @@ func (c callRemark) Args() sc.VaryingData {
 
 func (c callRemark) BaseWeight() primitives.Weight {
 	message := c.Arguments[0].(sc.Sequence[sc.U8])
-	return callRemarkWeight(primitives.RuntimeDbWeight{}, sc.U64(len(message)))
+	return callRemarkWeight(c.dbWeight, sc.U64(len(message)))
 }
 
 func (_ callRemark) WeighData(baseWeight primitives.Weight) primitives.Weight {

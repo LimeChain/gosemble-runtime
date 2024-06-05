@@ -34,6 +34,7 @@ func Test_Call_SetStorage_New(t *testing.T) {
 			FunctionId: functionSetStorageIndex,
 			Arguments:  defaultSetStorageArgs,
 		},
+		dbWeight:  dbWeight,
 		ioStorage: mockIoStorage,
 	}
 
@@ -96,7 +97,7 @@ func Test_Call_SetStorage_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetStorage(tc, functionSetStorageIndex, mockIoStorage)
+		call := newCallSetStorage(tc, functionSetStorageIndex, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -113,7 +114,7 @@ func Test_Call_SetStorage_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetStorage(moduleId, tc, mockIoStorage)
+		call := newCallSetStorage(moduleId, tc, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -161,5 +162,5 @@ func Test_Call_SetStorage_Dispatch(t *testing.T) {
 
 func setupCallSetStorage() primitives.Call {
 	initMockStorage()
-	return newCallSetStorage(moduleId, functionSetStorageIndex, mockIoStorage)
+	return newCallSetStorage(moduleId, functionSetStorageIndex, dbWeight, mockIoStorage)
 }

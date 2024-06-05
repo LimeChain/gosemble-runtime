@@ -29,6 +29,7 @@ func Test_Call_KillPrefix_New(t *testing.T) {
 			FunctionId: functionKillPrefixIndex,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}, sc.U32(0)),
 		},
+		dbWeight:  dbWeight,
 		ioStorage: mockIoStorage,
 	}
 
@@ -89,7 +90,7 @@ func Test_Call_KillPrefix_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallKillPrefix(tc, functionKillPrefixIndex, mockIoStorage)
+		call := newCallKillPrefix(tc, functionKillPrefixIndex, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -104,7 +105,7 @@ func Test_Call_KillPrefix_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallKillPrefix(moduleId, tc, mockIoStorage)
+		call := newCallKillPrefix(moduleId, tc, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -149,5 +150,5 @@ func Test_Call_KillPrefix_Dispatch(t *testing.T) {
 
 func setupCallKillPrefix() primitives.Call {
 	initMockStorage()
-	return newCallKillPrefix(moduleId, functionKillPrefixIndex, mockIoStorage)
+	return newCallKillPrefix(moduleId, functionKillPrefixIndex, dbWeight, mockIoStorage)
 }

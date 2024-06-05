@@ -28,6 +28,7 @@ func Test_Call_KillStorage_New(t *testing.T) {
 			FunctionId: functionKillStorageIndex,
 			Arguments:  defaultKillStorageArgs,
 		},
+		dbWeight:  dbWeight,
 		ioStorage: mockIoStorage,
 	}
 
@@ -90,7 +91,7 @@ func Test_Call_KillStorage_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallKillStorage(tc, functionKillStorageIndex, mockIoStorage)
+		call := newCallKillStorage(tc, functionKillStorageIndex, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -107,7 +108,7 @@ func Test_Call_KillStorage_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallKillStorage(moduleId, tc, mockIoStorage)
+		call := newCallKillStorage(moduleId, tc, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -154,5 +155,5 @@ func Test_Call_KillStorage_Dispatch(t *testing.T) {
 
 func setupCallKillStorage() primitives.Call {
 	initMockStorage()
-	return newCallKillStorage(moduleId, functionKillStorageIndex, mockIoStorage)
+	return newCallKillStorage(moduleId, functionKillStorageIndex, dbWeight, mockIoStorage)
 }

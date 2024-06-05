@@ -24,6 +24,7 @@ func Test_Call_ApplyAuthorizedUpgrade_New(t *testing.T) {
 			FunctionId: functionApplyAuthorizedUpgradeIndex,
 			Arguments:  defaultApplyAuthorizedUpgradeArgs,
 		},
+		dbWeight:     dbWeight,
 		codeUpgrader: codeUpgrader,
 	}
 
@@ -84,7 +85,7 @@ func Test_Call_ApplyAuthorizedUpgrade_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallApplyAuthorizedUpgrade(tc, functionApplyAuthorizedUpgradeIndex, codeUpgrader)
+		call := newCallApplyAuthorizedUpgrade(tc, functionApplyAuthorizedUpgradeIndex, dbWeight, codeUpgrader)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -99,7 +100,7 @@ func Test_Call_ApplyAuthorizedUpgrade_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallApplyAuthorizedUpgrade(moduleId, tc, codeUpgrader)
+		call := newCallApplyAuthorizedUpgrade(moduleId, tc, dbWeight, codeUpgrader)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -108,7 +109,7 @@ func Test_Call_ApplyAuthorizedUpgrade_FunctionIndex(t *testing.T) {
 func Test_Call_ApplyAuthorizedUpgrade_BaseWeight(t *testing.T) {
 	call := setupCallApplyAuthorizedUpgrade()
 
-	assert.Equal(t, callApplyAuthorizedUpgradeWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callApplyAuthorizedUpgradeWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_ApplyAuthorizedUpgrade_WeighData(t *testing.T) {
@@ -146,5 +147,5 @@ func Test_Call_ApplyAuthorizedUpgrade_Dispatch(t *testing.T) {
 
 func setupCallApplyAuthorizedUpgrade() primitives.Call {
 	codeUpgrader = new(mocks.SystemModule)
-	return newCallApplyAuthorizedUpgrade(moduleId, functionApplyAuthorizedUpgradeIndex, codeUpgrader)
+	return newCallApplyAuthorizedUpgrade(moduleId, functionApplyAuthorizedUpgradeIndex, dbWeight, codeUpgrader)
 }

@@ -11,6 +11,7 @@ import (
 // Set the number of pages in the WebAssembly environment's heap.
 type callSetHeapPages struct {
 	primitives.Callable
+	dbWeight     primitives.RuntimeDbWeight
 	logDepositor LogDepositor
 	heapPages    support.StorageValue[sc.U64]
 }
@@ -18,6 +19,7 @@ type callSetHeapPages struct {
 func newCallSetHeapPages(
 	moduleId sc.U8,
 	functionId sc.U8,
+	dbWeight primitives.RuntimeDbWeight,
 	heapPages support.StorageValue[sc.U64],
 	logDepositor LogDepositor,
 ) primitives.Call {
@@ -27,6 +29,7 @@ func newCallSetHeapPages(
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.U64(0)),
 		},
+		dbWeight:     dbWeight,
 		logDepositor: logDepositor,
 		heapPages:    heapPages,
 	}
@@ -64,7 +67,7 @@ func (c callSetHeapPages) Args() sc.VaryingData {
 }
 
 func (c callSetHeapPages) BaseWeight() primitives.Weight {
-	return callSetHeapPagesWeight(primitives.RuntimeDbWeight{})
+	return callSetHeapPagesWeight(c.dbWeight)
 }
 
 func (_ callSetHeapPages) WeighData(baseWeight primitives.Weight) primitives.Weight {

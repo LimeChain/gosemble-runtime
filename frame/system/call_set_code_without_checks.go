@@ -12,12 +12,14 @@ import (
 type callSetCodeWithoutChecks struct {
 	primitives.Callable
 	constants     consts
+	dbWeight      primitives.RuntimeDbWeight
 	hookOnSetCode hooks.OnSetCode
 }
 
 func newCallSetCodeWithoutChecks(
 	moduleId sc.U8,
 	functionId sc.U8,
+	dbWeight primitives.RuntimeDbWeight,
 	constants consts,
 	hookOnSetCode hooks.OnSetCode,
 ) primitives.Call {
@@ -28,6 +30,7 @@ func newCallSetCodeWithoutChecks(
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
 		},
 		constants:     constants,
+		dbWeight:      dbWeight,
 		hookOnSetCode: hookOnSetCode,
 	}
 
@@ -64,7 +67,7 @@ func (c callSetCodeWithoutChecks) Args() sc.VaryingData {
 }
 
 func (c callSetCodeWithoutChecks) BaseWeight() primitives.Weight {
-	return callSetCodeWithoutChecksWeight(primitives.RuntimeDbWeight{})
+	return callSetCodeWithoutChecksWeight(c.dbWeight)
 }
 
 func (_ callSetCodeWithoutChecks) WeighData(baseWeight primitives.Weight) primitives.Weight {
