@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 )
 
+const RuntimeWasmBinary = "runtime-benchmarks.wasm"
+
 // cmd flags and other options related to benchmarking
 var Config = initBenchmarkingConfig()
 
@@ -25,7 +27,7 @@ func initBenchmarkingConfig() benchmarkingConfig {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg.WasmRuntime = filepath.Join(buildDir, "runtime.wasm")
+	cfg.WasmRuntime = filepath.Join(buildDir, RuntimeWasmBinary)
 
 	flag.IntVar(&cfg.Steps, "steps", 50, "Select how many samples we should take across the variable components.")
 	flag.IntVar(&cfg.Repeat, "repeat", 20, "Select how many repetitions of this benchmark should run from within the wasm.")

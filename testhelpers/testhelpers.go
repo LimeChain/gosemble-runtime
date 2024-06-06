@@ -31,8 +31,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-// tests are executed from "/runtime/templates/(other|poa|pos)/tests/"
-const RuntimeWasm = "../../../build/runtime.wasm"
+const RuntimeWasm = "../../../build/runtime-benchmarks.wasm"
 const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_spec_version_101.wasm"
 
 const (

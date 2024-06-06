@@ -3,6 +3,7 @@ package benchmarking
 import (
 	"bytes"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
@@ -25,7 +26,7 @@ var (
 
 func TestInstance(t *testing.T) {
 	testing.Benchmark(func(b *testing.B) {
-		runtime := wazero_runtime.NewBenchInstanceWithTrie(b, "../build/runtime.wasm", trie.NewEmptyTrie())
+		runtime := wazero_runtime.NewBenchInstanceWithTrie(b, filepath.Join("../build/", RuntimeWasmBinary), trie.NewEmptyTrie())
 		defer runtime.Stop()
 
 		instance, err := newBenchmarkingInstance(runtime, 1)

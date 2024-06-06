@@ -1,8 +1,10 @@
 CURRENT_DIR = $(shell pwd)
 
 # runtime template configuration
-BUILD_PATH = build/runtime.wasm
 RUNTIME_TEMPLATE_DIR = runtime/templates/poa
+BUILD_PATH = build
+RUNTIME_WASM = runtime.wasm
+RUNTIME_WASM_BENCHMARKS = runtime-benchmarks.wasm
 
 # docker image configuration
 SRC_DIR = /src/examples/wasm/gosemble
@@ -22,9 +24,9 @@ DOCKER_RUN_TINYGO = docker run --rm -v $(CURRENT_DIR):$(SRC_DIR) -w $(SRC_DIR) $
 TINYGO_BUILD_COMMAND_NODEBUG = tinygo build --no-debug -opt=$(OPT_LEVEL) -gc=$(GC) -target=$(TARGET)
 TINYGO_BUILD_COMMAND = tinygo build -opt=$(OPT_LEVEL) -gc=$(GC) -target=$(TARGET)
 
-RUNTIME_BUILD_NODEBUG = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
-RUNTIME_BUILD = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(SRC_DIR)/$(BUILD_PATH) $(SRC_DIR)/runtime/"
-RUNTIME_BUILD_BENCHMARKING = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags=benchmarking -o=$(SRC_DIR)/build/runtime.wasm $(SRC_DIR)/runtime/"
+RUNTIME_BUILD_NODEBUG = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(SRC_DIR)/$(BUILD_PATH)/$(RUNTIME_WASM) $(SRC_DIR)/runtime/"
+RUNTIME_BUILD = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(SRC_DIR)/$(BUILD_PATH)/$(RUNTIME_WASM) $(SRC_DIR)/runtime/"
+RUNTIME_BUILD_BENCHMARKING = "WASMOPT="$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags=benchmarking -o=$(SRC_DIR)/$(BUILD_PATH)/$(RUNTIME_WASM_BENCHMARKS) $(SRC_DIR)/runtime/"
 
 clear-wasi-libc:
 	@cd tinygo/lib/wasi-libc && \
@@ -85,16 +87,16 @@ build-tinygo:
 	tinygo version; \
 
 build-release: build-tinygo
-	@echo "Building \"runtime.wasm\" (no-debug)"; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
+	@echo "Building \"$(RUNTIME_WASM)\" (no-debug)"; \
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH)/$(RUNTIME_WASM) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 build-dev: build-tinygo
-	@echo "Building \"runtime.wasm\""; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
+	@echo "Building \"$(RUNTIME_WASM)\""; \
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND) -o=$(BUILD_PATH)/$(RUNTIME_WASM) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 build-benchmarking: build-tinygo
-	@echo "Building \"runtime.wasm\" (no-debug)"; \
-	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH) $(RUNTIME_TEMPLATE_DIR)/runtime.go
+	@echo "Building \"$(RUNTIME_WASM_BENCHMARKS)\" (no-debug)"; \
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH)/$(RUNTIME_WASM_BENCHMARKS) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
 test-coverage:
 	@set -e; \
@@ -130,7 +132,7 @@ benchmark-overhead: build-benchmarking
 # substrate node configuration
 SUBSTRATE_CHAIN_SPEC = local
 substrate-build:
-	cp $(BUILD_PATH) polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
+	cp $(BUILD_PATH)/$(RUNTIME_WASM) polkadot-sdk/substrate/bin/node-template/$(RUNTIME_WASM); \
 	cd polkadot-sdk/substrate/bin/node-template/node; \
 	cargo build --release
 
@@ -168,6 +170,7 @@ CHAIN_SPEC_UPDATED = ../testdata/chain-spec/plain-updated.json
 CHAIN_SPEC_RAW = ../testdata/chain-spec/raw-updated.json
 GOSSAMER_BASE_PATH = tmp/gossamer
 
+# use runtime build from the pos template
 gossamer-build:
 	@cd gossamer; \
 	make build;
@@ -175,7 +178,7 @@ gossamer-build:
 gossamer-import-runtime:
 	@cd gossamer; \
 	rm -f $(CHAIN_SPEC_UPDATED); \
-	./bin/gossamer import-runtime --wasm-file ../$(BUILD_PATH) --chain $(CHAIN_SPEC_PLAIN) > $(CHAIN_SPEC_UPDATED); \
+	./bin/gossamer import-runtime --wasm-file ../$(BUILD_PATH)/$(RUNTIME_WASM) --chain $(CHAIN_SPEC_PLAIN) > $(CHAIN_SPEC_UPDATED); \
 	rm -f $(CHAIN_SPEC_RAW); \
 	./bin/gossamer build-spec --chain $(CHAIN_SPEC_UPDATED) --raw --output-path $(CHAIN_SPEC_RAW)
 
