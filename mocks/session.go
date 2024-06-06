@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	sc "github.com/LimeChain/goscale"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/mock"
@@ -21,6 +22,17 @@ func (m *SessionModule) CurrentIndex() (sc.U32, error) {
 	}
 
 	return args.Get(0).(sc.U32), args.Get(1).(error)
+}
+
+func (m *SessionModule) Validators() (sc.Sequence[primitives.AccountId], error) {
+	args := m.Called()
+
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.Sequence[primitives.AccountId]), nil
+	}
+
+	return args.Get(0).(sc.Sequence[primitives.AccountId]), args.Get(1).(error)
+
 }
 
 func (m *SessionModule) IsDisabled(index sc.U32) (bool, error) {
@@ -133,6 +145,20 @@ func (m *SessionModule) OffchainWorker(n sc.U64) {
 	m.Called(n)
 }
 
-func (m *SessionModule) AppendHandlers(module *OneSessionHandler) {
+func (m *SessionModule) AppendHandlers(module sessiontypes.OneSessionHandler) {
 	m.Called(module)
+}
+
+type FindAccountFromAuthorIndex struct {
+	mock.Mock
+}
+
+func (m *FindAccountFromAuthorIndex) FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc.Option[primitives.AccountId], error) {
+	args := m.Called(digests)
+
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.Option[primitives.AccountId]), nil
+	}
+
+	return args.Get(0).(sc.Option[primitives.AccountId]), args.Get(1).(error)
 }

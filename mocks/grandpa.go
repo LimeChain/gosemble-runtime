@@ -2,6 +2,7 @@ package mocks
 
 import (
 	sc "github.com/LimeChain/goscale"
+	grandpatypes "github.com/LimeChain/gosemble/primitives/grandpa"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/mock"
@@ -62,6 +63,26 @@ func (m *GrandpaModule) Authorities() (sc.Sequence[primitives.Authority], error)
 	return args.Get(0).(sc.Sequence[primitives.Authority]), args.Get(1).(error)
 }
 
+func (m *GrandpaModule) StorageSetId() (sc.U64, error) {
+	args := m.Called()
+
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.U64), nil
+	}
+
+	return args.Get(0).(sc.U64), args.Get(1).(error)
+}
+
+func (m *GrandpaModule) HistoricalKeyOwnershipProof(authorityId primitives.AccountId) sc.Option[grandpatypes.OpaqueKeyOwnershipProof] {
+	args := m.Called(authorityId)
+	return args.Get(0).(sc.Option[grandpatypes.OpaqueKeyOwnershipProof])
+}
+
+func (m *GrandpaModule) SubmitUnsignedEquivocationReport(equivocationProof grandpatypes.EquivocationProof, keyOwnerProof grandpatypes.KeyOwnerProof) error {
+	args := m.Called(equivocationProof, keyOwnerProof)
+	return args.Get(0).(error)
+}
+
 func (m *GrandpaModule) CreateInherent(inherent types.InherentData) (sc.Option[types.Call], error) {
 	args := m.Called(inherent)
 	if args.Get(1) == nil {
@@ -105,4 +126,14 @@ func (m *GrandpaModule) OnIdle(n sc.U64, remainingWeight primitives.Weight) prim
 
 func (m *GrandpaModule) OffchainWorker(n sc.U64) {
 	m.Called(n)
+}
+
+func (m *GrandpaModule) StorageSetIdSessionGet(key sc.U64) (sc.U32, error) {
+	args := m.Called(key)
+
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.U32), nil
+	}
+
+	return args.Get(0).(sc.U32), args.Get(1).(error)
 }

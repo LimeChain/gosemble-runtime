@@ -80,6 +80,37 @@ func Test_Authorities_Panics(t *testing.T) {
 	mockGrandpa.AssertCalled(t, "Authorities")
 }
 
+func Test_CurrentSetId(t *testing.T) {
+	setup()
+
+	id := sc.U64(1)
+
+	mockGrandpa.On("StorageSetId").Return(id, nil)
+	mockMemoryUtils.On("BytesToOffsetAndSize", id.Bytes()).Return(int64(13))
+
+	target.CurrentSetId()
+
+	mockGrandpa.AssertCalled(t, "StorageSetId")
+	mockMemoryUtils.AssertCalled(t, "BytesToOffsetAndSize", id.Bytes())
+	mockMemoryUtils.AssertNumberOfCalls(t, "BytesToOffsetAndSize", 1)
+}
+
+func Test_CurrentSetId_Error(t *testing.T) {
+	setup()
+
+	expectedErr := errors.New("error")
+
+	mockGrandpa.On("StorageSetId").Return(sc.U64(0), expectedErr)
+
+	assert.PanicsWithValue(t,
+		expectedErr.Error(),
+		func() { target.CurrentSetId() },
+	)
+
+	mockGrandpa.AssertCalled(t, "StorageSetId")
+	mockMemoryUtils.AssertNumberOfCalls(t, "BytesToOffsetAndSize", 0)
+}
+
 func Test_Module_Metadata(t *testing.T) {
 	setup()
 
@@ -97,6 +128,14 @@ func Test_Module_Metadata(t *testing.T) {
 					" When called at block B, it will return the set of authorities that should be",
 					" used to finalize descendants of this block (B+1, B+2, ...). The block B itself",
 					" is finalized by the authorities from block B-1.",
+				},
+			},
+			types.RuntimeApiMethodMetadata{
+				Name:   "current_set_id",
+				Inputs: sc.Sequence[types.RuntimeApiMethodParamMetadata]{},
+				Output: sc.ToCompact(metadata.PrimitiveTypesU64),
+				Docs: sc.Sequence[sc.Str]{
+					"Get current GRANDPA authority set id.",
 				},
 			},
 		},

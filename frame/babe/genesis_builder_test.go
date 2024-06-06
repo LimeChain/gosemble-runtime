@@ -73,7 +73,7 @@ func Test_Babe_BuildConfig_Invalid_Config(t *testing.T) {
 
 func Test_Babe_BuildConfig_No_Authorities(t *testing.T) {
 	epochConfig := babetypes.EpochConfiguration{
-		C:            primitives.RationalValue{Numerator: sc.U64(2), Denominator: sc.U64(3)},
+		C:            primitives.Tuple2U64{First: sc.U64(2), Second: sc.U64(3)},
 		AllowedSlots: babetypes.NewPrimaryAndSecondaryVRFSlots(),
 	}
 

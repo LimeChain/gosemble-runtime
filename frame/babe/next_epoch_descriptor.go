@@ -5,12 +5,13 @@ import (
 
 	sc "github.com/LimeChain/goscale"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 // Information about the next epoch. This is broadcast in the first block
 // of the epoch.
 type NextEpochDescriptor struct {
-	Authorities sc.Sequence[babetypes.Authority]
+	Authorities sc.Sequence[primitives.Authority]
 	// The value of randomness to use for the slot-assignment.
 	Randomness babetypes.Randomness
 }

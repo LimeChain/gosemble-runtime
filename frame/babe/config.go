@@ -5,10 +5,12 @@ import (
 	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
+	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 type Config struct {
+	DbWeight           types.RuntimeDbWeight
 	KeyType            primitives.PublicKeyType
 	EpochConfig        babetypes.EpochConfiguration
 	EpochDuration      sc.U64
@@ -21,6 +23,7 @@ type Config struct {
 }
 
 func NewConfig(
+	dbWeight types.RuntimeDbWeight,
 	keyType primitives.PublicKeyType,
 	epochConfig babetypes.EpochConfiguration,
 	epochDuration sc.U64,
@@ -32,6 +35,7 @@ func NewConfig(
 	systemModule system.Module,
 ) *Config {
 	return &Config{
+		DbWeight:           dbWeight,
 		KeyType:            keyType,
 		EpochConfig:        epochConfig,
 		EpochDuration:      epochDuration,

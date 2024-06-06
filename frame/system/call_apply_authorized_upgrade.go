@@ -18,16 +18,18 @@ import (
 // All origins are allowed.
 type callApplyAuthorizedUpgrade struct {
 	primitives.Callable
+	dbWeight     primitives.RuntimeDbWeight
 	codeUpgrader CodeUpgrader
 }
 
-func newCallApplyAuthorizedUpgrade(moduleId sc.U8, functionId sc.U8, codeUpgrader CodeUpgrader) primitives.Call {
+func newCallApplyAuthorizedUpgrade(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, codeUpgrader CodeUpgrader) primitives.Call {
 	call := callApplyAuthorizedUpgrade{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}),
 		},
+		dbWeight:     dbWeight,
 		codeUpgrader: codeUpgrader,
 	}
 
@@ -64,7 +66,7 @@ func (c callApplyAuthorizedUpgrade) Args() sc.VaryingData {
 }
 
 func (c callApplyAuthorizedUpgrade) BaseWeight() primitives.Weight {
-	return callApplyAuthorizedUpgradeWeight(primitives.RuntimeDbWeight{})
+	return callApplyAuthorizedUpgradeWeight(c.dbWeight)
 }
 
 func (_ callApplyAuthorizedUpgrade) WeighData(baseWeight primitives.Weight) primitives.Weight {

@@ -21,10 +21,10 @@ type Configuration struct {
 	// A constant value that is used in the threshold calculation formula.
 	// In the threshold formula calculation, `1 - c` represents the probability
 	// of a slot being empty.
-	C primitives.RationalValue
+	C primitives.Tuple2U64
 
 	// The authorities
-	Authorities sc.Sequence[Authority]
+	Authorities sc.Sequence[primitives.Authority]
 
 	// The randomness
 	Randomness Randomness
@@ -59,12 +59,12 @@ func DecodeConfiguration(buffer *bytes.Buffer) (Configuration, error) {
 		return Configuration{}, err
 	}
 
-	C, err := primitives.DecodeRationalValue(buffer)
+	C, err := primitives.DecodeTuple2U64(buffer)
 	if err != nil {
 		return Configuration{}, err
 	}
 
-	authorities, err := sc.DecodeSequenceWith(buffer, DecodeAuthority)
+	authorities, err := sc.DecodeSequenceWith(buffer, primitives.DecodeAuthority)
 	if err != nil {
 		return Configuration{}, err
 	}

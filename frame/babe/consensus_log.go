@@ -11,26 +11,26 @@ const (
 	// The epoch has changed. This provides information about the _next_
 	// epoch - information about the _current_ epoch (i.e. the one we've just
 	// entered) should already be available earlier in the chain.
-	NextEpochData
+	ConsensusLogNextEpochData
 	// Disable the authority with given index.
-	OnDisabled
+	ConsensusLogOnDisabled
 	// The epoch has changed, and the epoch after the current one will
 	// enact different epoch configurations.
-	NextConfigData
+	ConsensusLogNextConfigData
 )
 
 type ConsensusLog struct {
 	sc.VaryingData
 }
 
-func NewNextEpochDataConsensusLog(next NextEpochDescriptor) ConsensusLog {
-	return ConsensusLog{sc.NewVaryingData(NextEpochData, next)}
+func NewConsensusLogNextEpochData(next NextEpochDescriptor) ConsensusLog {
+	return ConsensusLog{sc.NewVaryingData(ConsensusLogNextEpochData, next)}
 }
 
-func NewOnDisabledConsensusLog(index babetypes.AuthorityIndex) ConsensusLog {
-	return ConsensusLog{sc.NewVaryingData(OnDisabled, index)}
+func NewConsensusLogOnDisabled(index babetypes.AuthorityIndex) ConsensusLog {
+	return ConsensusLog{sc.NewVaryingData(ConsensusLogOnDisabled, index)}
 }
 
-func NewNextConfigDataConsensusLog(nextConfigData NextConfigDescriptor) ConsensusLog {
-	return ConsensusLog{sc.NewVaryingData(NextConfigData, nextConfigData)}
+func NewConsensusLogNextConfigData(nextConfigData NextConfigDescriptor) ConsensusLog {
+	return ConsensusLog{sc.NewVaryingData(ConsensusLogNextConfigData, nextConfigData)}
 }

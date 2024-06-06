@@ -16,16 +16,18 @@ import (
 // not been enacted yet.
 type callPlanConfigChange struct {
 	primitives.Callable
+	dbWeight                        primitives.RuntimeDbWeight
 	storagePendingEpochConfigChange support.StorageValue[NextConfigDescriptor]
 }
 
-func newCallPlanConfigChange(moduleId sc.U8, functionId sc.U8, storagePendingEpochConfigChange support.StorageValue[NextConfigDescriptor]) primitives.Call {
+func newCallPlanConfigChange(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, storagePendingEpochConfigChange support.StorageValue[NextConfigDescriptor]) primitives.Call {
 	call := callPlanConfigChange{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(NextConfigDescriptor{}),
 		},
+		dbWeight:                        dbWeight,
 		storagePendingEpochConfigChange: storagePendingEpochConfigChange,
 	}
 
@@ -62,7 +64,7 @@ func (c callPlanConfigChange) Args() sc.VaryingData {
 }
 
 func (c callPlanConfigChange) BaseWeight() primitives.Weight {
-	return callPlanConfigChangeWeight(primitives.RuntimeDbWeight{})
+	return callPlanConfigChangeWeight(c.dbWeight)
 }
 
 func (_ callPlanConfigChange) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -88,7 +90,7 @@ func (c callPlanConfigChange) Dispatch(origin primitives.RuntimeOrigin, args sc.
 	config := args[0].(NextConfigDescriptor)
 
 	if reflect.TypeOf(config) == reflect.TypeOf(NextConfigDescriptor{}) && reflect.TypeOf(config.V1) == reflect.TypeOf(babetypes.EpochConfiguration{}) {
-		if !((config.V1.C.Numerator != 0 || !reflect.DeepEqual(config.V1.AllowedSlots, babetypes.NewPrimarySlots())) && config.V1.C.Denominator != 0) {
+		if !((config.V1.C.First != 0 || !reflect.DeepEqual(config.V1.AllowedSlots, babetypes.NewPrimarySlots())) && config.V1.C.Second != 0) {
 			return primitives.PostDispatchInfo{}, NewDispatchErrorInvalidConfiguration(c.ModuleId)
 		}
 	}

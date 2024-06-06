@@ -17,19 +17,18 @@ import (
 )
 
 var (
+	pubKey1 = primitives.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)}
+
 	epochDuration = sc.U64(1000)
 	slotDuration  = epochDuration / 100
 
 	genesisEpochConfig = babetypes.EpochConfiguration{
-		C:            types.RationalValue{Numerator: 1, Denominator: 4},
+		C:            types.Tuple2U64{First: 1, Second: 4},
 		AllowedSlots: babetypes.NewPrimaryAndSecondaryPlainSlots(),
 	}
 
-	authorities = sc.Sequence[babetypes.Authority]{
-		babetypes.Authority{
-			Key:    types.Sr25519PublicKey{FixedSequence: sc.BytesToFixedSequenceU8([]byte{1, 2, 3})},
-			Weight: sc.U64(1),
-		},
+	authorities = sc.Sequence[primitives.Authority]{
+		primitives.Authority{Id: primitives.AccountId(pubKey1), Weight: sc.U64(1)},
 	}
 
 	randomness = babetypes.Randomness(sc.BytesToFixedSequenceU8([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}))
@@ -114,7 +113,7 @@ func Test_Configuration_Empty_Config(t *testing.T) {
 func Test_Configuration_Stored_Config(t *testing.T) {
 	setup()
 
-	someStoredConfig := babetypes.EpochConfiguration{C: types.RationalValue{Numerator: 1, Denominator: 1}}
+	someStoredConfig := babetypes.EpochConfiguration{C: types.Tuple2U64{First: 1, Second: 1}}
 
 	expectedConfig := config
 	expectedConfig.C = someStoredConfig.C

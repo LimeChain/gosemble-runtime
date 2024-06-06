@@ -30,6 +30,7 @@ func Test_Call_SetHeapPages_New(t *testing.T) {
 			FunctionId: functionSetHeapPagesIndex,
 			Arguments:  defaultSetHeapPagesArgs,
 		},
+		dbWeight:     dbWeight,
 		heapPages:    mockStorageHeapPages,
 		logDepositor: mockLogDepositor,
 	}
@@ -90,7 +91,7 @@ func Test_Call_SetHeapPages_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetHeapPages(tc, functionSetHeapPagesIndex, mockStorageHeapPages, mockLogDepositor)
+		call := newCallSetHeapPages(tc, functionSetHeapPagesIndex, dbWeight, mockStorageHeapPages, mockLogDepositor)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -105,7 +106,7 @@ func Test_Call_SetHeapPages_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetHeapPages(moduleId, tc, mockStorageHeapPages, mockLogDepositor)
+		call := newCallSetHeapPages(moduleId, tc, dbWeight, mockStorageHeapPages, mockLogDepositor)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -114,7 +115,7 @@ func Test_Call_SetHeapPages_FunctionIndex(t *testing.T) {
 func Test_Call_SetHeapPages_BaseWeight(t *testing.T) {
 	call := setupCallSetHeapPages()
 
-	assert.Equal(t, callSetHeapPagesWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callSetHeapPagesWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_SetHeapPages_WeighData(t *testing.T) {
@@ -152,5 +153,5 @@ func Test_Call_SetHeapPages_Dispatch_Success(t *testing.T) {
 
 func setupCallSetHeapPages() primitives.Call {
 	mockLogDepositor = new(mocks.SystemModule)
-	return newCallSetHeapPages(moduleId, functionSetHeapPagesIndex, mockStorageHeapPages, mockLogDepositor)
+	return newCallSetHeapPages(moduleId, functionSetHeapPagesIndex, dbWeight, mockStorageHeapPages, mockLogDepositor)
 }

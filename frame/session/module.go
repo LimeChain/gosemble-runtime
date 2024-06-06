@@ -9,6 +9,7 @@ import (
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -31,10 +32,11 @@ type Module interface {
 	types.InherentProvider
 
 	CurrentIndex() (sc.U32, error)
+	Validators() (sc.Sequence[primitives.AccountId], error)
 	IsDisabled(index sc.U32) (bool, error)
 	DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr25519PublicKey], error)
 
-	AppendHandlers(module OneSessionHandler)
+	AppendHandlers(module sessiontypes.OneSessionHandler)
 }
 
 type module struct {
@@ -77,6 +79,10 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 
 func (m module) CurrentIndex() (sc.U32, error) {
 	return m.storage.CurrentIndex.Get()
+}
+
+func (m module) Validators() (sc.Sequence[primitives.AccountId], error) {
+	return m.storage.Validators.Get()
 }
 
 func (m module) name() sc.Str { return name }
@@ -159,7 +165,7 @@ func (m module) DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr
 	return m.handler.DecodeKeys(buffer)
 }
 
-func (m module) AppendHandlers(module OneSessionHandler) {
+func (m module) AppendHandlers(module sessiontypes.OneSessionHandler) {
 	m.handler.AppendHandlers(module)
 }
 

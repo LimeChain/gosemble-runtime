@@ -12,7 +12,7 @@ type EpochConfiguration struct {
 	// A constant value that is used in the threshold calculation formula.
 	// In the threshold formula calculation, `1 - c` represents the probability
 	// of a slot being empty.
-	C primitives.RationalValue
+	C primitives.Tuple2U64
 
 	// Whether this chain should run with secondary slots, which are assigned
 	// in round-robin manner.
@@ -31,7 +31,7 @@ func (c EpochConfiguration) Bytes() []byte {
 }
 
 func DecodeEpochConfiguration(buffer *bytes.Buffer) (EpochConfiguration, error) {
-	C, err := primitives.DecodeRationalValue(buffer)
+	C, err := primitives.DecodeTuple2U64(buffer)
 	if err != nil {
 		return EpochConfiguration{}, err
 	}

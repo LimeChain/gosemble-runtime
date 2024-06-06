@@ -10,7 +10,7 @@ import (
 
 var (
 	epochConfiguration = EpochConfiguration{
-		C:            primitives.RationalValue{Numerator: 2, Denominator: 3},
+		C:            primitives.Tuple2U64{First: 2, Second: 3},
 		AllowedSlots: NewPrimarySlots(),
 	}
 )

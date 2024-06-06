@@ -8,25 +8,22 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
-	"github.com/LimeChain/gosemble/primitives/types"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
+	pubKey1 = primitives.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)}
+	pubKey2 = primitives.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)}
+
 	slotDuration        = sc.U64(2000) // milliseconds
 	epochLength         = sc.U64(200)  // slots
-	probabilityConstant = types.RationalValue{Numerator: 2, Denominator: 3}
+	probabilityConstant = primitives.Tuple2U64{First: 2, Second: 3}
 	allowedSlots        = babetypes.NewPrimaryAndSecondaryVRFSlots()
-	authorities         = sc.Sequence[babetypes.Authority]{
-		babetypes.Authority{
-			Key:    types.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)},
-			Weight: 1,
-		},
-		babetypes.Authority{
-			Key:    types.Sr25519PublicKey{FixedSequence: sc.NewFixedSequence[sc.U8](32, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)},
-			Weight: 2,
-		},
+	authorities         = sc.Sequence[primitives.Authority]{
+		primitives.Authority{Id: primitives.AccountId(pubKey1), Weight: 1},
+		primitives.Authority{Id: primitives.AccountId(pubKey2), Weight: 2},
 	}
 	randomness = babetypes.Randomness(sc.NewFixedSequence[sc.U8](32, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2))
 )

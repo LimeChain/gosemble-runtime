@@ -34,6 +34,7 @@ func Test_Call_RemarkWithEvent_New(t *testing.T) {
 			FunctionId: functionRemarkWithEventIndex,
 			Arguments:  defaultRemarkWithEventArgs,
 		},
+		dbWeight:       dbWeight,
 		eventDepositor: mockEventDepositor,
 		ioHashing:      mockIoHashing,
 	}
@@ -94,7 +95,7 @@ func Test_Call_RemarkWithEvent_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallRemarkWithEvent(tc, functionRemarkWithEventIndex, mockIoHashing, mockEventDepositor)
+		call := newCallRemarkWithEvent(tc, functionRemarkWithEventIndex, dbWeight, mockIoHashing, mockEventDepositor)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -109,7 +110,7 @@ func Test_Call_RemarkWithEvent_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallRemarkWithEvent(moduleId, tc, mockIoHashing, mockEventDepositor)
+		call := newCallRemarkWithEvent(moduleId, tc, dbWeight, mockIoHashing, mockEventDepositor)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -157,5 +158,5 @@ func Test_Call_RemarkWithEvent_Dispatch_Success(t *testing.T) {
 func setupCallRemarkWithEvent() primitives.Call {
 	initMockStorage()
 	mockEventDepositor = new(mocks.SystemModule)
-	return newCallRemarkWithEvent(moduleId, functionRemarkWithEventIndex, mockIoHashing, mockEventDepositor)
+	return newCallRemarkWithEvent(moduleId, functionRemarkWithEventIndex, dbWeight, mockIoHashing, mockEventDepositor)
 }

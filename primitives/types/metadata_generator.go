@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	lastAvailableIndex = 148 + 22 // the last enum id from constants/metadata.go
+	lastAvailableIndex = 148 + 22 + 5 // the last enum id from constants/metadata.go
 )
 
 const (

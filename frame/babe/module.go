@@ -9,13 +9,13 @@ import (
 	"reflect"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
-	"github.com/LimeChain/gosemble/primitives/types"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
+
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -33,13 +33,13 @@ var (
 )
 
 var (
-	errAuthoritiesListEmpty            = errors.New("Authorities cannot be empty!")
-	errAuthoritiesAlreadyInitialized   = errors.New("Authorities are already initialized!")
-	errAuthoritiesExceedMaxAuthorities = errors.New("Initial number of authorities should be lower than MaxAuthorities")
-	errEpochConfigIsUninitialized      = errors.New("EpochConfig is initialized in genesis; we never `take` or `kill` it; qed")
-	errEpochIndexOverflow              = errors.New("epoch index is u64; it is always only incremented by one; if u64 is not enough we should crash for safety; qed.")
-	errTimestampMismatch               = errors.New("Timestamp slot must match `CurrentSlot`")
-	errZeroSlotDuration                = errors.New("Babe slot duration cannot be zero.")
+	errAuthoritiesListEmpty            = errors.New("Babe: Authorities cannot be empty!")
+	errAuthoritiesAlreadyInitialized   = errors.New("Babe: Authorities are already initialized!")
+	errAuthoritiesExceedMaxAuthorities = errors.New("Babe: Initial number of authorities should be lower than MaxAuthorities")
+	errEpochConfigIsUninitialized      = errors.New("Babe: EpochConfig is initialized in genesis; we never `take` or `kill` it; qed")
+	errEpochIndexOverflow              = errors.New("Babe: epoch index is u64; it is always only incremented by one; if u64 is not enough we should crash for safety; qed.")
+	errTimestampMismatch               = errors.New("Babe: Timestamp slot must match `CurrentSlot`")
+	errZeroSlotDuration                = errors.New("Babe: Slot duration cannot be zero.")
 )
 
 const (
@@ -51,15 +51,17 @@ const (
 type Module interface {
 	primitives.Module
 	hooks.OnTimestampSet[sc.U64]
-	session.OneSessionHandler
+	sessiontypes.OneSessionHandler
 
-	StorageAuthorities() (sc.Sequence[babetypes.Authority], error)
+	FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc.Option[sc.U32], error)
+
+	StorageAuthorities() (sc.Sequence[primitives.Authority], error)
 	StorageRandomness() (babetypes.Randomness, error)
 	StorageSegmentIndexSet(sc.U32)
 	StorageEpochConfig() (babetypes.EpochConfiguration, error)
 	StorageEpochConfigSet(value babetypes.EpochConfiguration)
 
-	EnactEpochChange(authorities sc.Sequence[babetypes.Authority], nextAuthorities sc.Sequence[babetypes.Authority], sessionIndex sc.Option[sc.U32]) error
+	EnactEpochChange(authorities sc.Sequence[primitives.Authority], nextAuthorities sc.Sequence[primitives.Authority], sessionIndex sc.Option[sc.U32]) error
 	ShouldEpochChange(now sc.U64) bool
 
 	SlotDuration() sc.U64
@@ -94,7 +96,7 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	storage := newStorage()
 
 	functions := map[sc.U8]primitives.Call{
-		functionPlanConfigChangeIndex: newCallPlanConfigChange(index, functionPlanConfigChangeIndex, storage.PendingEpochConfigChange),
+		functionPlanConfigChangeIndex: newCallPlanConfigChange(index, functionPlanConfigChangeIndex, config.DbWeight, storage.PendingEpochConfigChange),
 	}
 
 	return module{
@@ -137,7 +139,7 @@ func (m module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Ca
 // Storage
 
 // Current epoch authorities.
-func (m module) StorageAuthorities() (sc.Sequence[babetypes.Authority], error) {
+func (m module) StorageAuthorities() (sc.Sequence[primitives.Authority], error) {
 	return m.storage.Authorities.Get()
 }
 
@@ -174,7 +176,7 @@ func (m module) FindAuthor(digests sc.Sequence[primitives.DigestPreRuntime]) (sc
 		if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(preRuntime.ConsensusEngineId), EngineId[:]) {
 			buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(preRuntime.Message))
 
-			preDigest, err := DecodePreDigest(buffer)
+			preDigest, err := babetypes.DecodePreDigest(buffer)
 			if err != nil {
 				return sc.NewOption[sc.U32](nil), err
 			}
@@ -250,7 +252,7 @@ func (m module) ShouldEpochChange(now sc.U64) bool {
 // manager logic like `pallet-session`.
 //
 // This doesn't do anything if `authorities` is empty.
-func (m module) EnactEpochChange(authorities sc.Sequence[babetypes.Authority], nextAuthorities sc.Sequence[babetypes.Authority], sessionIndex sc.Option[sc.U32]) error {
+func (m module) EnactEpochChange(authorities sc.Sequence[primitives.Authority], nextAuthorities sc.Sequence[primitives.Authority], sessionIndex sc.Option[sc.U32]) error {
 	// PRECONDITION: caller has done initialization and is guaranteed
 	// by the session module to be called before this.
 	// initializedBytes, err := m.storage.Initialized.GetBytes()
@@ -365,7 +367,7 @@ func (m module) EnactEpochChange(authorities sc.Sequence[babetypes.Authority], n
 		Authorities: nextAuthorities,
 		Randomness:  nextRandomness,
 	}
-	m.depositConsensus(NewNextEpochDataConsensusLog(nextEpoch))
+	m.depositConsensus(NewConsensusLogNextEpochData(nextEpoch))
 
 	nextConfig, err := m.storage.NextEpochConfig.Get()
 	if err != nil {
@@ -385,7 +387,7 @@ func (m module) EnactEpochChange(authorities sc.Sequence[babetypes.Authority], n
 		nextEpochConfig := pendingEpochConfigChange.V1
 		m.storage.NextEpochConfig.Put(nextEpochConfig)
 
-		m.depositConsensus(NewNextConfigDataConsensusLog(pendingEpochConfigChange))
+		m.depositConsensus(NewConsensusLogNextConfigData(pendingEpochConfigChange))
 	}
 
 	return nil
@@ -516,7 +518,7 @@ func (m module) NextEpoch() (babetypes.Epoch, error) {
 }
 
 func (m module) depositConsensus(new ConsensusLog) {
-	log := types.NewDigestItemConsensusMessage(
+	log := primitives.NewDigestItemConsensusMessage(
 		sc.BytesToFixedSequenceU8(EngineId[:]),
 		sc.BytesToSequenceU8(new.Bytes()),
 	)
@@ -552,7 +554,7 @@ func (m module) depositRandomness(randomness babetypes.Randomness) error {
 	return nil
 }
 
-func (m module) initializeGenesisAuthorities(authorities sc.Sequence[babetypes.Authority]) error {
+func (m module) initializeGenesisAuthorities(authorities sc.Sequence[primitives.Authority]) error {
 	if len(authorities) != 0 {
 		totalAuthorities, err := m.storage.Authorities.DecodeLen()
 		if err != nil {
@@ -603,7 +605,7 @@ func (m module) initializeGenesisEpoch(slot babetypes.Slot) error {
 		Randomness:  randomness,
 	}
 
-	m.depositConsensus(NewNextEpochDataConsensusLog(next))
+	m.depositConsensus(NewConsensusLogNextEpochData(next))
 
 	return nil
 }
@@ -629,18 +631,18 @@ func (m module) initialize(now sc.U64) error {
 		return err
 	}
 
-	preDigest := sc.NewOption[PreDigest](nil)
+	preDigest := sc.NewOption[babetypes.PreDigest](nil)
 
 	for _, digest := range preRuntimeDigests {
 		if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(digest.ConsensusEngineId), EngineId[:]) {
 			buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(digest.Message))
 
-			pre, err := DecodePreDigest(buffer)
+			pre, err := babetypes.DecodePreDigest(buffer)
 			if err != nil {
 				return err
 			}
 
-			preDigest = sc.NewOption[PreDigest](pre)
+			preDigest = sc.NewOption[babetypes.PreDigest](pre)
 			break
 		}
 	}
@@ -770,19 +772,19 @@ func (m module) DecodeKey(buffer *bytes.Buffer) (primitives.Sr25519PublicKey, er
 }
 
 func (m module) OnGenesisSession(validators sc.Sequence[primitives.Validator]) error {
-	authorities := authoritiesFrom(validators)
+	authorities := primitives.AuthoritiesFrom(validators)
 	return m.initializeGenesisAuthorities(authorities)
 }
 
 // OnNewSession triggers once the session has changed.
 func (m module) OnNewSession(changed bool, validators sc.Sequence[primitives.Validator], queuedValidators sc.Sequence[primitives.Validator]) error {
-	authorities := authoritiesFrom(validators)
+	authorities := primitives.AuthoritiesFrom(validators)
 	if len(authorities) > int(m.config.MaxAuthorities) {
 		m.logger.Warn("The session has more validators than expected. A runtime configuration adjustment may be needed.")
 		authorities = authorities[:m.config.MaxAuthorities]
 	}
 
-	nextAuthorities := authoritiesFrom(queuedValidators)
+	nextAuthorities := primitives.AuthoritiesFrom(queuedValidators)
 	if len(nextAuthorities) > int(m.config.MaxAuthorities) {
 		m.logger.Warn("The session has more queued validators than expected. A runtime configuration adjustment may be needed.")
 		authorities = authorities[:m.config.MaxAuthorities]
@@ -801,7 +803,7 @@ func (m module) OnBeforeSessionEnding() {}
 
 // OnDisabled triggers hook for a disabled validator. Acts accordingly until a new session begins.
 func (m module) OnDisabled(validatorIndex sc.U32) {
-	m.depositConsensus(NewOnDisabledConsensusLog(validatorIndex))
+	m.depositConsensus(NewConsensusLogOnDisabled(validatorIndex))
 }
 
 // Module hooks implementation
@@ -892,7 +894,7 @@ func (m module) OnFinalize(_now sc.U64) error {
 				output[i] = byte(signature.Value.PreOutput[i])
 			}
 
-			public, err := primitives.NewPublicKey(sc.FixedSequenceU8ToBytes(authority.Key.FixedSequence))
+			public, err := primitives.NewPublicKey(sc.FixedSequenceU8ToBytes(authority.Id.FixedSequence))
 
 			inout, err := primitives.AttachInput(output, public, transcript)
 			if err != nil {
@@ -942,14 +944,6 @@ func (m module) EpochStartSlot(epochIndex sc.U64, genesisSlot babetypes.Slot, ep
 
 func (m module) EpochConfig() babetypes.EpochConfiguration {
 	return m.config.EpochConfig
-}
-
-func authoritiesFrom(validators sc.Sequence[primitives.Validator]) sc.Sequence[babetypes.Authority] {
-	authorities := make(sc.Sequence[babetypes.Authority], 0)
-	for _, v := range validators {
-		authorities = append(authorities, babetypes.Authority{Key: v.AuthorityId, Weight: 1})
-	}
-	return authorities
 }
 
 // compute randomness for a new epoch. rho is the concatenation of all

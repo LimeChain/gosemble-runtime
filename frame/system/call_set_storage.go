@@ -12,16 +12,18 @@ import (
 // Set some items of storage.
 type callSetStorage struct {
 	primitives.Callable
+	dbWeight  primitives.RuntimeDbWeight
 	ioStorage io.Storage
 }
 
-func newCallSetStorage(moduleId sc.U8, functionId sc.U8, ioStorage io.Storage) primitives.Call {
+func newCallSetStorage(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, ioStorage io.Storage) primitives.Call {
 	call := callSetStorage{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[KeyValue]{}),
 		},
+		dbWeight:  dbWeight,
 		ioStorage: ioStorage,
 	}
 
@@ -59,7 +61,7 @@ func (c callSetStorage) Args() sc.VaryingData {
 
 func (c callSetStorage) BaseWeight() primitives.Weight {
 	items := c.Arguments[0].(sc.Sequence[KeyValue])
-	return callSetStorageWeight(primitives.RuntimeDbWeight{}, sc.U64(len(items)))
+	return callSetStorageWeight(c.dbWeight, sc.U64(len(items)))
 }
 
 func (_ callSetStorage) WeighData(baseWeight primitives.Weight) primitives.Weight {

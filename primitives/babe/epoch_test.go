@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/primitives/types"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,10 +14,10 @@ var (
 		EpochIndex:  sc.U64(1),
 		StartSlot:   Slot(2),
 		Duration:    sc.U64(3),
-		Authorities: sc.Sequence[Authority]{},
+		Authorities: sc.Sequence[primitives.Authority]{},
 		Randomness:  NewRandomness(),
 		Config: EpochConfiguration{
-			C:            types.RationalValue{Numerator: 2, Denominator: 3},
+			C:            primitives.Tuple2U64{First: 2, Second: 3},
 			AllowedSlots: NewPrimarySlots(),
 		},
 	}

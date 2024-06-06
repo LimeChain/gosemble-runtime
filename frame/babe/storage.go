@@ -7,6 +7,8 @@ import (
 	"github.com/LimeChain/gosemble/frame/support"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	"github.com/LimeChain/gosemble/primitives/io"
+
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 var (
@@ -33,16 +35,16 @@ var (
 var defaultRandomnessValue = babetypes.NewRandomness()
 
 type storage struct {
-	Authorities              support.StorageValue[sc.Sequence[babetypes.Authority]]
+	Authorities              support.StorageValue[sc.Sequence[primitives.Authority]]
 	AuthorVrfRandomness      support.StorageValue[sc.Option[babetypes.Randomness]]
 	CurrentSlot              support.StorageValue[babetypes.Slot]
 	EpochConfig              support.StorageValue[babetypes.EpochConfiguration]
 	EpochIndex               support.StorageValue[sc.U64]
 	EpochStart               support.StorageValue[babetypes.EpochStartBlocks]
 	GenesisSlot              support.StorageValue[babetypes.Slot]
-	Initialized              support.StorageValue[sc.Option[PreDigest]]
+	Initialized              support.StorageValue[sc.Option[babetypes.PreDigest]]
 	Lateness                 support.StorageValue[sc.U64]
-	NextAuthorities          support.StorageValue[sc.Sequence[babetypes.Authority]]
+	NextAuthorities          support.StorageValue[sc.Sequence[primitives.Authority]]
 	NextEpochConfig          support.StorageValue[babetypes.EpochConfiguration]
 	NextRandomness           support.StorageValue[babetypes.Randomness]
 	PendingEpochConfigChange support.StorageValue[NextConfigDescriptor]
@@ -56,7 +58,7 @@ func newStorage() *storage {
 	hashing := io.NewHashing()
 
 	return &storage{
-		Authorities:              support.NewHashStorageValue(keyBabe, keyAuthorities, decodeAuthorities),
+		Authorities:              support.NewHashStorageValue(keyBabe, keyAuthorities, primitives.DecodeAuthorityList),
 		AuthorVrfRandomness:      support.NewHashStorageValue(keyBabe, keyAuthorVrfRandomness, decodeOptionRandomness),
 		CurrentSlot:              support.NewHashStorageValue(keyBabe, keyCurrentSlot, sc.DecodeU64),
 		EpochConfig:              support.NewHashStorageValue(keyBabe, keyEpochConfig, babetypes.DecodeEpochConfiguration),
@@ -65,7 +67,7 @@ func newStorage() *storage {
 		GenesisSlot:              support.NewHashStorageValue(keyBabe, keyGenesisSlot, sc.DecodeU64),
 		Initialized:              support.NewHashStorageValue(keyBabe, keyInitialized, decodePreDigest),
 		Lateness:                 support.NewHashStorageValue(keyBabe, keyLateness, sc.DecodeU64),
-		NextAuthorities:          support.NewHashStorageValue(keyBabe, keyNextAuthorities, decodeAuthorities),
+		NextAuthorities:          support.NewHashStorageValue(keyBabe, keyNextAuthorities, primitives.DecodeAuthorityList),
 		NextEpochConfig:          support.NewHashStorageValue(keyBabe, keyNextEpochConfig, babetypes.DecodeEpochConfiguration),
 		NextRandomness:           support.NewHashStorageValueWithDefault(keyBabe, keyNextRandomness, decodeRandomness, &defaultRandomnessValue),
 		PendingEpochConfigChange: support.NewHashStorageValue(keyBabe, keyPendingEpochConfigChange, DecodeNextConfigDescriptor),
@@ -76,10 +78,6 @@ func newStorage() *storage {
 	}
 }
 
-func decodeAuthorities(buffer *bytes.Buffer) (sc.Sequence[babetypes.Authority], error) {
-	return sc.DecodeSequenceWith(buffer, babetypes.DecodeAuthority)
-}
-
 func decodeRandomness(buffer *bytes.Buffer) (sc.FixedSequence[sc.U8], error) {
 	return sc.DecodeFixedSequence[sc.U8](babetypes.RandomnessLength, buffer)
 }
@@ -88,8 +86,8 @@ func decodeOptionRandomness(buffer *bytes.Buffer) (sc.Option[sc.FixedSequence[sc
 	return sc.DecodeOptionWith(buffer, decodeRandomness)
 }
 
-func decodePreDigest(buffer *bytes.Buffer) (sc.Option[PreDigest], error) {
-	return sc.DecodeOptionWith(buffer, DecodePreDigest)
+func decodePreDigest(buffer *bytes.Buffer) (sc.Option[babetypes.PreDigest], error) {
+	return sc.DecodeOptionWith(buffer, babetypes.DecodePreDigest)
 }
 
 func decodeSkippedEpochs(buffer *bytes.Buffer) (sc.FixedSequence[babetypes.SkippedEpoch], error) {

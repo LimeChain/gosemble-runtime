@@ -70,7 +70,7 @@ func (m *StorageValue[T]) TakeBytes() ([]byte, error) {
 		return args.Get(0).([]byte), nil
 	}
 
-	return args.Get(0).([]byte), args.Error(1).(error)
+	return args.Get(0).([]byte), args.Get(1).(error)
 }
 
 func (m *StorageValue[T]) DecodeLen() (sc.Option[sc.U64], error) {
@@ -84,7 +84,7 @@ func (m *StorageValue[T]) DecodeLen() (sc.Option[sc.U64], error) {
 }
 
 func (m *StorageValue[T]) Mutate(f func(*T) (T, error)) (T, error) {
-	args := m.Called()
+	args := m.MethodCalled("Mutate", f)
 
 	if args.Get(1) == nil {
 		return args.Get(0).(T), nil

@@ -190,16 +190,18 @@ const (
 	TypesSudoCalls
 	TypesSudoErrors
 
-	TypesRationalValueU64
+	TypesAuthority
+	TypesSequenceAuthority
+	TypesBoundedVecAuthority
+
+	TypesTuple2U64
 	TypesSlot
 	TypesOptionFixedSequence32U8
 	TypesVrfSignature
 	TypesAllowedSlots
 	TypesPreDigest
 	TypesOptionPreDigest
-	TypesBabeAuthority
-	TypesBabeSequenceAuthority
-	TypesBabeBoundedVecAuthority
+
 	TypesBabeEpochConfiguration
 	TypesBabeNextConfigDescriptor
 	TypesBabeSkippedEpoch
@@ -212,4 +214,10 @@ const (
 	TypesBabeSecondaryVRFPreDigest
 	TypesBabeErrors
 	TypesBabeCalls
+
+	TypesOptionU64
+	TypesGrandpaStoredState
+	TypesGrandpaStoredPendingChange
+	TypesGrandpaEvent
+	TypesGrandpaCalls
 )
