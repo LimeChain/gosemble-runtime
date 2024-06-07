@@ -26,7 +26,14 @@ func Test_ApplyAuthorizedUpgrade_DispatchOutcome(t *testing.T) {
 	assert.NoError(t, err)
 	codeHash := common.MustBlake2bHash(codeSpecVersion101)
 
-	call, err := ctypes.NewCall(metadata, "System.authorize_upgrade", codeHash)
+	// Set Sudo Key
+	err = (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	assert.NoError(t, err)
+
+	callArg, err := ctypes.NewCall(metadata, "System.authorize_upgrade", codeHash)
+	assert.NoError(t, err)
+
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
 	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)

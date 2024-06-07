@@ -8,6 +8,14 @@ permalink: /development/test
 Currently, the project contains unit and integration tests. Integration tests use [Gossamer](https://github.com/LimeChain/gossamer), which
 imports all the necessary Host functions and interacts with the Runtime.
 
+Before running the tests, make sure to build the runtime with the benchmarking features enabled, as there are some tests that rely on them.
+
+````bash
+make build-benchmarking
+````
+
+And then run the tests with:
+
 ```bash
 make test
 ```

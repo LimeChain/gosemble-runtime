@@ -18,12 +18,19 @@ func Test_KillPrefix_DispatchOutcome(t *testing.T) {
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
 
+	// Set Sudo Key
+	err = (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	assert.NoError(t, err)
+
 	testhelpers.InitializeBlock(t, rt, testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, testhelpers.BlockNumber)
 
 	prefix := []byte("test")
 	limit := uint32(2)
 
-	call, err := ctypes.NewCall(metadata, "System.kill_prefix", prefix, limit)
+	callArg, err := ctypes.NewCall(metadata, "System.kill_prefix", prefix, limit)
+	assert.NoError(t, err)
+
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
 	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)

@@ -21,6 +21,10 @@ func Test_SetStorage_DispatchOutcome(t *testing.T) {
 	// Initialize block
 	testhelpers.InitializeBlock(t, rt, testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, testhelpers.BlockNumber)
 
+	// Set Sudo Key
+	err = (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	assert.NoError(t, err)
+
 	items := []struct {
 		Key   []byte
 		Value []byte
@@ -35,7 +39,10 @@ func Test_SetStorage_DispatchOutcome(t *testing.T) {
 		},
 	}
 
-	call, err := ctypes.NewCall(metadata, "System.set_storage", items)
+	callArg, err := ctypes.NewCall(metadata, "System.set_storage", items)
+	assert.NoError(t, err)
+
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
 	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)

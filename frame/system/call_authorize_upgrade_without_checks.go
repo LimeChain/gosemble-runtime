@@ -74,12 +74,10 @@ func (_ callAuthorizeUpgradeWithoutChecks) PaysFee(baseWeight primitives.Weight)
 }
 
 func (c callAuthorizeUpgradeWithoutChecks) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	codeHash := args[0].(primitives.H256)
 
