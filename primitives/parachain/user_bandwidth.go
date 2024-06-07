@@ -42,6 +42,27 @@ func (ub UserBandwidth) Bytes() []byte {
 	return sc.EncodedBytes(ub)
 }
 
+func (ub *UserBandwidth) Subtract(other *UserBandwidth) error {
+	ub.UmpMsgCount -= other.UmpMsgCount
+	ub.UmpTotalBytes -= other.UmpTotalBytes
+
+	newHrmpOutgoing := sc.Dictionary[sc.U32, HrmpChannelUpdate]{}
+	for i, channel := range other.HrmpOutgoing {
+		entry, ok := ub.HrmpOutgoing[i]
+		if !ok {
+
+		}
+		entry.Subtract(channel)
+		if !entry.IsEmpty() {
+			newHrmpOutgoing[i] = entry
+		}
+	}
+
+	ub.HrmpOutgoing = newHrmpOutgoing
+
+	return nil
+}
+
 func decodeHrmpOutgoing(buffer *bytes.Buffer) (sc.Dictionary[sc.U32, HrmpChannelUpdate], error) {
 	v, err := sc.DecodeCompact[sc.U128](buffer)
 	if err != nil {

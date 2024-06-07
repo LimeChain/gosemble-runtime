@@ -34,3 +34,12 @@ func DecodeHrmpChannelUpdate(buffer *bytes.Buffer) (HrmpChannelUpdate, error) {
 func (hcu HrmpChannelUpdate) Bytes() []byte {
 	return sc.EncodedBytes(hcu)
 }
+
+func (hcu *HrmpChannelUpdate) Subtract(other HrmpChannelUpdate) {
+	hcu.MsgCount -= other.MsgCount
+	hcu.TotalBytes -= other.TotalBytes
+}
+
+func (hcu HrmpChannelUpdate) IsEmpty() bool {
+	return hcu.TotalBytes == 0 && hcu.MsgCount == 0
+}

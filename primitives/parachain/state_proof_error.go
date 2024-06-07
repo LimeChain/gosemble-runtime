@@ -48,28 +48,28 @@ func NewErrorStateProofConfig(entryError ReadEntryError) StateProofError {
 	return StateProofError{sc.NewVaryingData(ErrorStateProofConfig, entryError)}
 }
 
-func NewErrorStateProofDmqMqcHead() StateProofError {
-	return StateProofError{sc.NewVaryingData(ErrorStateProofDmqMqcHead)}
+func NewErrorStateProofDmqMqcHead(entryError ReadEntryError) StateProofError {
+	return StateProofError{sc.NewVaryingData(ErrorStateProofDmqMqcHead, entryError)}
 }
 
-func NewErrorStateProofRelayDispatchQueueRemainingCapacity() StateProofError {
-	return StateProofError{sc.NewVaryingData(ErrorStateProofRelayDispatchQueueRemainingCapacity)}
+func NewErrorStateProofRelayDispatchQueueRemainingCapacity(entryError ReadEntryError) StateProofError {
+	return StateProofError{sc.NewVaryingData(ErrorStateProofRelayDispatchQueueRemainingCapacity, entryError)}
 }
 
-func NewErrorStateProofHrmpIngressChannelIndex() StateProofError {
-	return StateProofError{sc.NewVaryingData(ErrorStateProofHrmpIngressChannelIndex)}
+func NewErrorStateProofHrmpIngressChannelIndex(entryError ReadEntryError) StateProofError {
+	return StateProofError{sc.NewVaryingData(ErrorStateProofHrmpIngressChannelIndex, entryError)}
 }
 
-func NewErrorStateProofHrmpEgressChannelIndex() StateProofError {
-	return StateProofError{sc.NewVaryingData(ErrorStateProofHrmpEgressChannelIndex)}
+func NewErrorStateProofHrmpEgressChannelIndex(entryError ReadEntryError) StateProofError {
+	return StateProofError{sc.NewVaryingData(ErrorStateProofHrmpEgressChannelIndex, entryError)}
 }
 
-func NewErrorStateProofHrmpChannel() StateProofError {
-	return StateProofError{sc.NewVaryingData(ErrorStateProofHrmpChannel)}
+func NewErrorStateProofHrmpChannel(from sc.U32, to sc.U32, entryError ReadEntryError) StateProofError {
+	return StateProofError{sc.NewVaryingData(ErrorStateProofHrmpChannel, from, to, entryError)}
 }
 
-func NewErrorStateProofParaHead() StateProofError {
-	return StateProofError{sc.NewVaryingData(ErrorStateProofParaHead)}
+func NewErrorStateProofParaHead(entryError ReadEntryError) StateProofError {
+	return StateProofError{sc.NewVaryingData(ErrorStateProofParaHead, entryError)}
 }
 
 func (err StateProofError) Error() string {

@@ -6,9 +6,11 @@ import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/hooks"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/parachain"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"reflect"
 )
 
 const (
@@ -32,6 +34,7 @@ type Module struct {
 	constants consts
 	config    Config
 	storage   *storage
+	hashing   io.Hashing
 	functions map[sc.U8]primitives.Call
 	logger    log.Logger
 }
@@ -45,6 +48,7 @@ func New(index sc.U8, config Config, logger log.Logger) Module {
 		constants: constants,
 		config:    config,
 		storage:   newStorage(config.Storage),
+		hashing:   io.NewHashing(),
 		logger:    logger,
 	}
 
@@ -137,6 +141,7 @@ func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 		if err != nil {
 			return primitives.WeightZero(), err
 		}
+
 		last.ParaHeadHash = sc.NewOption[primitives.H256](primitives.H256{FixedSequence: parentHash.FixedSequence})
 		unincludedSegment.Ancestors[len(unincludedSegment.Ancestors)-1] = last
 
@@ -223,26 +228,281 @@ func (m Module) OnFinalize(_ sc.U64) error {
 
 	totalBandwidthOut := parachain.NewOutboundBandwidthLimitsFromMessagingStateSnapshot(messagingState)
 
-	m.adjustEgressBandwidthLimits()
+	// After this point, the `RelevantMessagingState` in storage reflects the
+	// unincluded segment.
+	err = m.adjustEgressBandwidthLimits()
+	if err != nil {
+		return err
+	}
 
 	_ = totalBandwidthOut
 	_ = hostConfig
 	_ = relayUpgradeGoAhead
 
+	// TODO: Handle messages
+
 	return nil
 }
 
-func (m Module) adjustEgressBandwidthLimits() {
-	// TODO:
+// adjustEgressBandwidthLimits adjusts the `RelevantMessagingState` according to the bandwidth limits in the
+// unincluded segment.
+func (m Module) adjustEgressBandwidthLimits() error {
+	bytesUnincludedSegment, err := m.storage.AggregatedUnincludedSegment.GetBytes()
+	if err != nil {
+		return err
+	}
+	if !bytesUnincludedSegment.HasValue {
+		return nil
+	}
+
+	_, err = parachain.DecodeSegmentTracker(bytes.NewBuffer(sc.SequenceU8ToBytes(bytesUnincludedSegment.Value)))
+	if err != nil {
+		return err
+	}
+
+	bytesMessagingState, err := m.storage.RelevantMessagingState.GetBytes()
+	if err != nil {
+		return err
+	}
+	if !bytesMessagingState.HasValue {
+		return err
+	}
+
+	// TODO: Update RelevantMessagingState
+
+	return nil
 }
 
 func (m Module) StorageNewValidationCodeBytes() (sc.Option[sc.Sequence[sc.U8]], error) {
 	return m.storage.NewValidationCode.GetBytes()
 }
 
-func (m Module) MaybeDropIncludedAncestors(storageProof parachain.RelayChainStateProof, capacity parachain.UnincludedSegmentCapacity) primitives.Weight {
-	// TODO:
-	return primitives.WeightZero()
+// MaybeDropIncludedAncestors drops blocks from the unincluded segment with respect to the latest parachain head.
+func (m Module) MaybeDropIncludedAncestors(storageProof parachain.RelayChainStateProof, capacity parachain.UnincludedSegmentCapacity) (primitives.Weight, error) {
+	weightUsed := primitives.WeightZero()
+
+	// if the unincluded segment length is non-zero, then the parachain head must be present.
+	paraHead := storageProof.ReadIncludedParaHeadHash()
+
+	unincludedSegmentLen := sc.U64(0)
+	optUnincludedSegmentLen, err := m.storage.UnincludedSegment.DecodeLen()
+	if err != nil {
+		return primitives.Weight{}, err
+	}
+	if optUnincludedSegmentLen.HasValue {
+		unincludedSegmentLen = optUnincludedSegmentLen.Value
+	}
+
+	weightUsed = weightUsed.Add(m.config.DbWeight.Reads(1))
+	expectIncludedParent := capacity.IsExpectingIncludedParent()
+	var includedHead sc.FixedSequence[sc.U8]
+	if paraHead.HasValue {
+		hash := paraHead.Value
+		if expectIncludedParent {
+			parentHash, err := m.config.systemModule.StorageParentHash()
+			if err != nil {
+				return primitives.Weight{}, err
+			}
+			if reflect.DeepEqual(hash, parentHash.FixedSequence) {
+				return primitives.Weight{}, errors.New("expected parent to be included")
+			}
+		}
+		includedHead = paraHead.Value
+	} else {
+		if expectIncludedParent {
+			parentHash, err := m.config.systemModule.StorageParentHash()
+			if err != nil {
+				return primitives.Weight{}, err
+			}
+			includedHead = parentHash.FixedSequence
+		} else {
+			return primitives.Weight{}, errors.New("included head not present in relay storage proof")
+		}
+	}
+
+	unIncludedSegment, err := m.storage.UnincludedSegment.Get()
+	if err != nil {
+		return primitives.Weight{}, err
+	}
+
+	var dropped sc.Sequence[parachain.Ancestor]
+	if len(unIncludedSegment.Ancestors) > 0 {
+		index := 0
+		for i, ancestor := range unIncludedSegment.Ancestors {
+			if !ancestor.ParaHeadHash.HasValue {
+				return primitives.Weight{}, errors.New("para head hash is updated during block initialisation")
+			}
+			headHash := ancestor.ParaHeadHash.Value
+			if reflect.DeepEqual(headHash.FixedSequence, includedHead) {
+				index = i + 1
+			}
+		}
+
+		newAncestors := unIncludedSegment.Ancestors[index:]
+		m.storage.UnincludedSegment.Put(parachain.UnincludedSegment{Ancestors: newAncestors})
+		dropped = unIncludedSegment.Ancestors[:index]
+	}
+	weightUsed = weightUsed.Add(m.config.DbWeight.ReadsWrites(1, 1))
+
+	newLen := int(unincludedSegmentLen) - len(dropped)
+
+	if len(dropped) > 0 {
+		aggrBytes, err := m.storage.AggregatedUnincludedSegment.GetBytes()
+		if err != nil {
+			return primitives.Weight{}, err
+		}
+		if !aggrBytes.HasValue {
+			return primitives.Weight{}, errors.New("dropped part of the segment wasn't empty")
+		}
+
+		aggr, err := parachain.DecodeSegmentTracker(bytes.NewBuffer(sc.SequenceU8ToBytes(aggrBytes.Value)))
+		if err != nil {
+			return primitives.Weight{}, err
+		}
+
+		for _, block := range dropped {
+			err := aggr.Subtract(&block)
+			if err != nil {
+				return primitives.Weight{}, err
+			}
+
+		}
+		m.storage.AggregatedUnincludedSegment.Put(aggr)
+		weightUsed = weightUsed.Add(m.config.DbWeight.ReadsWrites(1, 1))
+	}
+
+	if newLen >= int(capacity.Get()) {
+		return primitives.Weight{}, errors.New("no space left for the block in the unincluded segment")
+	}
+
+	return weightUsed, nil
+}
+
+func (m Module) enqueueInboundDownwardMessages(expectedDmqMqcHead primitives.H256, downwardMessages sc.Sequence[parachain.InboundDownwardMessage]) (primitives.Weight, error) {
+	dmCount := len(downwardMessages)
+
+	dmqHead, err := m.storage.LastDmqMqcHead.Get()
+	if err != nil {
+		return primitives.Weight{}, err
+	}
+
+	weightUsed := enqueueInboundDownwardMessagesWeight(sc.U64(dmCount), m.config.DbWeight)
+
+	if dmCount != 0 {
+		m.config.systemModule.DepositEvent(newEventDownwardMessagesReceived(m.index, sc.U32(dmCount)))
+
+		for _, downwardMessage := range downwardMessages {
+			err := dmqHead.ExtendDownward(downwardMessage, m.hashing)
+			if err != nil {
+				return primitives.Weight{}, err
+			}
+		}
+		// TODO(message queue):
+		/*
+			let bounded = downward_messages
+							.iter()
+							// Note: we are not using `.defensive()` here since that prints the whole value to
+							// console. In case that the message is too long, this clogs up the log quite badly.
+							.filter_map(|m| match BoundedSlice::try_from(&m.msg[..]) {
+								Ok(bounded) => Some(bounded),
+								Err(_) => {
+									defensive!("Inbound Downward message was too long; dropping");
+									None
+								},
+							});
+						T::DmpQueue::handle_messages(bounded);
+		*/
+		m.storage.LastDmqMqcHead.Put(dmqHead)
+		m.config.systemModule.DepositEvent(newEventDownwardMessagesProcessed(m.index, weightUsed, dmqHead.RelayHash))
+	}
+
+	// After hashing each message in the message queue chain submitted by the collator, we
+	// should arrive to the MQC head provided by the relay chain.
+	//
+	// A mismatch means that at least some of the submitted messages were altered, omitted or
+	// added improperly.
+	if reflect.DeepEqual(expectedDmqMqcHead, dmqHead.RelayHash) {
+		return primitives.Weight{}, errors.New("mismatching expected mqc head")
+	}
+
+	return weightUsed, nil
+}
+
+// enqueueInboundHorizontalMessages processes all inbound horizontal messages relayed by the collator.
+func (m Module) enqueueInboundHorizontalMessages(
+	ingressChannels sc.Sequence[parachain.Channel],
+	horizontalMessages parachain.HorizontalMessages,
+	relayParentNumber parachain.RelayChainBlockNumber) (primitives.Weight, error) {
+	// TODO: process all inbound horizontal messages
+	m.storage.HrmpWatermark.Put(relayParentNumber)
+
+	return primitives.Weight{}, nil
+}
+
+// sendUpwardMessage puts a message in the `PendingUpwardMessages` storage item.
+// The message will be later sent in `on_finalize`.
+// Checks host configuration to see if message is too big.
+// Increases the delivery fee factor if the queue is sufficiently (see
+// [`ump_constants::THRESHOLD_FACTOR`]) congested.
+func (m Module) sendUpwardMessage(data sc.Sequence[sc.U8]) error {
+	bytesHostConfiguration, err := m.storage.HostConfiguration.GetBytes()
+	if err != nil {
+		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+	}
+	if bytesHostConfiguration.HasValue {
+		cfg, err := parachain.DecodeAbridgeHostConfiguration(bytes.NewBuffer(sc.SequenceU8ToBytes(bytesHostConfiguration.Value)))
+		if err != nil {
+			return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+		}
+		if len(data) > int(cfg.MaxUpwardMessageSize) {
+			return primitives.NewDispatchErrorOther("message too big")
+		}
+		threshold := int(cfg.MaxUpwardQueueSize) / thresholdFactor
+		m.storage.PendingUpwardMessages.AppendItem(data)
+
+		upwardMessages, err := m.storage.PendingUpwardMessages.Get()
+		if err != nil {
+			return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+		}
+
+		totalSize := 0
+		for _, um := range upwardMessages {
+			totalSize += len(um)
+		}
+		if totalSize > threshold {
+			messageSizeFactor := len(data) * messageSizeFeeBase
+			err := m.increaseFeeFactor(messageSizeFactor)
+			if err != nil {
+				return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+			}
+		}
+	} else {
+		m.storage.PendingUpwardMessages.AppendItem(data)
+	}
+
+	hash := m.hashing.Blake256(sc.SequenceU8ToBytes(data))
+	h256, err := primitives.NewH256(sc.BytesToFixedSequenceU8(hash)...)
+	if err != nil {
+		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+	}
+
+	m.config.systemModule.DepositEvent(newEventUpwardMessageSent(m.index, sc.NewOption[primitives.H256](h256)))
+
+	return nil
+}
+
+func (m Module) increaseFeeFactor(messageSizeFactor int) error {
+	deliveryFactor, err := m.storage.UpwardDeliveryFeeFactor.Get()
+	if err != nil {
+		return err
+	}
+
+	multiplier := sc.SaturatingAddU128(sc.NewU128(exponentialFeeBase), sc.NewU128(messageSizeFactor))
+	newDeliveryFactor := deliveryFactor.Mul(multiplier)
+
+	m.storage.UpwardDeliveryFeeFactor.Put(newDeliveryFactor)
+
+	return nil
 }
 
 func (m Module) CollectCollationInfo(header primitives.Header) (CollationInfo, error) {

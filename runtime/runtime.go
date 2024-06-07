@@ -171,7 +171,7 @@ func initializeModules(storage io.Storage, transactionBroker io.TransactionBroke
 	auraExtModule := aura_ext.New(AuraExtIndex, aura_ext.NewConfig(storage, DbWeight), auraModule, logger)
 	consensusHook := aura_ext.NewFixedVelocityConsensusHook(RelayChainSlotDurationMillis, BlockProcessingVelocity, UnincludedSegmentCapacity, DbWeight, auraExtModule, logger)
 	parachainInfoModule := parachain_info.New(ParachainInfoIndex, storage)
-	parachainSystemModule := parachain_system.New(ParachainSystemIndex, parachain_system.NewConfig(storage, DbWeight, parachain_system.RelayNumberStrictlyIncreases{}, parachainInfoModule, systemModule, consensusHook), logger)
+	parachainSystemModule := parachain_system.New(ParachainSystemIndex, parachain_system.NewConfig(storage, DbWeight, parachain_system.NewRelayNumberStrictlyIncreases(logger), parachainInfoModule, systemModule, consensusHook), logger)
 
 	timestampModule := timestamp.New(
 		TimestampIndex,

@@ -7,6 +7,8 @@ import (
 	"github.com/LimeChain/gosemble/primitives/parachain"
 )
 
+var defaultInitialDeliveryFeeFactor = sc.NewU128(1)
+
 var (
 	// module prefix
 	keyParachainSystem                   = []byte("ParachainSystem")
@@ -23,11 +25,14 @@ var (
 	keyRelayStateProof                   = []byte("RelayStateProof")
 	keyRelevantMessagingState            = []byte("RelevantMessagingState")
 	keyHostConfiguration                 = []byte("HostConfiguration")
+	keyLastDmqMqcHead                    = []byte("LasatDmqMqcHead")
 	keyHrmpOutboundMessages              = []byte("HrmpOutboundMessages")
 	keyHrmpWatermark                     = []byte("HrmpWatermark")
 	keyProcessedDownwardMessages         = []byte("ProcessedDownwardMessages")
 	keyAnnouncedHrmpMessagesPerCandidate = []byte("AnnouncedHrmpMessagesPerCandidate")
 	keyUpwardMessages                    = []byte("UpwardMessages")
+	keyPendingUpwardMessages             = []byte("PendingUpwardMessages")
+	keyUpwardDeliveryFeeFactor           = []byte("UpwardDeliveryFeeFactor")
 )
 
 type storage struct {
@@ -45,10 +50,13 @@ type storage struct {
 	RelayStateProof                   support.StorageValue[parachain.StorageProof]
 	RelevantMessagingState            support.StorageValue[parachain.MessagingStateSnapshot]
 	HostConfiguration                 support.StorageValue[parachain.AbridgedHostConfiguration]
+	LastDmqMqcHead                    support.StorageValue[parachain.MessageQueueChain]
 	ProcessedDownwardMessages         support.StorageValue[sc.U32]
 	HrmpWatermark                     support.StorageValue[sc.U32]
 	HrmpOutboundMessages              support.StorageValue[sc.Sequence[parachain.OutboundHrmpMessage]]
 	UpwardMessages                    support.StorageValue[sc.Sequence[parachain.UpwardMessage]]
+	PendingUpwardMessages             support.StorageValue[sc.Sequence[parachain.UpwardMessage]]
+	UpwardDeliveryFeeFactor           support.StorageValue[sc.U128]
 	AnnouncedHrmpMessagesPerCandidate support.StorageValue[sc.U32]
 	CustomValidationHeadData          support.StorageValue[sc.Option[sc.Sequence[sc.U8]]]
 }
@@ -67,10 +75,13 @@ func newStorage(s io.Storage) *storage {
 		RelayStateProof:                   support.NewHashStorageValue(s, keyParachainSystem, keyRelayStateProof, parachain.DecodeStorageProof),
 		RelevantMessagingState:            support.NewHashStorageValue(s, keyParachainSystem, keyRelevantMessagingState, parachain.DecodeMessagingStateSnapshot),
 		HostConfiguration:                 support.NewHashStorageValue(s, keyParachainSystem, keyHostConfiguration, parachain.DecodeAbridgeHostConfiguration),
+		LastDmqMqcHead:                    support.NewHashStorageValue(s, keyParachainSystem, keyLastDmqMqcHead, parachain.DecodeMessageQueueChain),
 		ProcessedDownwardMessages:         support.NewHashStorageValue(s, keyParachainSystem, keyProcessedDownwardMessages, sc.DecodeU32),
 		HrmpWatermark:                     support.NewHashStorageValue(s, keyParachainSystem, keyHrmpWatermark, sc.DecodeU32),
 		HrmpOutboundMessages:              support.NewHashStorageValue(s, keyParachainSystem, keyHrmpOutboundMessages, parachain.DecodeOutboundHrmpMessages),
 		UpwardMessages:                    support.NewHashStorageValue(s, keyParachainSystem, keyUpwardMessages, parachain.DecodeUpwardMessages),
+		PendingUpwardMessages:             support.NewHashStorageValue(s, keyParachainSystem, keyPendingUpwardMessages, parachain.DecodeUpwardMessages),
+		UpwardDeliveryFeeFactor:           support.NewHashStorageValueWithDefault(s, keyParachainSystem, keyUpwardDeliveryFeeFactor, sc.DecodeU128, &defaultInitialDeliveryFeeFactor),
 		AnnouncedHrmpMessagesPerCandidate: support.NewHashStorageValue(s, keyParachainSystem, keyAnnouncedHrmpMessagesPerCandidate, sc.DecodeU32),
 		CustomValidationHeadData:          support.NewHashStorageValue(s, keyParachainSystem, keyCustomValidationHeadData, sc.DecodeOption[sc.Sequence[sc.U8]]),
 	}

@@ -29,10 +29,9 @@ func NewFixedVelocityConsensusHook(relayChainSlotDurationMillis, blockProcessing
 }
 
 func (fvch FixedVelocityConsensusHook) OnStateProof(stateProof parachain.RelayChainStateProof) (primitives.Weight, parachain.UnincludedSegmentCapacity, error) {
-	// TODO: add sc.MaxU32
-	velocity := sc.Max64(sc.U64(fvch.BlockProcessingVelocity), 1)
+	velocity := sc.Max32(fvch.BlockProcessingVelocity, 1)
 
-	currentSlot, err := stateProof.ReadSlot()
+	relayChainSlot, err := stateProof.ReadSlot()
 	if err != nil {
 		return primitives.WeightZero(), parachain.UnincludedSegmentCapacity{}, err
 	}
@@ -42,7 +41,7 @@ func (fvch FixedVelocityConsensusHook) OnStateProof(stateProof parachain.RelayCh
 		return primitives.WeightZero(), parachain.UnincludedSegmentCapacity{}, err
 	}
 
-	relayChainTimestamp := sc.SaturatingMulU64(sc.U64(fvch.RelayChainSlotDurationMillis), currentSlot)
+	relayChainTimestamp := sc.SaturatingMulU64(sc.U64(fvch.RelayChainSlotDurationMillis), relayChainSlot)
 
 	paraSlotDuration := fvch.module.auraModule.SlotDuration()
 	paraSlotFromRelay := relayChainTimestamp / paraSlotDuration
@@ -50,11 +49,11 @@ func (fvch FixedVelocityConsensusHook) OnStateProof(stateProof parachain.RelayCh
 	if slotInfo.Slot != paraSlotFromRelay {
 		return primitives.WeightZero(), parachain.UnincludedSegmentCapacity{}, errors.New("slot number mismatch")
 	}
-	if slotInfo.Authored > sc.U32(velocity)+1 {
+	if slotInfo.Authored > velocity+1 {
 		fvch.logger.Critical("authored blocks limit is reached for current slot")
 	}
 
 	weight := fvch.dbWeight.Reads(1)
 
-	return weight, parachain.NewUnincludedSegmentCapacityValue(1), nil
+	return weight, parachain.NewUnincludedSegmentCapacityValue(sc.Max32(fvch.NotIncludedSegmentCapacity, 1)), nil
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/parachain"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -109,22 +108,23 @@ func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	c.module.logger.Infof("before relay chain state proof init")
-
-	trie, err := parachain.NewRelayChainStateProof(parachainId, data.ValidationData.RelayParentStorageRoot, data.RelayChainState, io.NewHashing())
+	relayStateProof, err := parachain.NewRelayChainStateProof(parachainId, data.ValidationData.RelayParentStorageRoot, data.RelayChainState, c.module.hashing)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	c.module.logger.Infof("after relay chain state proof init")
-
-	consensusHookWeight, capacity, err := c.module.config.ConsensusHook.OnStateProof(trie)
+	consensusHookWeight, capacity, err := c.module.config.ConsensusHook.OnStateProof(relayStateProof)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
 	totalWeight = totalWeight.Add(consensusHookWeight)
-	totalWeight = totalWeight.Add(c.module.MaybeDropIncludedAncestors(trie, capacity))
+
+	weight, err := c.module.MaybeDropIncludedAncestors(relayStateProof, capacity)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+	}
+	totalWeight = totalWeight.Add(weight)
 
 	c.module.config.systemModule.
 		DepositLog(
@@ -137,7 +137,7 @@ func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin
 	// initialization logic: we know that this runs exactly once every block,
 	// which means we can put the initialization logic here to remove the
 	// sequencing problem.
-	upgradeGoAheadSignal, err := trie.ReadUpgradeGoAheadSignal()
+	upgradeGoAheadSignal, err := relayStateProof.ReadUpgradeGoAheadSignal()
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
@@ -172,19 +172,19 @@ func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin
 		}
 	}
 
-	restrictionSignal, err := trie.ReadRestrictionSignal()
+	restrictionSignal, err := relayStateProof.ReadRestrictionSignal()
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 	c.module.storage.UpgradeRestrictionSignal.Put(restrictionSignal)
 	c.module.storage.UpgradeGoAhead.Put(upgradeGoAheadSignal)
 
-	hostConfig, err := trie.ReadAbridgedHostConfiguration()
+	hostConfig, err := relayStateProof.ReadAbridgedHostConfiguration()
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
 
-	relevantMessagingState, err := trie.ReadMessagingStateSnapshot(hostConfig)
+	relevantMessagingState, err := relayStateProof.ReadMessagingStateSnapshot(hostConfig)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
@@ -194,17 +194,17 @@ func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin
 	c.module.storage.RelevantMessagingState.Put(relevantMessagingState)
 	c.module.storage.HostConfiguration.Put(hostConfig)
 
-	// TODO:
-	//total_weight.saturating_accrue(Self::enqueue_inbound_downward_messages(
-	//	relevant_messaging_state.dmq_mqc_head,
-	//	downward_messages,
-	//));
-	//total_weight.saturating_accrue(Self::enqueue_inbound_horizontal_messages(
-	//	&relevant_messaging_state.ingress_channels,
-	//	horizontal_messages,
-	//	vfp.relay_parent_number,
-	//));
-	c.module.storage.HrmpWatermark.Put(data.ValidationData.RelayParentNumber)
+	weightUsed, err := c.module.enqueueInboundDownwardMessages(relevantMessagingState.DmqMqcHead, data.DownwardMessages)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+	}
+	totalWeight = totalWeight.Add(weightUsed)
+
+	weightUsed, err = c.module.enqueueInboundHorizontalMessages(relevantMessagingState.IngressChannels, data.HorizontalMessages, data.ValidationData.RelayParentNumber)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+	}
+	totalWeight = totalWeight.Add(weightUsed)
 
 	return primitives.PostDispatchInfo{
 		ActualWeight: sc.NewOption[primitives.Weight](totalWeight),

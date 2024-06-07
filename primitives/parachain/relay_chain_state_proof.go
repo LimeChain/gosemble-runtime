@@ -3,7 +3,6 @@ package parachain
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
 	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
@@ -20,7 +19,9 @@ var (
 
 var (
 	keyCurrentSlot             = common.MustHexToBytes("0x1cb6f36e027abb2091cfb5110ab5087f06155b3cd9a8c9e5e9a23fd5dc13a5ed")
+	keyPrefixDmqMqcHead        = common.MustHexToBytes("0x63f78c98723ddc9073523ef3beefda0c4d7fefc408aac59dbfe80a72ac8e3ce5")
 	keyPrefixGoAhead           = common.MustHexToBytes("0xcd710b30bd2eab0352ddcc26417aa1949e94c040f5e73d9b7addd6cb603d15d3")
+	keyPrefixParaHead          = common.MustHexToBytes("0xcd710b30bd2eab0352ddcc26417aa1941b3c252fcb29d88eff4f3de5de4476c3")
 	keyPrefixRestrictionSignal = common.MustHexToBytes("0xcd710b30bd2eab0352ddcc26417aa194f27bbb460270642b5bcaf032ea04d56a")
 	keyActiveConfig            = common.MustHexToBytes("0x06de3d8a54d27e44a9d5ce189618f22db4b49d95320d9021994c850f25b8e385")
 )
@@ -37,14 +38,14 @@ func NewRelayChainStateProof(parachainId sc.U32, relayChainHash primitives.H256,
 		return RelayChainStateProof{}, err
 	}
 
-	t, err := BuildTrie(relayChainHash.Bytes(), database)
+	trie, err := BuildTrie(relayChainHash.Bytes(), database)
 	if err != nil {
 		return RelayChainStateProof{}, err
 	}
 
 	return RelayChainStateProof{
 		ParachainId: parachainId,
-		Trie:        t,
+		Trie:        trie,
 		hashing:     hashing,
 	}, nil
 }
@@ -115,8 +116,30 @@ func (rlcsp RelayChainStateProof) ReadAbridgedHostConfiguration() (AbridgedHostC
 	return ahc, nil
 }
 
+func (rlcsp RelayChainStateProof) ReadIncludedParaHeadHash() sc.Option[sc.FixedSequence[sc.U8]] {
+	hashParachainId := rlcsp.hashing.Twox64(rlcsp.ParachainId.Bytes())
+
+	key := append(keyPrefixParaHead, hashParachainId...)
+	key = append(key, rlcsp.ParachainId.Bytes()...)
+
+	value := rlcsp.Trie.Get(key)
+	if value == nil {
+		return sc.NewOption[sc.FixedSequence[sc.U8]](nil)
+	}
+
+	paraHead, err := sc.DecodeSequence[sc.U8](bytes.NewBuffer(value))
+	if err != nil {
+		return sc.NewOption[sc.FixedSequence[sc.U8]](nil)
+	}
+
+	paraHeadHash := rlcsp.hashing.Blake256(sc.SequenceU8ToBytes(paraHead))
+
+	return sc.NewOption[sc.FixedSequence[sc.U8]](sc.BytesToFixedSequenceU8(paraHeadHash))
+}
+
 func (rlcsp RelayChainStateProof) ReadMessagingStateSnapshot(ahc AbridgedHostConfiguration) (MessagingStateSnapshot, error) {
-	// TODO:
+	// TODO: read and populate messaging state snapshot from the state proof.
+
 	return MessagingStateSnapshot{
 		DmqMqcHead:                          primitives.H256{FixedSequence: constants.ZeroAccountId.FixedSequence},
 		RelayDispatchQueueRemainingCapacity: RelayDispatchQueueRemainingCapacity{},
@@ -129,8 +152,7 @@ func (rlcsp RelayChainStateProof) ReadMessagingStateSnapshot(ahc AbridgedHostCon
 func BuildTrie(rootHash []byte, db db.Database) (t *inmemory.InMemoryTrie, err error) {
 	// buildTrie sets a partial trie based on the proof slice of encoded nodes.
 	if _, err := db.Get(rootHash); err != nil {
-		return nil, fmt.Errorf("%w: for root hash 0x%x",
-			errRootNodeNotFound, rootHash)
+		return nil, NewErrorStateProofRootMismatch()
 	}
 
 	tr := inmemory.NewEmptyTrie()

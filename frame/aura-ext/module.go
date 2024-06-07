@@ -119,10 +119,6 @@ func (m Module) OnFinalize(_ sc.U64) error {
 	return nil
 }
 
-func (m Module) OnStateProof() {
-	// TODO:
-}
-
 func (m Module) Metadata() primitives.MetadataModule {
 	dataV14 := primitives.MetadataModuleV14{
 		Name:      m.name(),

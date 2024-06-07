@@ -72,7 +72,6 @@ func (be BlockExecutor) ExecuteBlock(block primitives.Block) error {
 
 	authorIndex, err := be.module.auraModule.FindAuthor(preRuntimes)
 	if err != nil {
-		be.module.logger.Tracef(err.Error())
 		return err
 	}
 	if !authorIndex.HasValue {

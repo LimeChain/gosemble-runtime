@@ -1,7 +1,6 @@
 package executive
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -344,7 +343,6 @@ func (m module) finalChecks(header *primitives.Header) error {
 		}
 	}
 
-	m.logger.Tracef("expected: [%s], got: [%s]", hex.EncodeToString(header.StateRoot.Bytes()), hex.EncodeToString(newHeader.StateRoot.Bytes()))
 	if !reflect.DeepEqual(header.StateRoot, newHeader.StateRoot) {
 		return errInvalidStorageRoot
 	}
