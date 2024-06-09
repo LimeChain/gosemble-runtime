@@ -9,21 +9,21 @@ import (
 // / Ancestor of the block being currently executed, not yet included
 // / into the relay chain.
 type Ancestor struct {
-	UserBandwidth         UserBandwidth
+	UsedBandwidth         UsedBandwidth
 	ParaHeadHash          sc.Option[types.H256]
 	ConsumedGoAheadSignal sc.Option[sc.U8]
 }
 
 func (a Ancestor) Encode(buffer *bytes.Buffer) error {
 	return sc.EncodeEach(buffer,
-		a.UserBandwidth,
+		a.UsedBandwidth,
 		a.ParaHeadHash,
 		a.ConsumedGoAheadSignal,
 	)
 }
 
 func DecodeAncestor(buffer *bytes.Buffer) (Ancestor, error) {
-	ub, err := DecodeUserBandwidth(buffer)
+	ub, err := DecodeUsedBandwidth(buffer)
 	if err != nil {
 		return Ancestor{}, err
 	}
@@ -39,7 +39,7 @@ func DecodeAncestor(buffer *bytes.Buffer) (Ancestor, error) {
 	}
 
 	return Ancestor{
-		UserBandwidth:         ub,
+		UsedBandwidth:         ub,
 		ParaHeadHash:          paraHeadHash,
 		ConsumedGoAheadSignal: consumedGoAheadSignal,
 	}, nil

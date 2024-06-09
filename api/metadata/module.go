@@ -281,6 +281,24 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
 				primitives.NewMetadataTypeDefinitionField(metadata.TypesFixedSequence32U8)})),
 
+		primitives.NewMetadataTypeWithParam(metadata.TypesOptionH256, "Option<H256>", sc.Sequence[sc.Str]{"Option"}, primitives.NewMetadataTypeDefinitionVariant(
+			sc.Sequence[primitives.MetadataDefinitionVariant]{
+				primitives.NewMetadataDefinitionVariant(
+					"None",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					optionNoneIdx,
+					""),
+				primitives.NewMetadataDefinitionVariant(
+					"Some",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionField(metadata.TypesH256),
+					},
+					optionSomeIdx,
+					""),
+			}),
+			primitives.NewMetadataTypeParameter(metadata.TypesH256, "T"),
+		),
+
 		primitives.NewMetadataTypeWithPath(metadata.TypesAddress32, "Address32", sc.Sequence[sc.Str]{"sp_core", "crypto", "AccountId32"}, primitives.NewMetadataTypeDefinitionComposite(
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesFixedSequence32U8, "[u8; 32]")},
 		)),
@@ -794,6 +812,24 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 					""),
 			}),
 			primitives.NewMetadataTypeParameter(metadata.TypesSequenceU8, "T"),
+		),
+
+		primitives.NewMetadataTypeWithParam(metadata.TypesOptionU32, "Option<U32>", sc.Sequence[sc.Str]{"Option"}, primitives.NewMetadataTypeDefinitionVariant(
+			sc.Sequence[primitives.MetadataDefinitionVariant]{
+				primitives.NewMetadataDefinitionVariant(
+					"None",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					optionNoneIdx,
+					""),
+				primitives.NewMetadataDefinitionVariant(
+					"Some",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesU32),
+					},
+					optionSomeIdx,
+					""),
+			}),
+			primitives.NewMetadataTypeParameter(metadata.PrimitiveTypesU32, "T"),
 		),
 
 		primitives.NewMetadataType(metadata.TypesSequenceSequenceU8, "[][]byte", primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.TypesSequenceU8))),

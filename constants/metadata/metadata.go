@@ -185,7 +185,43 @@ const (
 	TypesSessionCalls
 	TypesSessionErrors
 
+	TypesUpgradeGoAhead
+	TypesOptionUpgradeGoAhead
+	TypesHrmpChannelUpdate
+	TypesTupleU32HrmpChannelUpdate
+	TypesSequenceTupleU32HrmpChannelUpdate
+	TypesHrmpOutgoing
+	TypesUsedBandwidth
+	TypesAncestor
+	TypesSequenceAncestor
+	TypesOptionU32
+	TypesOptionH256
+	TypesOptionXcmHash
+	TypesUpgradeRestriction
+	TypesOptionUpgradeRestriction
+	TypesSegmentTracker
+	TypesRelayDispatchQueueRemainingCapacity
+	TypesAbridgedHrmpChannel
+	TypesTupleU32AbridgedHrmpChannel
+	TypesSequenceTupleU32AbridgedHrmpChannel
+	TypesMessagingStateSnapshot
+	TypesAsyncBackingParams
+	TypesAbridgedHostConfiguration
+	TypesParachainInherentData
+	TypesPersistedValidationData
+	TypesInboundDownwardMessage
+	TypesSequenceInboundDownwardMessages
+	TypesInboundHrmpMessage
+	TypesSequenceInboundHrmpMessages
+	TypesTupleU32SequenceInboundHrmpMessages
+	TypesSequenceTupleU32SequenceInboundHrmpMessages
+	TypesHorizontalMessages
+
 	TypesParachainOutboundHrmpMessage
 	TypesParachainOutboundHrmpMessages
 	TypesParachainValidationResult
+
+	TypesParachainSystemEvents
+	TypesParachainSystemCalls
+	TypesParachainSystemErrors
 )

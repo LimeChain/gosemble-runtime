@@ -3,6 +3,17 @@ package parachain_system
 import sc "github.com/LimeChain/goscale"
 
 const (
+	ErrorOverlappingUpgrades sc.U8 = iota
+	ErrorProhibitedByPolkadot
+	ErrorTooBig
+	ErrorValidationDataNotAvailable
+	ErrorHostConfigurationNotAvailable
+	ErrorNotScheduled
+	ErrorNothingAuthorized
+	ErrorUnauthorized
+)
+
+const (
 	InherentErrorInvalid sc.U8 = iota
 )
 

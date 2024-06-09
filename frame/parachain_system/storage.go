@@ -58,7 +58,7 @@ type storage struct {
 	PendingUpwardMessages             support.StorageValue[sc.Sequence[parachain.UpwardMessage]]
 	UpwardDeliveryFeeFactor           support.StorageValue[sc.U128]
 	AnnouncedHrmpMessagesPerCandidate support.StorageValue[sc.U32]
-	CustomValidationHeadData          support.StorageValue[sc.Option[sc.Sequence[sc.U8]]]
+	CustomValidationHeadData          support.StorageValue[sc.Sequence[sc.U8]]
 }
 
 func newStorage(s io.Storage) *storage {
@@ -83,6 +83,6 @@ func newStorage(s io.Storage) *storage {
 		PendingUpwardMessages:             support.NewHashStorageValue(s, keyParachainSystem, keyPendingUpwardMessages, parachain.DecodeUpwardMessages),
 		UpwardDeliveryFeeFactor:           support.NewHashStorageValueWithDefault(s, keyParachainSystem, keyUpwardDeliveryFeeFactor, sc.DecodeU128, &defaultInitialDeliveryFeeFactor),
 		AnnouncedHrmpMessagesPerCandidate: support.NewHashStorageValue(s, keyParachainSystem, keyAnnouncedHrmpMessagesPerCandidate, sc.DecodeU32),
-		CustomValidationHeadData:          support.NewHashStorageValue(s, keyParachainSystem, keyCustomValidationHeadData, sc.DecodeOption[sc.Sequence[sc.U8]]),
+		CustomValidationHeadData:          support.NewHashStorageValue(s, keyParachainSystem, keyCustomValidationHeadData, sc.DecodeSequence[sc.U8]),
 	}
 }

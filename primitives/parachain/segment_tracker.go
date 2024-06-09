@@ -8,17 +8,17 @@ import (
 )
 
 type SegmentTracker struct {
-	UserBandwidth         UserBandwidth
+	UsedBandwidth         UsedBandwidth
 	HrmpWatermark         sc.Option[RelayChainBlockNumber]
 	ConsumedGoAheadSignal sc.Option[sc.U8]
 }
 
 func (st SegmentTracker) Encode(buffer *bytes.Buffer) error {
-	return sc.EncodeEach(buffer, st.UserBandwidth, st.HrmpWatermark, st.ConsumedGoAheadSignal)
+	return sc.EncodeEach(buffer, st.UsedBandwidth, st.HrmpWatermark, st.ConsumedGoAheadSignal)
 }
 
 func DecodeSegmentTracker(buffer *bytes.Buffer) (SegmentTracker, error) {
-	userBandwidth, err := DecodeUserBandwidth(buffer)
+	usedBandwidth, err := DecodeUsedBandwidth(buffer)
 	if err != nil {
 		return SegmentTracker{}, err
 	}
@@ -34,7 +34,7 @@ func DecodeSegmentTracker(buffer *bytes.Buffer) (SegmentTracker, error) {
 	}
 
 	return SegmentTracker{
-		UserBandwidth:         userBandwidth,
+		UsedBandwidth:         usedBandwidth,
 		HrmpWatermark:         hrmpWatermark,
 		ConsumedGoAheadSignal: consumedGoAheadSignal,
 	}, nil
@@ -46,7 +46,7 @@ func (st SegmentTracker) Bytes() []byte {
 
 // Subtract removes previously added block from the tracker.
 func (st *SegmentTracker) Subtract(block *Ancestor) error {
-	err := st.UserBandwidth.Subtract(&block.UserBandwidth)
+	err := st.UsedBandwidth.Subtract(&block.UsedBandwidth)
 	if err != nil {
 		return err
 	}

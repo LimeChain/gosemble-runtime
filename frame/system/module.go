@@ -589,6 +589,11 @@ func (m module) IncProviders(who primitives.AccountId) (primitives.IncRefStatus,
 	return result.(primitives.IncRefStatus), err
 }
 
+// UpdateCodeInStorage writes code to the storage and emit related events and digest items.
+//
+// Note this function almost never should be used directly. It is exposed
+// for `OnSetCode` implementations that defer actual code being written to
+// the storage (for instance in case of parachains).
 func (m module) UpdateCodeInStorage(code sc.Sequence[sc.U8]) {
 	m.storage.Code.Put(code)
 	m.DepositLog(primitives.NewDigestItemRuntimeEnvironmentUpgrade())

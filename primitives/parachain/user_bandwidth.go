@@ -5,44 +5,44 @@ import (
 	sc "github.com/LimeChain/goscale"
 )
 
-type UserBandwidth struct {
+type UsedBandwidth struct {
 	UmpMsgCount   sc.U32
 	UmpTotalBytes sc.U32
 	HrmpOutgoing  sc.Dictionary[sc.U32, HrmpChannelUpdate]
 }
 
-func (ub UserBandwidth) Encode(buffer *bytes.Buffer) error {
+func (ub UsedBandwidth) Encode(buffer *bytes.Buffer) error {
 	return sc.EncodeEach(buffer, ub.UmpMsgCount, ub.UmpTotalBytes, ub.HrmpOutgoing)
 }
 
-func DecodeUserBandwidth(buffer *bytes.Buffer) (UserBandwidth, error) {
+func DecodeUsedBandwidth(buffer *bytes.Buffer) (UsedBandwidth, error) {
 	msgCount, err := sc.DecodeU32(buffer)
 	if err != nil {
-		return UserBandwidth{}, err
+		return UsedBandwidth{}, err
 	}
 
 	umpTotalBytes, err := sc.DecodeU32(buffer)
 	if err != nil {
-		return UserBandwidth{}, err
+		return UsedBandwidth{}, err
 	}
 
 	outgoing, err := decodeHrmpOutgoing(buffer)
 	if err != nil {
-		return UserBandwidth{}, err
+		return UsedBandwidth{}, err
 	}
 
-	return UserBandwidth{
+	return UsedBandwidth{
 		UmpMsgCount:   msgCount,
 		UmpTotalBytes: umpTotalBytes,
 		HrmpOutgoing:  outgoing,
 	}, nil
 }
 
-func (ub UserBandwidth) Bytes() []byte {
+func (ub UsedBandwidth) Bytes() []byte {
 	return sc.EncodedBytes(ub)
 }
 
-func (ub *UserBandwidth) Subtract(other *UserBandwidth) error {
+func (ub *UsedBandwidth) Subtract(other *UsedBandwidth) error {
 	ub.UmpMsgCount -= other.UmpMsgCount
 	ub.UmpTotalBytes -= other.UmpTotalBytes
 
