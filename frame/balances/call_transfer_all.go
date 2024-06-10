@@ -2,46 +2,43 @@ package balances
 
 import (
 	"bytes"
-
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/primitives/log"
-	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/frame/balances/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 type callTransferAll struct {
 	primitives.Callable
-	transfer
-	logger log.DebugLogger
+	module Module
 }
 
-func newCallTransferAll(moduleId sc.U8, functionId sc.U8, storedMap primitives.StoredMap, constants *consts, mutator accountMutator, logger log.DebugLogger) primitives.Call {
-	call := callTransferAll{
+func newCallTransferAll(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+	return callTransferAll{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
-			Arguments:  sc.NewVaryingData(types.MultiAddress{}, sc.Bool(true)),
+			Arguments:  sc.NewVaryingData(primitives.MultiAddress{}, sc.Bool(true)),
 		},
-		transfer: newTransfer(moduleId, storedMap, constants, mutator),
-		logger:   logger,
+		module: module,
 	}
-
-	return call
 }
 
 func (c callTransferAll) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, error) {
-	dest, err := types.DecodeMultiAddress(buffer)
+	dest, err := primitives.DecodeMultiAddress(buffer)
 	if err != nil {
 		return nil, err
 	}
+
 	keepAlive, err := sc.DecodeBool(buffer)
 	if err != nil {
 		return nil, err
 	}
+
 	c.Arguments = sc.NewVaryingData(
 		dest,
 		keepAlive,
 	)
+
 	return c, nil
 }
 
@@ -65,61 +62,70 @@ func (c callTransferAll) Args() sc.VaryingData {
 	return c.Callable.Args()
 }
 
-func (c callTransferAll) BaseWeight() types.Weight {
-	return callTransferAllWeight(c.constants.DbWeight)
+func (c callTransferAll) BaseWeight() primitives.Weight {
+	return primitives.WeightZero()
 }
 
-func (_ callTransferAll) WeighData(baseWeight types.Weight) types.Weight {
-	return types.WeightFromParts(baseWeight.RefTime, 0)
+func (_ callTransferAll) WeighData(baseWeight primitives.Weight) primitives.Weight {
+	return primitives.WeightFromParts(baseWeight.RefTime, 0)
 }
 
-func (_ callTransferAll) ClassifyDispatch(baseWeight types.Weight) types.DispatchClass {
-	return types.NewDispatchClassNormal()
+func (_ callTransferAll) ClassifyDispatch(baseWeight primitives.Weight) primitives.DispatchClass {
+	return primitives.NewDispatchClassNormal()
 }
 
-func (_ callTransferAll) PaysFee(baseWeight types.Weight) types.Pays {
-	return types.PaysYes
-}
-
-func (c callTransferAll) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
-	return types.PostDispatchInfo{}, c.transferAll(origin, args[0].(types.MultiAddress), bool(args[1].(sc.Bool)))
+func (_ callTransferAll) PaysFee(baseWeight primitives.Weight) primitives.Pays {
+	return primitives.PaysYes
 }
 
 func (_ callTransferAll) Docs() string {
-	return "Transfer the entire transferable balance from the caller account."
+	return "Transfer the entire transferable balance from the caller account." +
+		" NOTE: This function only attempts to transfer _transferable_ balances. This means that " +
+		"any locked, reserved, or existential deposits (when `keep_alive` is `true`), will not be " +
+		"transferred by this function. To ensure that this function results in a killed account," +
+		" you might need to prepare the account by removing any reference counters, storage " +
+		"deposits, etc... " +
+		"The dispatch origin of this call must be Signed. " +
+		"- `dest`: The recipient of the transfer. " +
+		"- `keep_alive`: A boolean to determine if the `transfer_all` operation should send all " +
+		"of the funds the account has, causing the sender account to be killed (false), or " +
+		"transfer everything except at least the existential deposit, which will guarantee to keep the sender account alive (true)."
 }
 
-// transferAll transfers the entire transferable balance from `origin` to `dest`.
-// By transferable it means that any locked or reserved amounts will not be transferred.
-// `keepAlive`: A boolean to determine if the `transfer_all` operation should send all
-// the funds the account has, causing the sender account to be killed (false), or
-// transfer everything except at least the existential deposit, which will guarantee to
-// keep the sender account alive (true).
-func (c callTransferAll) transferAll(origin types.RawOrigin, dest types.MultiAddress, keepAlive bool) error {
+func (c callTransferAll) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
 	if !origin.IsSignedOrigin() {
-		return types.NewDispatchErrorBadOrigin()
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorBadOrigin()
 	}
 
-	transactor, err := origin.AsSigned()
+	from, originErr := origin.AsSigned()
+	if originErr != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(originErr.Error()))
+	}
+
+	dest, ok := args[0].(primitives.MultiAddress)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid destination value in callTransferAll")
+	}
+
+	to, err := primitives.Lookup(dest)
 	if err != nil {
-		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorCannotLookup()
 	}
 
-	reducibleBalance, err := c.reducibleBalance(transactor, keepAlive)
+	keepAlive, ok := args[1].(sc.Bool)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid keepAlive value in callTransferAll")
+	}
+
+	preservation := types.PreservationExpendable
+	if keepAlive {
+		preservation = types.PreservationPreserve
+	}
+
+	reducibleBalance, err := c.module.reducibleBalance(from, preservation, types.FortitudePolite)
 	if err != nil {
-		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
+		return primitives.PostDispatchInfo{}, err
 	}
 
-	to, errLookup := types.Lookup(dest)
-	if errLookup != nil {
-		c.logger.Debugf("Failed to lookup [%s]", dest.Bytes())
-		return types.NewDispatchErrorCannotLookup()
-	}
-
-	keep := types.ExistenceRequirementKeepAlive
-	if !keepAlive {
-		keep = types.ExistenceRequirementAllowDeath
-	}
-
-	return c.transfer.trans(transactor, to, reducibleBalance, keep)
+	return primitives.PostDispatchInfo{}, c.module.transfer(from, to, reducibleBalance, preservation)
 }

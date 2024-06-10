@@ -2,33 +2,29 @@ package balances
 
 import (
 	"bytes"
-	"errors"
-
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/frame/balances/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 type callTransferKeepAlive struct {
 	primitives.Callable
-	transfer
+	module Module
 }
 
-func newCallTransferKeepAlive(moduleId sc.U8, functionId sc.U8, storedMap primitives.StoredMap, constants *consts, mutator accountMutator) primitives.Call {
-	call := callTransferKeepAlive{
+func newCallTransferKeepAlive(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+	return callTransferKeepAlive{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
-			Arguments:  sc.NewVaryingData(types.MultiAddress{}, sc.Compact{Number: sc.U128{}}),
+			Arguments:  sc.NewVaryingData(primitives.MultiAddress{}, sc.Compact{Number: sc.U128{}}),
 		},
-		transfer: newTransfer(moduleId, storedMap, constants, mutator),
+		module: module,
 	}
-
-	return call
 }
 
 func (c callTransferKeepAlive) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, error) {
-	dest, err := types.DecodeMultiAddress(buffer)
+	dest, err := primitives.DecodeMultiAddress(buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -36,10 +32,12 @@ func (c callTransferKeepAlive) DecodeArgs(buffer *bytes.Buffer) (primitives.Call
 	if err != nil {
 		return nil, err
 	}
+
 	c.Arguments = sc.NewVaryingData(
 		dest,
 		value,
 	)
+
 	return c, nil
 }
 
@@ -63,52 +61,57 @@ func (c callTransferKeepAlive) Args() sc.VaryingData {
 	return c.Callable.Args()
 }
 
-func (c callTransferKeepAlive) BaseWeight() types.Weight {
-	return callTransferKeepAliveWeight(c.constants.DbWeight)
+func (c callTransferKeepAlive) BaseWeight() primitives.Weight {
+	return primitives.WeightZero()
 }
 
-func (_ callTransferKeepAlive) WeighData(baseWeight types.Weight) types.Weight {
-	return types.WeightFromParts(baseWeight.RefTime, 0)
+func (_ callTransferKeepAlive) WeighData(baseWeight primitives.Weight) primitives.Weight {
+	return primitives.WeightFromParts(baseWeight.RefTime, 0)
 }
 
-func (_ callTransferKeepAlive) ClassifyDispatch(baseWeight types.Weight) types.DispatchClass {
-	return types.NewDispatchClassNormal()
+func (_ callTransferKeepAlive) ClassifyDispatch(baseWeight primitives.Weight) primitives.DispatchClass {
+	return primitives.NewDispatchClassNormal()
 }
 
-func (_ callTransferKeepAlive) PaysFee(baseWeight types.Weight) types.Pays {
-	return types.PaysYes
+func (_ callTransferKeepAlive) PaysFee(baseWeight primitives.Weight) primitives.Pays {
+	return primitives.PaysYes
 }
 
 func (_ callTransferKeepAlive) Docs() string {
-	return "Same as the [`transfer`] call, but with a check that the transfer will not kill the origin account."
+	return "Same as the [`transfer_allow_death`] call, but with a check that the transfer will not " +
+		"kill the origin account. " +
+		"99% of the time you want [`transfer_allow_death`] instead. " +
+		"[`transfer_allow_death`]: struct.Pallet.html#method.transfer"
 }
 
-func (c callTransferKeepAlive) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
+func (c callTransferKeepAlive) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
+	if !origin.IsSignedOrigin() {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorBadOrigin()
+	}
+
+	from, originErr := origin.AsSigned()
+	if originErr != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(originErr.Error()))
+	}
+
+	dest, ok := args[0].(primitives.MultiAddress)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid destination value in callTransferKeepAlive")
+	}
+
+	to, err := primitives.Lookup(dest)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorCannotLookup()
+	}
+
 	valueCompact, ok := args[1].(sc.Compact)
 	if !ok {
-		return types.PostDispatchInfo{}, errors.New("invalid compact value when dispatching call transfer keep alive")
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid compact value in callTransferKeepAlive")
 	}
 	value, ok := valueCompact.Number.(sc.U128)
 	if !ok {
-		return types.PostDispatchInfo{}, errors.New("invalid compact number field when dispatching call transfer keep alive")
-	}
-	return types.PostDispatchInfo{}, c.transferKeepAlive(origin, args[0].(types.MultiAddress), value)
-}
-
-// transferKeepAlive is similar to transfer, but includes a check that the origin transactor will not be "killed".
-func (c callTransferKeepAlive) transferKeepAlive(origin types.RawOrigin, dest types.MultiAddress, value sc.U128) error {
-	if !origin.IsSignedOrigin() {
-		return types.NewDispatchErrorBadOrigin()
-	}
-	transactor, originErr := origin.AsSigned()
-	if originErr != nil {
-		return primitives.NewDispatchErrorOther(sc.Str(originErr.Error()))
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid U128 value in callTransferKeepAlive")
 	}
 
-	address, err := types.Lookup(dest)
-	if err != nil {
-		return types.NewDispatchErrorCannotLookup()
-	}
-
-	return c.transfer.trans(transactor, address, value, types.ExistenceRequirementKeepAlive)
+	return primitives.PostDispatchInfo{}, c.module.transfer(from, to, value, types.PreservationPreserve)
 }
