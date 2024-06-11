@@ -3,13 +3,15 @@ package session
 import (
 	"bytes"
 	"errors"
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/mocks"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 var (
@@ -132,7 +134,7 @@ func Test_Handler_OnDisabled(t *testing.T) {
 func setupHandler() Handler {
 	mockOneSessionHandler = new(mocks.OneSessionHandler)
 
-	return NewHandler([]OneSessionHandler{mockOneSessionHandler})
+	return NewHandler([]sessiontypes.OneSessionHandler{mockOneSessionHandler})
 }
 
 type MockSessionHandler struct {
@@ -181,4 +183,8 @@ func (m *MockSessionHandler) OnBeforeSessionEnding() {
 
 func (m *MockSessionHandler) OnDisabled(validatorIndex sc.U32) {
 	m.Called(validatorIndex)
+}
+
+func (m *MockSessionHandler) AppendHandlers(module sessiontypes.OneSessionHandler) {
+	m.Called(module)
 }

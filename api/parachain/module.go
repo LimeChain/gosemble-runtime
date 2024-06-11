@@ -3,6 +3,8 @@ package parachain
 import (
 	"bytes"
 	"errors"
+	"reflect"
+
 	"github.com/ChainSafe/gossamer/lib/runtime/storage"
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
 	sc "github.com/LimeChain/goscale"
@@ -16,7 +18,6 @@ import (
 	"github.com/LimeChain/gosemble/primitives/pvf"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/utils"
-	"reflect"
 )
 
 const (
@@ -31,7 +32,7 @@ type Module struct {
 	runtimeDecoder  types.RuntimeDecoder
 	hostEnvironment *pvf.HostEnvironment
 	hashing         io.Hashing
-	logger          log.Logger
+	logger          log.RuntimeLogger
 	memUtils        utils.WasmMemoryTranslator
 }
 
@@ -40,7 +41,7 @@ func New(
 	blockExecutor aura_ext.BlockExecutor,
 	runtimeDecoder types.RuntimeDecoder,
 	hostEnvironment *pvf.HostEnvironment,
-	logger log.Logger) Module {
+	logger log.RuntimeLogger) Module {
 	return Module{
 		parachainSystem: parachainSystem,
 		blockExecutor:   blockExecutor,

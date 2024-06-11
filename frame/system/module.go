@@ -108,11 +108,11 @@ type module struct {
 	ioStorage   io.Storage
 	ioMisc      io.Misc
 	ioHashing   io.Hashing
-	logger      log.Logger
+	logger      log.RuntimeLogger
 	mdGenerator *primitives.MetadataTypeGenerator
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	functions := make(map[sc.U8]primitives.Call)
 	storage := newStorage(config.Storage)
 	constants := newConstants(config.BlockHashCount, config.BlockWeights, config.BlockLength, config.DbWeight, *config.Version)
@@ -136,17 +136,17 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	defaultOnSetCode := NewDefaultOnSetCode(moduleInstance)
 	moduleInstance.OnSetCode = defaultOnSetCode
 
-	functions[functionRemarkIndex] = newCallRemark(index, functionRemarkIndex)
-	functions[functionSetHeapPagesIndex] = newCallSetHeapPages(index, functionSetHeapPagesIndex, storage.HeapPages, moduleInstance)
-	functions[functionSetCodeIndex] = newCallSetCode(index, functionSetCodeIndex, *constants, defaultOnSetCode, moduleInstance)
-	functions[functionSetCodeWithoutChecksIndex] = newCallSetCodeWithoutChecks(index, functionSetCodeWithoutChecksIndex, *constants, defaultOnSetCode)
-	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, config.Storage)
-	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, config.Storage)
-	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, config.Storage)
-	functions[functionRemarkWithEventIndex] = newCallRemarkWithEvent(index, functionRemarkWithEventIndex, ioHashing, moduleInstance)
-	functions[functionAuthorizeUpgradeIndex] = newCallAuthorizeUpgrade(index, functionAuthorizeUpgradeIndex, moduleInstance)
-	functions[functionAuthorizeUpgradeWithoutChecksIndex] = newCallAuthorizeUpgradeWithoutChecks(index, functionAuthorizeUpgradeWithoutChecksIndex, moduleInstance)
-	functions[functionApplyAuthorizedUpgradeIndex] = newCallApplyAuthorizedUpgrade(index, functionApplyAuthorizedUpgradeIndex, moduleInstance)
+	functions[functionRemarkIndex] = newCallRemark(index, functionRemarkIndex, config.DbWeight)
+	functions[functionSetHeapPagesIndex] = newCallSetHeapPages(index, functionSetHeapPagesIndex, config.DbWeight, storage.HeapPages, moduleInstance)
+	functions[functionSetCodeIndex] = newCallSetCode(index, functionSetCodeIndex, config.DbWeight, *constants, defaultOnSetCode, moduleInstance)
+	functions[functionSetCodeWithoutChecksIndex] = newCallSetCodeWithoutChecks(index, functionSetCodeWithoutChecksIndex, config.DbWeight, *constants, defaultOnSetCode)
+	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, config.DbWeight, config.Storage)
+	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, config.DbWeight, config.Storage)
+	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, config.DbWeight, config.Storage)
+	functions[functionRemarkWithEventIndex] = newCallRemarkWithEvent(index, functionRemarkWithEventIndex, config.DbWeight, ioHashing, moduleInstance)
+	functions[functionAuthorizeUpgradeIndex] = newCallAuthorizeUpgrade(index, functionAuthorizeUpgradeIndex, config.DbWeight, moduleInstance)
+	functions[functionAuthorizeUpgradeWithoutChecksIndex] = newCallAuthorizeUpgradeWithoutChecks(index, functionAuthorizeUpgradeWithoutChecksIndex, config.DbWeight, moduleInstance)
+	functions[functionApplyAuthorizedUpgradeIndex] = newCallApplyAuthorizedUpgrade(index, functionApplyAuthorizedUpgradeIndex, config.DbWeight, moduleInstance)
 
 	moduleInstance.functions = functions
 
@@ -1224,4 +1224,14 @@ func EnsureSignedOrRoot(origin primitives.RawOrigin) (sc.Option[primitives.Accou
 	}
 
 	return sc.Option[primitives.AccountId]{}, primitives.NewDispatchErrorBadOrigin()
+}
+
+// Ensure that the origin `o` represents an unsigned extrinsic. Returns `Ok` or an `Err` otherwise.
+func EnsureNone(origin primitives.RawOrigin) (sc.Option[primitives.AccountId], error) {
+	switch origin.IsNoneOrigin() {
+	case true:
+		return sc.Option[primitives.AccountId]{}, nil
+	default:
+		return sc.Option[primitives.AccountId]{}, primitives.NewDispatchErrorBadOrigin()
+	}
 }

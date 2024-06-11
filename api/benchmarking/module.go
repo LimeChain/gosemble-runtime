@@ -2,6 +2,7 @@ package benchmarking
 
 import (
 	"bytes"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/support"
@@ -24,10 +25,10 @@ type Module struct {
 	decoder       types.RuntimeDecoder
 	memUtils      utils.WasmMemoryTranslator
 	hashing       io.Hashing
-	logger        log.Logger
+	logger        log.RuntimeLogger
 }
 
-func New(systemIndex sc.U8, modules []primitives.Module, decoder types.RuntimeDecoder, storage io.Storage, transactionBroker io.TransactionBroker, logger log.Logger) Module {
+func New(systemIndex sc.U8, modules []primitives.Module, decoder types.RuntimeDecoder, storage io.Storage, transactionBroker io.TransactionBroker, logger log.RuntimeLogger) Module {
 	systemModule := primitives.MustGetModule(systemIndex, modules).(system.Module)
 
 	return Module{
@@ -161,7 +162,7 @@ func (m Module) BenchmarkHook(dataPtr int32, dataLen int32) int64 {
 	return m.memUtils.BytesToOffsetAndSize(benchmarkResult.Bytes())
 }
 
-func measureHooks(modules []primitives.Module, hookFn func(module primitives.DispatchModule) error, logger log.Logger) float64 {
+func measureHooks(modules []primitives.Module, hookFn func(module primitives.DispatchModule) error, logger log.RuntimeLogger) float64 {
 	var start, end int64
 
 	for _, module := range modules {

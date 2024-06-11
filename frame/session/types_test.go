@@ -3,14 +3,14 @@ package session
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
+	"io"
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"io"
-	"testing"
 )
 
 var (
@@ -33,8 +33,6 @@ func Test_queuedKey_Encode(t *testing.T) {
 	buffer := &bytes.Buffer{}
 
 	err := targetQueuedKey.Encode(buffer)
-
-	fmt.Println(hex.EncodeToString(buffer.Bytes()))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectBytesQueuedKey, buffer.Bytes())

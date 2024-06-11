@@ -2,13 +2,16 @@ package session
 
 import (
 	"bytes"
+	"reflect"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
+	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
+	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"reflect"
 )
 
 const (
@@ -24,7 +27,19 @@ var (
 	dispatchErrNotFound = primitives.NewDispatchErrorOther("not found")
 )
 
-type Module struct {
+type Module interface {
+	primitives.Module
+	types.InherentProvider
+
+	CurrentIndex() (sc.U32, error)
+	Validators() (sc.Sequence[primitives.AccountId], error)
+	IsDisabled(index sc.U32) (bool, error)
+	DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr25519PublicKey], error)
+
+	AppendHandlers(module sessiontypes.OneSessionHandler)
+}
+
+type module struct {
 	primitives.DefaultInherentProvider
 	hooks.DefaultDispatchModule
 	index        sc.U8
@@ -36,13 +51,13 @@ type Module struct {
 	systemModule system.Module
 	handler      Handler
 	manager      Manager
-	logger       log.Logger
+	logger       log.RuntimeLogger
 }
 
-func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	functions := make(map[sc.U8]primitives.Call)
 
-	module := Module{
+	module := module{
 		index:        index,
 		config:       config,
 		functions:    functions,
@@ -62,19 +77,27 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 	return module
 }
 
-func (m Module) name() sc.Str { return name }
+func (m module) CurrentIndex() (sc.U32, error) {
+	return m.storage.CurrentIndex.Get()
+}
 
-func (m Module) GetIndex() sc.U8 { return m.index }
+func (m module) Validators() (sc.Sequence[primitives.AccountId], error) {
+	return m.storage.Validators.Get()
+}
 
-func (m Module) Functions() map[sc.U8]primitives.Call { return m.functions }
+func (m module) name() sc.Str { return name }
 
-func (m Module) PreDispatch(_ primitives.Call) (sc.Empty, error) { return sc.Empty{}, nil }
+func (m module) GetIndex() sc.U8 { return m.index }
 
-func (m Module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
+func (m module) Functions() map[sc.U8]primitives.Call { return m.functions }
+
+func (m module) PreDispatch(_ primitives.Call) (sc.Empty, error) { return sc.Empty{}, nil }
+
+func (m module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
 	return primitives.ValidTransaction{}, primitives.NewTransactionValidityError(primitives.NewUnknownTransactionNoUnsignedValidator())
 }
 
-func (m Module) OnInitialize(n sc.U64) (primitives.Weight, error) {
+func (m module) OnInitialize(n sc.U64) (primitives.Weight, error) {
 	if m.sessionEnder.ShouldEndSession(n) {
 		return m.config.BlockWeights.MaxBlock, m.rotateSession()
 	}
@@ -84,7 +107,7 @@ func (m Module) OnInitialize(n sc.U64) (primitives.Weight, error) {
 
 // rotateSession moves on to the next session.
 // Registers the new validators set with its corresponding session keys.
-func (m Module) rotateSession() error {
+func (m module) rotateSession() error {
 	sessionIndex, err := m.storage.CurrentIndex.Get()
 	if err != nil {
 		return err
@@ -138,8 +161,16 @@ func (m Module) rotateSession() error {
 	return m.handler.OnNewSession(bool(changed), sessionKeys, queuedKeys)
 }
 
+func (m module) DecodeKeys(buffer *bytes.Buffer) (sc.FixedSequence[primitives.Sr25519PublicKey], error) {
+	return m.handler.DecodeKeys(buffer)
+}
+
+func (m module) AppendHandlers(module sessiontypes.OneSessionHandler) {
+	m.handler.AppendHandlers(module)
+}
+
 // DoSetKeys performs the `set_key` operation, checking for duplicates.
-func (m Module) DoSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) error {
+func (m module) DoSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) error {
 	canIncConsumer, err := m.systemModule.CanIncConsumer(who)
 	if err != nil {
 		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -166,7 +197,7 @@ func (m Module) DoSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[prim
 	return nil
 }
 
-func (m Module) DoPurgeKeys(who primitives.AccountId) error {
+func (m module) DoPurgeKeys(who primitives.AccountId) error {
 	bytesNextKeys, err := m.storage.NextKeys.TakeBytes(who)
 	if err != nil {
 		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -204,7 +235,7 @@ func (m Module) DoPurgeKeys(who primitives.AccountId) error {
 	return nil
 }
 
-func (m Module) IsDisabled(index sc.U32) (bool, error) {
+func (m module) IsDisabled(index sc.U32) (bool, error) {
 	disabledValidators, err := m.storage.DisabledValidators.Get()
 	if err != nil {
 		return false, err
@@ -219,12 +250,12 @@ func (m Module) IsDisabled(index sc.U32) (bool, error) {
 	return false, nil
 }
 
-func (m Module) StorageDisabledValidators() (sc.Sequence[sc.U32], error) {
+func (m module) StorageDisabledValidators() (sc.Sequence[sc.U32], error) {
 	return m.storage.DisabledValidators.Get()
 }
 
 // innerSetKeys sets the keys and checks for duplicates.
-func (m Module) innerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) (sc.Option[sc.Sequence[primitives.SessionKey]], error) {
+func (m module) innerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[primitives.SessionKey]) (sc.Option[sc.Sequence[primitives.SessionKey]], error) {
 	oldKeys, err := m.storage.NextKeys.Get(who)
 	if err != nil {
 		return sc.Option[sc.Sequence[primitives.SessionKey]]{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -277,7 +308,7 @@ func (m Module) innerSetKeys(who primitives.AccountId, sessionKeys sc.Sequence[p
 	return sc.NewOption[sc.Sequence[primitives.SessionKey]](oldSessionKeys), nil
 }
 
-func (m Module) Metadata() primitives.MetadataModule {
+func (m module) Metadata() primitives.MetadataModule {
 	dataV14 := primitives.MetadataModuleV14{
 		Name:    m.name(),
 		Storage: m.metadataStorage(),
@@ -321,7 +352,7 @@ func (m Module) Metadata() primitives.MetadataModule {
 	}
 }
 
-func (m Module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
+func (m module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 	return sc.NewOption[primitives.MetadataModuleStorage](primitives.MetadataModuleStorage{
 		Prefix: m.name(),
 		Items: sc.Sequence[primitives.MetadataModuleStorageEntry]{
@@ -382,12 +413,12 @@ func (m Module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 	})
 }
 
-func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
+func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 	return sc.Sequence[primitives.MetadataType]{
 		primitives.NewMetadataTypeWithPath(
 			metadata.TypesSessionEvent,
 			"pallet_session pallet Session",
-			sc.Sequence[sc.Str]{"pallet_session", "pallet", "Session"},
+			sc.Sequence[sc.Str]{"pallet_session", "pallet", "Event"},
 			primitives.NewMetadataTypeDefinitionVariant(
 				sc.Sequence[primitives.MetadataDefinitionVariant]{
 					primitives.NewMetadataDefinitionVariant(
@@ -491,7 +522,7 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 	}
 }
 
-func (m Module) queueNextValidators(sessionKeys sc.Sequence[queuedKey], nextValidators sc.Sequence[primitives.AccountId], nextIdentitiesChanged bool) (sc.Sequence[queuedKey], bool, error) {
+func (m module) queueNextValidators(sessionKeys sc.Sequence[queuedKey], nextValidators sc.Sequence[primitives.AccountId], nextIdentitiesChanged bool) (sc.Sequence[queuedKey], bool, error) {
 	var result sc.Sequence[queuedKey]
 
 	for i, nextValidator := range nextValidators {
@@ -522,7 +553,7 @@ func (m Module) queueNextValidators(sessionKeys sc.Sequence[queuedKey], nextVali
 	return result, nextIdentitiesChanged, nil
 }
 
-func (m Module) nextValidators(maybeNewValidators sc.Option[sc.Sequence[primitives.AccountId]]) (sc.Sequence[primitives.AccountId], bool, error) {
+func (m module) nextValidators(maybeNewValidators sc.Option[sc.Sequence[primitives.AccountId]]) (sc.Sequence[primitives.AccountId], bool, error) {
 	if maybeNewValidators.HasValue {
 		return maybeNewValidators.Value, true, nil
 	}

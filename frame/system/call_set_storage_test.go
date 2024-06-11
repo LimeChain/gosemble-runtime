@@ -34,6 +34,7 @@ func Test_Call_SetStorage_New(t *testing.T) {
 			FunctionId: functionSetStorageIndex,
 			Arguments:  defaultSetStorageArgs,
 		},
+		dbWeight:  dbWeight,
 		ioStorage: mockIoStorage,
 	}
 
@@ -96,7 +97,7 @@ func Test_Call_SetStorage_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetStorage(tc, functionSetStorageIndex, mockIoStorage)
+		call := newCallSetStorage(tc, functionSetStorageIndex, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -113,7 +114,7 @@ func Test_Call_SetStorage_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetStorage(moduleId, tc, mockIoStorage)
+		call := newCallSetStorage(moduleId, tc, dbWeight, mockIoStorage)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -159,7 +160,20 @@ func Test_Call_SetStorage_Dispatch(t *testing.T) {
 	mockIoStorage.AssertCalled(t, "Set", []byte("testkey2"), []byte("testvalue2"))
 }
 
+func Test_Call_SetStorage_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallSetStorage()
+
+	call, err := call.DecodeArgs(bytes.NewBuffer(someSetStorageArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	mockIoStorage.AssertNotCalled(t, "Set", []byte("testkey1"), []byte("testvalue1"))
+	mockIoStorage.AssertNotCalled(t, "Set", []byte("testkey2"), []byte("testvalue2"))
+}
+
 func setupCallSetStorage() primitives.Call {
 	initMockStorage()
-	return newCallSetStorage(moduleId, functionSetStorageIndex, mockIoStorage)
+	return newCallSetStorage(moduleId, functionSetStorageIndex, dbWeight, mockIoStorage)
 }

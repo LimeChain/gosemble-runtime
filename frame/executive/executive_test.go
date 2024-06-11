@@ -877,19 +877,23 @@ func Test_Executive_idleAndFinalizeHook_OnFinalize_Error(t *testing.T) {
 	mockRuntimeExtrinsic.AssertCalled(t, "OnFinalize", blockNumber)
 }
 
-func Test_executeExtrinsicsWithBookKeeping_ApplyExtrinsic_Error(t *testing.T) {
+func Test_executeExtrinsicsWithBookKeeping_ApplyExtrinsic_TransactionValidityError(t *testing.T) {
+	invalidTransactionBadProofError := primitives.NewTransactionValidityError(primitives.NewInvalidTransactionBadProof())
+
 	setup()
 
 	block := types.NewBlock(header, sc.Sequence[primitives.UncheckedExtrinsic]{mockUncheckedExtrinsic})
 
 	mockUncheckedExtrinsic.On("Bytes").Return(encodedExtrinsic)
-	mockUncheckedExtrinsic.On("Check").Return(nil, errPanic)
+	mockUncheckedExtrinsic.On("Check").Return(nil, invalidTransactionBadProofError)
 
-	err := target.executeExtrinsicsWithBookKeeping(block)
+	assert.PanicsWithValue(t, invalidTransactionBadProofError.Error(), func() {
+		target.executeExtrinsicsWithBookKeeping(block)
+	})
 
-	assert.Equal(t, errPanic, err)
 	mockUncheckedExtrinsic.AssertCalled(t, "Bytes")
 	mockUncheckedExtrinsic.AssertCalled(t, "Check")
+	mockSystemModule.AssertNotCalled(t, "NoteFinishedExtrinsics")
 }
 
 func Test_executeExtrinsicsWithBookKeepingNoteFinishedExtrinsics_Error(t *testing.T) {

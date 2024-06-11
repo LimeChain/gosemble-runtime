@@ -35,10 +35,10 @@ type module struct {
 	onRuntimeUpgrade primitives.OnRuntimeUpgrade
 	runtimeExtrinsic extrinsic.RuntimeExtrinsic
 	hashing          io.Hashing
-	logger           log.TraceLogger
+	logger           log.RuntimeLogger
 }
 
-func New(systemModule system.Module, runtimeExtrinsic extrinsic.RuntimeExtrinsic, onRuntimeUpgrade primitives.OnRuntimeUpgrade, logger log.TraceLogger) Module {
+func New(systemModule system.Module, runtimeExtrinsic extrinsic.RuntimeExtrinsic, onRuntimeUpgrade primitives.OnRuntimeUpgrade, logger log.RuntimeLogger) Module {
 	return module{
 		system:           systemModule,
 		onRuntimeUpgrade: onRuntimeUpgrade,
@@ -105,6 +105,7 @@ func (m module) ExecuteBlock(block primitives.Block) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -135,6 +136,7 @@ func (m module) ApplyExtrinsic(uxt primitives.UncheckedExtrinsic) error {
 	dispatchInfo := primitives.GetDispatchInfo(checked.Function())
 	m.logger.Tracef("get_dispatch_info: weight ref time %d", dispatchInfo.Weight.RefTime)
 	unsignedValidator := extrinsic.NewUnsignedValidatorForChecked(m.runtimeExtrinsic)
+
 	res, err := checked.Apply(unsignedValidator, &dispatchInfo, encodedLen)
 	if err != nil {
 		_, isDispatchErr := err.(primitives.DispatchError)
@@ -146,9 +148,9 @@ func (m module) ApplyExtrinsic(uxt primitives.UncheckedExtrinsic) error {
 		//
 		// The entire block should be discarded if an inherent fails to apply. Otherwise
 		// it may open an attack vector.
-		if isMendatory, err := dispatchInfo.IsMendatory(); err != nil {
+		if IsMandatory, err := dispatchInfo.IsMandatory(); err != nil {
 			return err
-		} else if isMendatory {
+		} else if IsMandatory {
 			return primitives.NewTransactionValidityError(primitives.NewInvalidTransactionBadMandatory())
 		}
 	}
@@ -204,9 +206,9 @@ func (m module) ValidateTransaction(source primitives.TransactionSource, uxt pri
 	m.logger.Trace("dispatch_info")
 	dispatchInfo := primitives.GetDispatchInfo(checked.Function())
 
-	if isMendatory, err := dispatchInfo.IsMendatory(); err != nil {
+	if IsMandatory, err := dispatchInfo.IsMandatory(); err != nil {
 		return primitives.ValidTransaction{}, err
-	} else if isMendatory {
+	} else if IsMandatory {
 		return primitives.ValidTransaction{}, primitives.NewTransactionValidityError(primitives.NewInvalidTransactionMandatoryValidation())
 	}
 
@@ -262,9 +264,11 @@ func (m module) idleAndFinalizeHook(blockNumber sc.U64) error {
 
 func (m module) executeExtrinsicsWithBookKeeping(block primitives.Block) error {
 	for _, ext := range block.Extrinsics() {
-
 		if err := m.ApplyExtrinsic(ext); err != nil {
-			return err
+			switch err.(type) {
+			case primitives.TransactionValidityError:
+				m.logger.Critical(err.Error())
+			}
 		}
 	}
 

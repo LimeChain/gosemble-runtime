@@ -36,10 +36,10 @@ type Module struct {
 	decoder          types.RuntimeDecoder
 	memUtils         utils.WasmMemoryTranslator
 	mdGenerator      *primitives.MetadataTypeGenerator
-	logger           log.Logger
+	logger           log.RuntimeLogger
 }
 
-func New(runtimeExtrinsic extrinsic.RuntimeExtrinsic, executive executive.Module, decoder types.RuntimeDecoder, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(runtimeExtrinsic extrinsic.RuntimeExtrinsic, executive executive.Module, decoder types.RuntimeDecoder, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	return Module{
 		runtimeExtrinsic: runtimeExtrinsic,
 		executive:        executive,
@@ -80,15 +80,16 @@ func (m Module) ApplyExtrinsic(dataPtr int32, dataLen int32) int64 {
 	}
 
 	err = m.executive.ApplyExtrinsic(uxt)
+
 	var applyExtrinsicResult primitives.ApplyExtrinsicResult
 	switch typedErr := err.(type) {
+	case nil:
+		dispatchOutcome := primitives.DispatchOutcome(sc.NewVaryingData(sc.Empty{}))
+		applyExtrinsicResult, err = primitives.NewApplyExtrinsicResult(dispatchOutcome)
 	case primitives.TransactionValidityError:
 		applyExtrinsicResult, err = primitives.NewApplyExtrinsicResult(typedErr)
 	case primitives.DispatchError:
 		dispatchOutcome := primitives.DispatchOutcome(sc.NewVaryingData(typedErr))
-		applyExtrinsicResult, err = primitives.NewApplyExtrinsicResult(dispatchOutcome)
-	case nil:
-		dispatchOutcome := primitives.DispatchOutcome(sc.NewVaryingData(sc.Empty{}))
 		applyExtrinsicResult, err = primitives.NewApplyExtrinsicResult(dispatchOutcome)
 	}
 	if err != nil {
@@ -188,7 +189,7 @@ func (m Module) Metadata() primitives.RuntimeApiMetadata {
 					Type: sc.ToCompact(metadata.UncheckedExtrinsic),
 				},
 			},
-			Output: sc.ToCompact(metadata.TypesResult),
+			Output: sc.ToCompact(metadata.TypesApplyExtrinsicResult),
 			Docs: sc.Sequence[sc.Str]{" Apply the given extrinsic.",
 				"",
 				" Returns an inclusion outcome which specifies if this extrinsic is included in",

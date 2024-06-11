@@ -2,6 +2,7 @@ package collect_collation_info
 
 import (
 	"bytes"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/parachain_system"
@@ -23,10 +24,10 @@ const (
 type Module struct {
 	parachainSystem parachain_system.Module
 	memUtils        utils.WasmMemoryTranslator
-	logger          log.Logger
+	logger          log.RuntimeLogger
 }
 
-func New(parachainSystem parachain_system.Module, logger log.Logger) Module {
+func New(parachainSystem parachain_system.Module, logger log.RuntimeLogger) Module {
 	return Module{
 		memUtils:        utils.NewMemoryTranslator(),
 		parachainSystem: parachainSystem,

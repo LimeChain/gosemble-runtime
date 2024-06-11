@@ -30,6 +30,7 @@ func Test_Call_AuthorizeUpgrade_New(t *testing.T) {
 			FunctionId: functionAuthorizeUpgradeIndex,
 			Arguments:  defaultAuthorizeUpgradeArgs,
 		},
+		dbWeight:     dbWeight,
 		codeUpgrader: codeUpgrader,
 	}
 
@@ -90,7 +91,7 @@ func Test_Call_AuthorizeUpgrade_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallAuthorizeUpgrade(tc, functionAuthorizeUpgradeIndex, codeUpgrader)
+		call := newCallAuthorizeUpgrade(tc, functionAuthorizeUpgradeIndex, dbWeight, codeUpgrader)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -105,7 +106,7 @@ func Test_Call_AuthorizeUpgrade_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallAuthorizeUpgrade(moduleId, tc, codeUpgrader)
+		call := newCallAuthorizeUpgrade(moduleId, tc, dbWeight, codeUpgrader)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -114,7 +115,7 @@ func Test_Call_AuthorizeUpgrade_FunctionIndex(t *testing.T) {
 func Test_Call_AuthorizeUpgrade_BaseWeight(t *testing.T) {
 	call := setupCallAuthorizeUpgrade()
 
-	assert.Equal(t, callAuthorizeUpgradeWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callAuthorizeUpgradeWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_AuthorizeUpgrade_WeighData(t *testing.T) {
@@ -148,7 +149,18 @@ func Test_Call_AuthorizeUpgrade_Dispatch(t *testing.T) {
 	codeUpgrader.AssertCalled(t, "DoAuthorizeUpgrade", codeHash, sc.Bool(true))
 }
 
+func Test_Call_AuthorizeUpgrade_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallAuthorizeUpgrade()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someAuthorizeUpgradeArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	codeUpgrader.AssertNotCalled(t, "DoAuthorizeUpgrade", codeHash, sc.Bool(true))
+}
+
 func setupCallAuthorizeUpgrade() primitives.Call {
 	codeUpgrader = new(mocks.SystemModule)
-	return newCallAuthorizeUpgrade(moduleId, functionAuthorizeUpgradeIndex, codeUpgrader)
+	return newCallAuthorizeUpgrade(moduleId, functionAuthorizeUpgradeIndex, dbWeight, codeUpgrader)
 }

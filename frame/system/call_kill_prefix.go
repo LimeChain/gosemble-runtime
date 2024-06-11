@@ -12,16 +12,18 @@ import (
 // Kill all storage items with a key that starts with the given prefix.
 type callKillPrefix struct {
 	primitives.Callable
+	dbWeight  primitives.RuntimeDbWeight
 	ioStorage io.Storage
 }
 
-func newCallKillPrefix(moduleId sc.U8, functionId sc.U8, ioStorage io.Storage) primitives.Call {
+func newCallKillPrefix(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, ioStorage io.Storage) primitives.Call {
 	call := callKillPrefix{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.U8]{}, sc.U32(0)),
 		},
+		dbWeight:  dbWeight,
 		ioStorage: ioStorage,
 	}
 
@@ -63,7 +65,7 @@ func (c callKillPrefix) Args() sc.VaryingData {
 
 func (c callKillPrefix) BaseWeight() primitives.Weight {
 	subkeys := c.Arguments[1].(sc.U32)
-	return callKillPrefixWeight(primitives.RuntimeDbWeight{}, sc.U64(subkeys))
+	return callKillPrefixWeight(c.dbWeight, sc.U64(subkeys))
 }
 
 func (_ callKillPrefix) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -79,12 +81,10 @@ func (_ callKillPrefix) PaysFee(baseWeight primitives.Weight) primitives.Pays {
 }
 
 func (c callKillPrefix) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return primitives.PostDispatchInfo{}, err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	prefix := args[0].(sc.Sequence[sc.U8])
 	subkeys := args[1].(sc.U32)

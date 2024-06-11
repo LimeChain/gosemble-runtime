@@ -3,6 +3,7 @@ package benchmarking
 import (
 	"encoding/hex"
 	"github.com/ChainSafe/gossamer/pkg/trie"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func Test_BlockBuilder(t *testing.T) {
 	assert.Nil(t, err)
 
 	testing.Benchmark(func(b *testing.B) {
-		runtime := wazero_runtime.NewBenchInstanceWithTrie(b, "../build/runtime.wasm", trie.NewEmptyTrie())
+		runtime := wazero_runtime.NewBenchInstanceWithTrie(b, filepath.Join("../build/", RuntimeWasmBinary), trie.NewEmptyTrie())
 		defer runtime.Stop()
 
 		instance, err := newBenchmarkingInstance(runtime, 1)

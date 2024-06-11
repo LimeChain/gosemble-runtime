@@ -10,10 +10,10 @@ type CheckAssociatedRelayNumber interface {
 }
 
 type RelayNumberStrictlyIncreases struct {
-	logger log.Logger
+	logger log.RuntimeLogger
 }
 
-func NewRelayNumberStrictlyIncreases(logger log.Logger) RelayNumberStrictlyIncreases {
+func NewRelayNumberStrictlyIncreases(logger log.RuntimeLogger) RelayNumberStrictlyIncreases {
 	return RelayNumberStrictlyIncreases{
 		logger: logger,
 	}

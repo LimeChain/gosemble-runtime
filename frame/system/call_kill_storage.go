@@ -12,16 +12,18 @@ import (
 // Kill some items from storage.
 type callKillStorage struct {
 	primitives.Callable
+	dbWeight  primitives.RuntimeDbWeight
 	ioStorage io.Storage
 }
 
-func newCallKillStorage(moduleId sc.U8, functionId sc.U8, ioStorage io.Storage) primitives.Call {
+func newCallKillStorage(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, ioStorage io.Storage) primitives.Call {
 	call := callKillStorage{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(sc.Sequence[sc.Sequence[sc.U8]]{}),
 		},
+		dbWeight:  dbWeight,
 		ioStorage: ioStorage,
 	}
 
@@ -59,7 +61,7 @@ func (c callKillStorage) Args() sc.VaryingData {
 
 func (c callKillStorage) BaseWeight() primitives.Weight {
 	keys := c.Arguments[0].(sc.Sequence[sc.Sequence[sc.U8]])
-	return callKillStorageWeight(primitives.RuntimeDbWeight{}, sc.U64(len(keys)))
+	return callKillStorageWeight(c.dbWeight, sc.U64(len(keys)))
 }
 
 func (_ callKillStorage) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -75,12 +77,10 @@ func (_ callKillStorage) PaysFee(baseWeight primitives.Weight) primitives.Pays {
 }
 
 func (c callKillStorage) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return primitives.PostDispatchInfo{}, err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	keys := args[0].(sc.Sequence[sc.Sequence[sc.U8]])
 

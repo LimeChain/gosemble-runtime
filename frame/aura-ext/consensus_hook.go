@@ -2,6 +2,7 @@ package aura_ext
 
 import (
 	"errors"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/parachain"
@@ -14,10 +15,10 @@ type FixedVelocityConsensusHook struct {
 	NotIncludedSegmentCapacity   sc.U32
 	dbWeight                     primitives.RuntimeDbWeight
 	module                       Module
-	logger                       log.Logger
+	logger                       log.RuntimeLogger
 }
 
-func NewFixedVelocityConsensusHook(relayChainSlotDurationMillis, blockProcessingVelocity, notIncludedSegmentCapacity sc.U32, DbWeight primitives.RuntimeDbWeight, module Module, logger log.Logger) FixedVelocityConsensusHook {
+func NewFixedVelocityConsensusHook(relayChainSlotDurationMillis, blockProcessingVelocity, notIncludedSegmentCapacity sc.U32, DbWeight primitives.RuntimeDbWeight, module Module, logger log.RuntimeLogger) FixedVelocityConsensusHook {
 	return FixedVelocityConsensusHook{
 		relayChainSlotDurationMillis,
 		blockProcessingVelocity,

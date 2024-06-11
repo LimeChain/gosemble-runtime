@@ -10,16 +10,18 @@ import (
 // Authorize new runtime code.
 type callAuthorizeUpgrade struct {
 	primitives.Callable
+	dbWeight     primitives.RuntimeDbWeight
 	codeUpgrader CodeUpgrader
 }
 
-func newCallAuthorizeUpgrade(moduleId sc.U8, functionId sc.U8, codeUpgrader CodeUpgrader) primitives.Call {
+func newCallAuthorizeUpgrade(moduleId sc.U8, functionId sc.U8, dbWeight primitives.RuntimeDbWeight, codeUpgrader CodeUpgrader) primitives.Call {
 	call := callAuthorizeUpgrade{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
 			Arguments:  sc.NewVaryingData(primitives.H256{}),
 		},
+		dbWeight:     dbWeight,
 		codeUpgrader: codeUpgrader,
 	}
 
@@ -56,7 +58,7 @@ func (c callAuthorizeUpgrade) Args() sc.VaryingData {
 }
 
 func (c callAuthorizeUpgrade) BaseWeight() primitives.Weight {
-	return callAuthorizeUpgradeWeight(primitives.RuntimeDbWeight{})
+	return callAuthorizeUpgradeWeight(c.dbWeight)
 }
 
 func (_ callAuthorizeUpgrade) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -72,12 +74,10 @@ func (_ callAuthorizeUpgrade) PaysFee(baseWeight primitives.Weight) primitives.P
 }
 
 func (c callAuthorizeUpgrade) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	codeHash := args[0].(primitives.H256)
 

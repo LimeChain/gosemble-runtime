@@ -142,7 +142,7 @@ const (
 	TypesTransactionValidityError
 	TypesResultValidityTransaction
 	TypesOpaqueMetadata
-	TypesResult
+	TypesApplyExtrinsicResult
 	TypesInherentData
 
 	TypesSequenceUncheckedExtrinsics
@@ -153,7 +153,7 @@ const (
 	TypeOptionInclusionFee
 	TypesOptionTupleSequenceU8KeyTypeId
 
-	TypesResultEmptyTuple
+	TypesDispatchOutcome
 
 	TypesGrandpaAppPublic
 	TypesTupleGrandpaAppPublicU64
@@ -184,6 +184,42 @@ const (
 	TypesSessionEvent
 	TypesSessionCalls
 	TypesSessionErrors
+
+	TypesOptionAccountId
+	TypesSudoEvent
+	TypesSudoCalls
+	TypesSudoErrors
+
+	TypesAuthority
+	TypesSequenceAuthority
+	TypesBoundedVecAuthority
+
+	TypesTuple2U64
+	TypesSlot
+	TypesOptionFixedSequence32U8
+	TypesVrfSignature
+	TypesAllowedSlots
+	TypesPreDigest
+	TypesOptionPreDigest
+
+	TypesBabeEpochConfiguration
+	TypesBabeNextConfigDescriptor
+	TypesBabeSkippedEpoch
+	TypesBabeFixedSequenceSkippedEpoch
+	TypesBabeBoundedVecSkippedEpoch
+	TypesBabeConfiguration
+	TypesBabeEpoch
+	TypesBabePrimaryPreDigest
+	TypesBabeSecondaryPlainPreDigest
+	TypesBabeSecondaryVRFPreDigest
+	TypesBabeErrors
+	TypesBabeCalls
+
+	TypesOptionU64
+	TypesGrandpaStoredState
+	TypesGrandpaStoredPendingChange
+	TypesGrandpaEvent
+	TypesGrandpaCalls
 
 	TypesUpgradeGoAhead
 	TypesOptionUpgradeGoAhead

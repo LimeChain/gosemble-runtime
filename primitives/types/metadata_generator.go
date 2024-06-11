@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	lastAvailableIndex = 181 // the last enum id from constants/metadata.go
+	lastAvailableIndex = 212 // the last enum id from constants/metadata.go
 )
 
 const (
@@ -60,10 +60,10 @@ func BuildMetadataTypesIdsMap() map[string]int {
 		"I128":                       metadata.PrimitiveTypesI128,
 		"H256":                       metadata.TypesH256,
 		"SequenceU8":                 metadata.TypesSequenceU8,
+		"SequenceSequenceU8":         metadata.TypesSequenceSequenceU8,
 		"MultiAddress":               metadata.TypesMultiAddress,
 		"Header":                     metadata.Header,
 		"SequenceUncheckedExtrinsic": metadata.TypesSequenceUncheckedExtrinsics,
-		"SequenceSequenceU8":         metadata.TypesSequenceSequenceU8,
 		"KeyValue":                   metadata.TypesKeyValue,
 		"SequenceKeyValue":           metadata.TypesSequenceKeyValue,
 		"CodeUpgradeAuthorization":   metadata.TypesCodeUpgradeAuthorization,

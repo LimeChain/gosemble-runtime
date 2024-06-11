@@ -3,19 +3,20 @@ package pvf
 import (
 	"bytes"
 	"fmt"
+	"math"
+	"math/big"
+
 	"github.com/ChainSafe/gossamer/lib/runtime/storage"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/log"
-	"math"
-	"math/big"
 )
 
 type HostEnvironment struct {
 	trieState *storage.TrieState
-	logger    log.Logger
+	logger    log.RuntimeLogger
 }
 
-func NewHostEnvironment(logger log.Logger) *HostEnvironment {
+func NewHostEnvironment(logger log.RuntimeLogger) *HostEnvironment {
 	return &HostEnvironment{
 		logger:    logger,
 		trieState: nil,

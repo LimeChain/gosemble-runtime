@@ -14,10 +14,10 @@ import (
 type callForceFree struct {
 	primitives.Callable
 	transfer
-	logger log.DebugLogger
+	logger log.RuntimeLogger
 }
 
-func newCallForceFree(moduleId sc.U8, functionId sc.U8, storedMap primitives.StoredMap, constants *consts, mutator accountMutator, logger log.DebugLogger) primitives.Call {
+func newCallForceFree(moduleId sc.U8, functionId sc.U8, storedMap primitives.StoredMap, constants *consts, mutator accountMutator, logger log.RuntimeLogger) primitives.Call {
 	call := callForceFree{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,

@@ -29,10 +29,10 @@ type GenesisBuilder interface {
 type Module struct {
 	modules  []primitives.Module
 	memUtils utils.WasmMemoryTranslator
-	logger   log.Logger
+	logger   log.RuntimeLogger
 }
 
-func New(modules []primitives.Module, logger log.Logger) Module {
+func New(modules []primitives.Module, logger log.RuntimeLogger) Module {
 	return Module{
 		modules:  modules,
 		memUtils: utils.NewMemoryTranslator(),

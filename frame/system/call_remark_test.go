@@ -22,6 +22,7 @@ func Test_Call_Remark_New(t *testing.T) {
 			FunctionId: functionRemarkIndex,
 			Arguments:  defaultRemarkArgs,
 		},
+		dbWeight: dbWeight,
 	}
 
 	call := setupCallRemark()
@@ -82,7 +83,7 @@ func Test_Call_Remark_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallRemark(tc, functionRemarkIndex)
+		call := newCallRemark(tc, functionRemarkIndex, dbWeight)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -97,7 +98,7 @@ func Test_Call_Remark_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallRemark(moduleId, tc)
+		call := newCallRemark(moduleId, tc, dbWeight)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -142,5 +143,5 @@ func Test_Call_Remark_Dispatch_AnyOrigin_Success(t *testing.T) {
 }
 
 func setupCallRemark() primitives.Call {
-	return newCallRemark(moduleId, functionRemarkIndex)
+	return newCallRemark(moduleId, functionRemarkIndex, dbWeight)
 }

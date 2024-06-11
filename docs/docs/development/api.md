@@ -14,6 +14,7 @@ Contains modules of the [Runtime API Specification](https://spec.polkadot.networ
 |--------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
 | [AccountNonceApi](https://github.com/limechain/gosemble/tree/develop/api/account_nonce)                      | Provides logic to get an account's nonce.                                 |
 | [AuraApi](https://github.com/limechain/gosemble/tree/develop/api/aura)                                       | Manages block authoring AuRa consensus mechanism.                         |
+| [BabeApi](https://github.com/limechain/gosemble/tree/develop/api/babe)                                       | Manages block authoring BABE consensus mechanism.                         |
 | [Benchmarking](https://github.com/limechain/gosemble/tree/develop/api/benchmarking)                          | Provides functionality for benchmarking extrinsic calls and system hooks. |
 | [BlockBuilder](https://github.com/limechain/gosemble/tree/develop/api/block_builder)                         | Provides functionality for building and finalizing a block.               |
 | [Core](https://github.com/limechain/gosemble/tree/develop/api/core)                                          | Provides functionality for initialising and executing a block.            |

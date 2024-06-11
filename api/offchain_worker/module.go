@@ -25,10 +25,10 @@ const (
 type Module struct {
 	executive executive.Module
 	memUtils  utils.WasmMemoryTranslator
-	logger    log.Logger
+	logger    log.RuntimeLogger
 }
 
-func New(executive executive.Module, logger log.Logger) Module {
+func New(executive executive.Module, logger log.RuntimeLogger) Module {
 	return Module{
 		executive: executive,
 		memUtils:  utils.NewMemoryTranslator(),

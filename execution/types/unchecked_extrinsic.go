@@ -43,11 +43,11 @@ type uncheckedExtrinsic struct {
 	hashing           io.Hashing
 	storage           io.Storage
 	transactionBroker io.TransactionBroker
-	logger            log.WarnLogger
+	logger            log.RuntimeLogger
 }
 
 // NewUncheckedExtrinsic returns a new instance of an unchecked extrinsic.
-func NewUncheckedExtrinsic(version sc.U8, signature sc.Option[primitives.ExtrinsicSignature], function primitives.Call, extra primitives.SignedExtra, storage io.Storage, transactionBroker io.TransactionBroker, logger log.WarnLogger) primitives.UncheckedExtrinsic {
+func NewUncheckedExtrinsic(version sc.U8, signature sc.Option[primitives.ExtrinsicSignature], function primitives.Call, extra primitives.SignedExtra, storage io.Storage, transactionBroker io.TransactionBroker, logger log.RuntimeLogger) primitives.UncheckedExtrinsic {
 	return uncheckedExtrinsic{
 		version:           version,
 		signature:         signature,

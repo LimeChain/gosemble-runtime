@@ -25,6 +25,7 @@ func Test_Call_SetCodeWithoutChecks_New(t *testing.T) {
 			Arguments:  defaultSetCodeWithoutChecksArgs,
 		},
 		constants:     *moduleConstants,
+		dbWeight:      dbWeight,
 		hookOnSetCode: mockOnSetCode,
 	}
 
@@ -87,7 +88,7 @@ func Test_Call_SetCodeWithoutChecks_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetCodeWithoutChecks(tc, functionSetCodeIndex, *moduleConstants, mockOnSetCode)
+		call := newCallSetCodeWithoutChecks(tc, functionSetCodeIndex, dbWeight, *moduleConstants, mockOnSetCode)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -105,7 +106,7 @@ func Test_Call_SetCodeWithoutChecks_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallSetCodeWithoutChecks(moduleId, tc, *moduleConstants, mockOnSetCode)
+		call := newCallSetCodeWithoutChecks(moduleId, tc, dbWeight, *moduleConstants, mockOnSetCode)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -114,7 +115,7 @@ func Test_Call_SetCodeWithoutChecks_FunctionIndex(t *testing.T) {
 func Test_Call_SetCodeWithoutChecks_BaseWeight(t *testing.T) {
 	call := setupCallSetCodeWithoutChecks()
 
-	assert.Equal(t, callSetCodeWithoutChecksWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callSetCodeWithoutChecksWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_SetCodeWithoutChecks_WeighData(t *testing.T) {
@@ -150,7 +151,20 @@ func Test_Call_SetCodeWithoutChecks_Dispatch(t *testing.T) {
 	assert.Equal(t, sc.NewOption[primitives.Weight](blockWeights.MaxBlock), res.ActualWeight)
 }
 
+func Test_Call_SetCodeWithoutChecks_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallSetCodeWithoutChecks()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someSetCodeWithoutChecksArgs.Bytes()))
+	assert.Nil(t, err)
+
+	res, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	mockOnSetCode.AssertNotCalled(t, "SetCode", codeBlob)
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	assert.Equal(t, sc.NewOption[primitives.Weight](nil), res.ActualWeight)
+}
+
 func setupCallSetCodeWithoutChecks() primitives.Call {
 	mockOnSetCode = new(mocks.DefaultOnSetCode)
-	return newCallSetCodeWithoutChecks(moduleId, functionSetCodeWithoutChecksIndex, *moduleConstants, mockOnSetCode)
+	return newCallSetCodeWithoutChecks(moduleId, functionSetCodeWithoutChecksIndex, dbWeight, *moduleConstants, mockOnSetCode)
 }

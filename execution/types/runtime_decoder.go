@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	"github.com/LimeChain/gosemble/primitives/io"
 
 	sc "github.com/LimeChain/goscale"
@@ -23,18 +24,24 @@ type RuntimeDecoder interface {
 	DecodeCall(buffer *bytes.Buffer) (primitives.Call, error)
 }
 
+type SudoDecoder interface {
+	DecodeSudoArgs(buffer *bytes.Buffer, decodeCallFunc func(buffer *bytes.Buffer) (primitives.Call, error)) (primitives.Call, error)
+}
+
 type runtimeDecoder struct {
 	modules           []types.Module
 	extra             primitives.SignedExtra
+	sudoIndex         sc.U8
 	storage           io.Storage
 	transactionBroker io.TransactionBroker
-	logger            log.WarnLogger
+	logger            log.RuntimeLogger
 }
 
-func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, storage io.Storage, transactionBroker io.TransactionBroker, logger log.WarnLogger) RuntimeDecoder {
+func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, sudoIndex sc.U8, storage io.Storage, transactionBroker io.TransactionBroker, logger log.RuntimeLogger) RuntimeDecoder {
 	return runtimeDecoder{
 		modules:           modules,
 		extra:             extra,
+		sudoIndex:         sudoIndex,
 		storage:           storage,
 		transactionBroker: transactionBroker,
 		logger:            logger,
@@ -129,10 +136,27 @@ func (rd runtimeDecoder) DecodeCall(buffer *bytes.Buffer) (primitives.Call, erro
 		return nil, fmt.Errorf("function index [%d] for module [%d] not found", functionIndex, moduleIndex)
 	}
 
-	function, err = function.DecodeArgs(buffer)
+	if rd.isSudoCall(moduleIndex) {
+		sudoCall, ok := function.(SudoDecoder)
+		if !ok {
+			return nil, fmt.Errorf("function index [%d] for module [%d] does not implement sudo decoder", functionIndex, moduleIndex)
+		}
+		function, err = sudoCall.DecodeSudoArgs(buffer, rd.DecodeCall)
+	} else {
+		function, err = function.DecodeArgs(buffer)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return function, nil
+}
+
+// Checks if the current module index is Sudo.
+func (rd runtimeDecoder) isSudoCall(moduleIndex sc.U8) bool {
+	if rd.sudoIndex != 0 && moduleIndex == rd.sudoIndex {
+		return true
+	}
+
+	return false
 }

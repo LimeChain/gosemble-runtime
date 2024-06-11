@@ -19,6 +19,7 @@ func Test_Call_AuthorizeUpgradeWithoutChecks_New(t *testing.T) {
 			FunctionId: functionAuthorizeUpgradeWithoutChecksIndex,
 			Arguments:  defaultAuthorizeUpgradeArgs,
 		},
+		dbWeight:     dbWeight,
 		codeUpgrader: codeUpgrader,
 	}
 
@@ -79,7 +80,7 @@ func Test_Call_AuthorizeUpgradeWithoutChecks_ModuleIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallAuthorizeUpgradeWithoutChecks(tc, functionAuthorizeUpgradeWithoutChecksIndex, codeUpgrader)
+		call := newCallAuthorizeUpgradeWithoutChecks(tc, functionAuthorizeUpgradeWithoutChecksIndex, dbWeight, codeUpgrader)
 
 		assert.Equal(t, tc, call.ModuleIndex())
 	}
@@ -94,7 +95,7 @@ func Test_Call_AuthorizeUpgradeWithoutChecks_FunctionIndex(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		call := newCallAuthorizeUpgradeWithoutChecks(moduleId, tc, codeUpgrader)
+		call := newCallAuthorizeUpgradeWithoutChecks(moduleId, tc, dbWeight, codeUpgrader)
 
 		assert.Equal(t, tc, call.FunctionIndex())
 	}
@@ -103,7 +104,7 @@ func Test_Call_AuthorizeUpgradeWithoutChecks_FunctionIndex(t *testing.T) {
 func Test_Call_AuthorizeUpgradeWithoutChecks_BaseWeight(t *testing.T) {
 	call := setupCallAuthorizeUpgradeWithoutChecks()
 
-	assert.Equal(t, callAuthorizeUpgradeWithoutChecksWeight(primitives.RuntimeDbWeight{}), call.BaseWeight())
+	assert.Equal(t, callAuthorizeUpgradeWithoutChecksWeight(dbWeight), call.BaseWeight())
 }
 
 func Test_Call_AuthorizeUpgradeWithoutChecks_WeighData(t *testing.T) {
@@ -137,7 +138,18 @@ func Test_Call_AuthorizeUpgradeWithoutChecks_Dispatch(t *testing.T) {
 	codeUpgrader.AssertCalled(t, "DoAuthorizeUpgrade", codeHash, sc.Bool(false))
 }
 
+func Test_Call_AuthorizeUpgradeWithoutChecks_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallAuthorizeUpgradeWithoutChecks()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someAuthorizeUpgradeArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	codeUpgrader.AssertNotCalled(t, "DoAuthorizeUpgrade", codeHash, sc.Bool(false))
+}
+
 func setupCallAuthorizeUpgradeWithoutChecks() primitives.Call {
 	codeUpgrader = new(mocks.SystemModule)
-	return newCallAuthorizeUpgradeWithoutChecks(moduleId, functionAuthorizeUpgradeWithoutChecksIndex, codeUpgrader)
+	return newCallAuthorizeUpgradeWithoutChecks(moduleId, functionAuthorizeUpgradeWithoutChecksIndex, dbWeight, codeUpgrader)
 }

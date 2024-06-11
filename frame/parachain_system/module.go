@@ -3,6 +3,8 @@ package parachain_system
 import (
 	"bytes"
 	"errors"
+	"reflect"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/hooks"
@@ -10,7 +12,6 @@ import (
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/parachain"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"reflect"
 )
 
 const (
@@ -41,10 +42,10 @@ type Module struct {
 	hashing     io.Hashing
 	functions   map[sc.U8]primitives.Call
 	mdGenerator *primitives.MetadataTypeGenerator
-	logger      log.Logger
+	logger      log.RuntimeLogger
 }
 
-func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	constants := newConstants(config.DbWeight)
 	functions := make(map[sc.U8]primitives.Call)
 

@@ -10,3 +10,6 @@
 [submodule "polkadot-sdk"]
 	path = polkadot-sdk
 	url = git@github.com:LimeChain/polkadot-sdk.git
+[submodule "go-schnorrkel"]
+	path = go-schnorrkel
+	url = git@github.com:LimeChain/go-schnorrkel.git

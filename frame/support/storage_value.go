@@ -15,4 +15,5 @@ type StorageValue[T sc.Encodable] interface {
 	TakeBytes() ([]byte, error)
 	Take() (T, error)
 	DecodeLen() (sc.Option[sc.U64], error)
+	Mutate(f func(*T) (T, error)) (T, error)
 }

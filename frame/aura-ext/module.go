@@ -3,6 +3,7 @@ package aura_ext
 import (
 	"bytes"
 	"fmt"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/aura"
@@ -21,10 +22,10 @@ type Module struct {
 	storage    *storage
 	auraModule aura.AuraModule
 	executive  executive.Module
-	logger     log.TraceLogger
+	logger     log.RuntimeLogger
 }
 
-func New(index sc.U8, config Config, aura aura.AuraModule, logger log.TraceLogger) Module {
+func New(index sc.U8, config Config, aura aura.AuraModule, logger log.RuntimeLogger) Module {
 	storage := newStorage(config.Storage)
 	constants := newConstants(config.DbWeight)
 
