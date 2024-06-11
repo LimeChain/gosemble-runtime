@@ -252,7 +252,24 @@ func (m module) StorageLastRuntimeUpgradeSet(lrui types.LastRuntimeUpgradeInfo) 
 }
 
 func (m module) StorageAccount(key types.AccountId) (types.AccountInfo, error) {
-	return m.storage.Account.Get(key)
+	accInfo, err := m.storage.Account.Get(key)
+	if err != nil {
+		return types.AccountInfo{}, err
+	}
+
+	if reflect.DeepEqual(accInfo, types.AccountInfo{}) {
+		return types.AccountInfo{
+			Nonce:       0,
+			Consumers:   0,
+			Providers:   0,
+			Sufficients: 0,
+			Data: primitives.AccountData{
+				Flags: primitives.DefaultExtraFlags,
+			},
+		}, nil
+	}
+
+	return accInfo, nil
 }
 
 func (m module) StorageAccountSet(key types.AccountId, value types.AccountInfo) {
@@ -448,7 +465,24 @@ func (m module) ResetEvents() {
 }
 
 func (m module) Get(key primitives.AccountId) (primitives.AccountInfo, error) {
-	return m.storage.Account.Get(key)
+	accInfo, err := m.storage.Account.Get(key)
+	if err != nil {
+		return types.AccountInfo{}, err
+	}
+
+	if reflect.DeepEqual(accInfo, types.AccountInfo{}) {
+		return types.AccountInfo{
+			Nonce:       0,
+			Consumers:   0,
+			Providers:   0,
+			Sufficients: 0,
+			Data: primitives.AccountData{
+				Flags: primitives.DefaultExtraFlags,
+			},
+		}, nil
+	}
+
+	return accInfo, nil
 }
 
 func (m module) CanDecProviders(who primitives.AccountId) (bool, error) {
@@ -470,67 +504,18 @@ func (m module) DepositLog(item primitives.DigestItem) {
 	m.storage.Digest.AppendItem(item)
 }
 
-//func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
-//	account, err := m.Get(who)
-//	if err != nil {
-//		return nil, err
-//	}
-//	isDefault := false
-//	if !reflect.DeepEqual(account.Data, primitives.AccountData{}) {
-//		isDefault = true
-//	}
-//
-//	someData := &primitives.AccountData{}
-//	if isDefault {
-//		someData = &account.Data
-//	}
-//
-//	result, err := f(someData)
-//	if err != nil {
-//		return result, err
-//	}
-//
-//	isProviding := !reflect.DeepEqual(*someData, primitives.AccountData{})
-//
-//	if !isDefault && isProviding {
-//		_, err := m.IncProviders(who)
-//		if err != nil {
-//			return nil, err
-//		}
-//	} else if isDefault && !isProviding {
-//		status, err := m.decProviders(who)
-//		if err != nil {
-//			return nil, err
-//		}
-//		if status == primitives.DecRefStatusExists {
-//			return result, nil
-//		}
-//	} else if !isDefault && !isProviding {
-//		return result, nil
-//	}
-//
-//	_, err = m.storage.Account.Mutate(who, func(a *primitives.AccountInfo) (sc.Encodable, error) {
-//		mutateAccount(a, someData)
-//		return nil, nil
-//	})
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return result, nil
-//}
-
 func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error) {
 	account, err := m.Get(who)
 	if err != nil {
 		return nil, err
 	}
 	isDefault := false
-	if !reflect.DeepEqual(account.Data, primitives.AccountData{}) {
+	if !reflect.DeepEqual(account.Data, primitives.DefaultAccountData()) {
 		isDefault = true
 	}
 
-	someData := &primitives.AccountData{}
+	data := primitives.DefaultAccountData()
+	someData := &data
 	if isDefault {
 		someData = &account.Data
 	}
@@ -1137,7 +1122,7 @@ func mutateAccount(account *primitives.AccountInfo, data *primitives.AccountData
 	if data != nil {
 		account.Data = *data
 	} else {
-		account.Data = primitives.AccountData{}
+		account.Data = primitives.DefaultAccountData()
 	}
 }
 

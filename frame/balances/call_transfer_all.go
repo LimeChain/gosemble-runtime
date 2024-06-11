@@ -63,7 +63,7 @@ func (c callTransferAll) Args() sc.VaryingData {
 }
 
 func (c callTransferAll) BaseWeight() primitives.Weight {
-	return primitives.WeightZero()
+	return callTransferAllWeight(c.module.constants.DbWeight)
 }
 
 func (_ callTransferAll) WeighData(baseWeight primitives.Weight) primitives.Weight {

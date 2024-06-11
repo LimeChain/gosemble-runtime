@@ -58,8 +58,7 @@ func (c callForceAdjustTotalIssuance) FunctionIndex() sc.U8 { return c.Callable.
 func (c callForceAdjustTotalIssuance) Args() sc.VaryingData { return c.Callable.Args() }
 
 func (c callForceAdjustTotalIssuance) BaseWeight() primitives.Weight {
-	// TODO: weight
-	return primitives.WeightZero()
+	return callForceAdjustTotalIssuanceWeight()
 }
 
 func (_ callForceAdjustTotalIssuance) WeighData(baseWeight primitives.Weight) primitives.Weight {

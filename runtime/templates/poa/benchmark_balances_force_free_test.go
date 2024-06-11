@@ -13,7 +13,7 @@ import (
 )
 
 func BenchmarkBalancesForceFree(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_force_free_weight.go", func(i *benchmarking.Instance) {
+	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_force_unreserve_weight.go", func(i *benchmarking.Instance) {
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
@@ -31,7 +31,7 @@ func BenchmarkBalancesForceFree(b *testing.B) {
 		assert.NoError(b, err)
 
 		err = i.ExecuteExtrinsic(
-			"Balances.force_free",
+			"Balances.force_unreserve",
 			types.NewRawOriginRoot(),
 			aliceAddress,
 			ctypes.NewU128(*big.NewInt(2 * existentialAmount)),

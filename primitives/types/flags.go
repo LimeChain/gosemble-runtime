@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	newLogic, _       = new(big.Int).SetString("80000000000000000000000000000000", 16)
-	DefaultExtraFlags = ExtraFlags{sc.NewU128(newLogic)}
+	FlagsNewLogic, _  = new(big.Int).SetString("80000000000000000000000000000000", 16)
+	DefaultExtraFlags = ExtraFlags{sc.NewU128(FlagsNewLogic)}
 )
 
 type ExtraFlags struct {
@@ -29,12 +29,12 @@ func (ef ExtraFlags) OldLogic() ExtraFlags {
 
 func (ef ExtraFlags) SetNewLogic() ExtraFlags {
 	currentEf := ef.ToBigInt()
-	newEf := currentEf.Or(currentEf, newLogic)
+	newEf := currentEf.Or(currentEf, FlagsNewLogic)
 	return ExtraFlags{sc.NewU128(newEf)}
 }
 
 func (ef ExtraFlags) IsNewLogic() bool {
 	currentEf := ef.ToBigInt()
-	currentEf = currentEf.And(currentEf, newLogic)
-	return currentEf.Cmp(newLogic) == 0
+	currentEf = currentEf.And(currentEf, FlagsNewLogic)
+	return currentEf.Cmp(FlagsNewLogic) == 0
 }

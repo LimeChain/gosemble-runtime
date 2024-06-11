@@ -22,10 +22,10 @@ var (
 		Providers:   RefCount(3),
 		Sufficients: RefCount(4),
 		Data: AccountData{
-			Free:       sc.NewU128(5),
-			Reserved:   sc.NewU128(6),
-			MiscFrozen: sc.NewU128(7),
-			FeeFrozen:  sc.NewU128(8),
+			Free:     sc.NewU128(5),
+			Reserved: sc.NewU128(6),
+			Frozen:   sc.NewU128(7),
+			Flags:    ExtraFlags{sc.NewU128(8)},
 		},
 	}
 )
@@ -50,19 +50,4 @@ func Test_DecodeAccountInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, targetAccountInfo, result)
-}
-
-func Test_AccountInfo_Frozen(t *testing.T) {
-	assert.Equal(t, sc.NewU128(8), targetAccountInfo.Frozen(ReasonsAll))
-	assert.Equal(t, sc.NewU128(7), targetAccountInfo.Frozen(ReasonsMisc))
-	assert.Equal(t, sc.NewU128(7), targetAccountInfo.Frozen(ReasonsFee))
-	assert.Equal(t, sc.NewU128(0), targetAccountInfo.Frozen(3))
-}
-
-func Test_AccountInfo_Frozen_WithGreaterMiscFrozen(t *testing.T) {
-	targetAccountInfo = AccountInfo{}
-	targetAccountInfo.Data.MiscFrozen = sc.NewU128(9)
-	targetAccountInfo.Data.FeeFrozen = sc.NewU128(8)
-
-	assert.Equal(t, sc.NewU128(9), targetAccountInfo.Frozen(ReasonsAll))
 }

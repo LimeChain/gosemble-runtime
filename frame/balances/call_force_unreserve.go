@@ -61,7 +61,7 @@ func (c callForceUnreserve) Args() sc.VaryingData {
 }
 
 func (c callForceUnreserve) BaseWeight() primitives.Weight {
-	return primitives.WeightZero()
+	return callForceUnreserveWeight(c.module.constants.DbWeight)
 }
 
 func (_ callForceUnreserve) WeighData(baseWeight primitives.Weight) primitives.Weight {

@@ -62,7 +62,7 @@ func (c callTransferAllowDeath) Args() sc.VaryingData {
 }
 
 func (c callTransferAllowDeath) BaseWeight() primitives.Weight {
-	return primitives.WeightZero()
+	return callTransferAllowDeathWeight(c.module.constants.DbWeight)
 }
 
 func (_ callTransferAllowDeath) WeighData(baseWeight primitives.Weight) primitives.Weight {

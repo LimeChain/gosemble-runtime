@@ -7,6 +7,15 @@ import (
 
 type Balance = sc.U128
 
+func DefaultAccountData() AccountData {
+	return AccountData{
+		Free:     Balance{},
+		Reserved: Balance{},
+		Frozen:   Balance{},
+		Flags:    DefaultExtraFlags,
+	}
+}
+
 type AccountData struct {
 	Free     Balance
 	Reserved Balance

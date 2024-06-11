@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/LimeChain/gosemble/primitives/types"
 	"math/big"
 	"testing"
 
@@ -18,7 +19,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func Test_Balances_Transfer_Success(t *testing.T) {
+func Test_Balances_TransferAllowDeath_Success(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
@@ -31,7 +32,7 @@ func Test_Balances_Transfer_Success(t *testing.T) {
 
 	transferAmount := big.NewInt(0).SetUint64(constants.Dollar)
 
-	call, err := ctypes.NewCall(metadata, "Balances.transfer", bob, ctypes.NewUCompact(transferAmount))
+	call, err := ctypes.NewCall(metadata, "Balances.transfer_allow_death", bob, ctypes.NewUCompact(transferAmount))
 	assert.NoError(t, err)
 
 	// Create the extrinsic
@@ -89,7 +90,7 @@ func Test_Balances_Transfer_Success(t *testing.T) {
 			Free:       scale.MustNewUint128(transferAmount),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 
@@ -113,7 +114,7 @@ func Test_Balances_Transfer_Success(t *testing.T) {
 			Free:       scale.MustNewUint128(expectedAliceFreeBalance),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 
@@ -124,7 +125,7 @@ func Test_Balances_Transfer_Success(t *testing.T) {
 	assert.Equal(t, expectedAliceAccountInfo, aliceAccountInfo)
 }
 
-func Test_Balances_Transfer_Invalid_InsufficientBalance(t *testing.T) {
+func Test_Balances_TransferAllowDeath_Invalid_InsufficientBalance(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
@@ -135,9 +136,10 @@ func Test_Balances_Transfer_Invalid_InsufficientBalance(t *testing.T) {
 		"0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22")
 	assert.NoError(t, err)
 
-	transferAmount := big.NewInt(0).SetUint64(constants.Dollar)
+	transferAmount, e := big.NewInt(0).SetString("500000000000000", 10)
+	assert.True(t, e)
 
-	call, err := ctypes.NewCall(metadata, "Balances.transfer", bob, ctypes.NewUCompact(transferAmount))
+	call, err := ctypes.NewCall(metadata, "Balances.transfer_allow_death", bob, ctypes.NewUCompact(transferAmount))
 	assert.NoError(t, err)
 
 	// Create the extrinsic
@@ -153,7 +155,8 @@ func Test_Balances_Transfer_Invalid_InsufficientBalance(t *testing.T) {
 	}
 
 	// Set Account Info
-	balance := big.NewInt(0).Sub(transferAmount, big.NewInt(1))
+	balance, e := big.NewInt(0).SetString("500000000000000", 10)
+	assert.True(t, e)
 	testhelpers.SetStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
 
 	// Sign the transaction using Alice's default account
@@ -173,10 +176,10 @@ func Test_Balances_Transfer_Invalid_InsufficientBalance(t *testing.T) {
 	assert.NoError(t, err)
 
 	res, err := rt.Exec("BlockBuilder_apply_extrinsic", extEnc.Bytes())
-	assert.Equal(t, testhelpers.ApplyExtrinsicResultCustomModuleErr.Bytes(), res)
+	assert.Equal(t, testhelpers.ApplyExtrinsicResultTokenErrorFundsUnavailable.Bytes(), res)
 }
 
-func Test_Balances_Transfer_Invalid_ExistentialDeposit(t *testing.T) {
+func Test_Balances_TransferAllowDeath_Invalid_ExistentialDeposit(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
@@ -187,7 +190,7 @@ func Test_Balances_Transfer_Invalid_ExistentialDeposit(t *testing.T) {
 		"0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22")
 	assert.NoError(t, err)
 
-	call, err := ctypes.NewCall(metadata, "Balances.transfer", bob, ctypes.NewUCompactFromUInt(1))
+	call, err := ctypes.NewCall(metadata, "Balances.transfer_allow_death", bob, ctypes.NewUCompactFromUInt(1))
 	assert.NoError(t, err)
 
 	// Create the extrinsic
@@ -230,7 +233,7 @@ func Test_Balances_Transfer_Invalid_ExistentialDeposit(t *testing.T) {
 	assert.Equal(t, testhelpers.ApplyExtrinsicResultExistentialDepositErr.Bytes(), res)
 }
 
-func Test_Balances_Transfer_Ecdsa_Signature(t *testing.T) {
+func Test_Balances_TransferAllowDeath_Ecdsa_Signature(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
@@ -249,7 +252,7 @@ func Test_Balances_Transfer_Ecdsa_Signature(t *testing.T) {
 
 	transferAmount := big.NewInt(0).SetUint64(constants.Dollar)
 
-	call, err := ctypes.NewCall(metadata, "Balances.transfer", bob, ctypes.NewUCompact(transferAmount))
+	call, err := ctypes.NewCall(metadata, "Balances.transfer_allow_death", bob, ctypes.NewUCompact(transferAmount))
 	assert.NoError(t, err)
 
 	// Create the extrinsic
@@ -308,7 +311,7 @@ func Test_Balances_Transfer_Ecdsa_Signature(t *testing.T) {
 			Free:       scale.MustNewUint128(transferAmount),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 
@@ -332,7 +335,7 @@ func Test_Balances_Transfer_Ecdsa_Signature(t *testing.T) {
 			Free:       scale.MustNewUint128(expectedAliceFreeBalance),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 

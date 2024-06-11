@@ -33,10 +33,10 @@ var (
 		Providers:   3,
 		Sufficients: 4,
 		Data: primitives.AccountData{
-			Free:       sc.NewU128(5),
-			Reserved:   sc.NewU128(6),
-			MiscFrozen: sc.NewU128(7),
-			FeeFrozen:  sc.NewU128(8),
+			Free:     sc.NewU128(5),
+			Reserved: sc.NewU128(6),
+			Frozen:   sc.NewU128(7),
+			Flags:    primitives.ExtraFlags{sc.NewU128(8)},
 		},
 	}
 	blockHashCount = sc.U64(5)
@@ -1379,17 +1379,17 @@ func Test_Module_mutateAccount(t *testing.T) {
 		Providers:   3,
 		Sufficients: 4,
 		Data: primitives.AccountData{
-			Free:       sc.NewU128(1),
-			Reserved:   sc.NewU128(2),
-			MiscFrozen: sc.NewU128(3),
-			FeeFrozen:  sc.NewU128(4),
+			Free:     sc.NewU128(1),
+			Reserved: sc.NewU128(2),
+			Frozen:   sc.NewU128(3),
+			Flags:    primitives.ExtraFlags{sc.NewU128(4)},
 		},
 	}
 	accountData := primitives.AccountData{
-		Free:       sc.NewU128(5),
-		Reserved:   sc.NewU128(6),
-		MiscFrozen: sc.NewU128(7),
-		FeeFrozen:  sc.NewU128(8),
+		Free:     sc.NewU128(5),
+		Reserved: sc.NewU128(6),
+		Frozen:   sc.NewU128(7),
+		Flags:    primitives.ExtraFlags{sc.NewU128(8)},
 	}
 	expectAccountInfo := &primitives.AccountInfo{
 		Nonce:       1,
@@ -1417,10 +1417,10 @@ func Test_Module_mutateAccount_NilData(t *testing.T) {
 		Providers:   3,
 		Sufficients: 4,
 		Data: primitives.AccountData{
-			Free:       sc.NewU128(1),
-			Reserved:   sc.NewU128(2),
-			MiscFrozen: sc.NewU128(3),
-			FeeFrozen:  sc.NewU128(4),
+			Free:     sc.NewU128(1),
+			Reserved: sc.NewU128(2),
+			Frozen:   sc.NewU128(3),
+			Flags:    primitives.ExtraFlags{sc.NewU128(4)},
 		},
 	}
 	expectAccountInfo := &primitives.AccountInfo{

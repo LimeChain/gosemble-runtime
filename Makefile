@@ -164,8 +164,8 @@ start-network-babe:
 	cd ../../../..; \
 	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/substrate-node --dev --execution=wasm
 
-start-network-aura:
-	cp $(BUILD_PATH) polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
+start-network:
+	cp build/runtime.wasm polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
 	cd polkadot-sdk/substrate/bin/node-template/node; \
 	cargo build --release; \
 	cd ../../../..; \

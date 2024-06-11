@@ -208,7 +208,7 @@ func (m Module) ensureUpgraded(who primitives.AccountId) (bool, error) {
 		return false, nil
 	}
 	acc.Data.Flags = acc.Data.Flags.SetNewLogic()
-	if !acc.Data.Reserved.Eq(constants.Zero) && !acc.Data.Frozen.Eq(constants.Zero) {
+	if !acc.Data.Reserved.Eq(constants.Zero) && acc.Data.Frozen.Eq(constants.Zero) {
 		if acc.Providers == 0 {
 			m.logger.Warnf("account with a non-zero reserve balance has no provider refs, acc_id [%s]", hex.EncodeToString(who.Bytes()))
 			acc.Data.Free = sc.Max128(acc.Data.Free, m.constants.ExistentialDeposit)
@@ -324,6 +324,7 @@ func (m Module) decreaseBalance(who primitives.AccountId, value sc.U128, precisi
 	if err != nil {
 		return sc.U128{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}
+	oldBalance := acc.Data.Free
 
 	reducible, err := m.reducibleBalance(who, preservation, fortitude)
 	if err != nil {
@@ -331,20 +332,18 @@ func (m Module) decreaseBalance(who primitives.AccountId, value sc.U128, precisi
 	}
 	if precision == types.PrecisionBestEffort {
 		value = sc.Min128(value, reducible)
-	} else {
+	} else if precision == types.PrecisionExact {
 		if value.Gt(reducible) {
 			return sc.U128{}, primitives.NewDispatchErrorToken(primitives.NewTokenErrorFundsUnavailable())
 		}
 	}
-
-	oldBalance := acc.Data.Free
 
 	newBalance, err := sc.CheckedSubU128(oldBalance, value)
 	if err != nil {
 		return sc.U128{}, primitives.NewDispatchErrorToken(primitives.NewTokenErrorFundsUnavailable())
 	}
 
-	maybeDust, err := m.writeBalance(who, value)
+	maybeDust, err := m.writeBalance(who, newBalance)
 	if err != nil {
 		return sc.U128{}, err
 	}
@@ -474,9 +473,10 @@ func (m Module) tryMutateAccount(who primitives.AccountId, f func(who *primitive
 }
 
 func (m Module) mutateAccount(who primitives.AccountId, maybeAccount *primitives.AccountData, f func(who *primitives.AccountData, _ bool) (sc.Encodable, error)) (sc.Encodable, error) {
-	account := &primitives.AccountData{}
+	data := primitives.DefaultAccountData()
+	account := &data
 	isNew := true
-	if !reflect.DeepEqual(*maybeAccount, primitives.AccountData{}) {
+	if !reflect.DeepEqual(*maybeAccount, primitives.DefaultAccountData()) {
 		account = maybeAccount
 		isNew = false
 	}
@@ -487,7 +487,7 @@ func (m Module) mutateAccount(who primitives.AccountId, maybeAccount *primitives
 	}
 
 	didProvide := account.Free.Gte(m.constants.ExistentialDeposit) && acc.Providers > 0
-	didConsume := !isNew && (!account.Reserved.Eq(constants.Zero) || !account.Free.Eq(constants.Zero))
+	didConsume := !isNew && (!account.Reserved.Eq(constants.Zero) || !account.Frozen.Eq(constants.Zero))
 
 	result, err := f(account, isNew)
 	if err != nil {

@@ -103,7 +103,12 @@ func (m Module) BuildConfig(config []byte) error {
 
 		totalIssuance = totalIssuance.Add(b.Balance)
 
-		_, err := m.Config.StoredMap.Insert(b.AccountId, types.AccountData{
+		_, err := m.Config.StoredMap.IncProviders(b.AccountId)
+		if err != nil {
+			return err
+		}
+
+		_, err = m.Config.StoredMap.Insert(b.AccountId, types.AccountData{
 			Free:     b.Balance,
 			Reserved: sc.NewU128(0),
 			Frozen:   sc.NewU128(0),

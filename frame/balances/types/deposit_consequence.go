@@ -45,7 +45,7 @@ func NewDepositConsequenceBlocked() DepositConsequence {
 func (wc DepositConsequence) IntoResult() error {
 	switch wc.VaryingData[0] {
 	case DepositConsequenceBelowMinimum:
-		return primitives.NewDispatchErrorToken(primitives.NewTokenErrorFundsUnavailable())
+		return primitives.NewDispatchErrorToken(primitives.NewTokenErrorBelowMinimum())
 	case DepositConsequenceCannotCreate:
 		return primitives.NewDispatchErrorToken(primitives.NewTokenErrorCannotCreate())
 	case DepositConsequenceUnknownAsset:

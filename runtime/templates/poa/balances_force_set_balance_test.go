@@ -14,16 +14,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Balances_ForceFree_BadOrigin(t *testing.T) {
+func Test_Balances_ForceSetBalance_BadOrigin(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
 
 	metadata := testhelpers.RuntimeMetadata(t, rt)
 
-	alice, err := ctypes.NewMultiAddressFromAccountID(signature.TestKeyringPairAlice.PublicKey)
+	bob, err := ctypes.NewMultiAddressFromHexAccountID(
+		"0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22")
+	assert.NoError(t, err)
 
-	call, err := ctypes.NewCall(metadata, "Balances.force_unreserve", alice, ctypes.NewU128(*big.NewInt(10000000000)))
+	call, err := ctypes.NewCall(metadata, "Balances.force_set_balance", bob, ctypes.NewUCompactFromUInt(10000000000))
 	assert.NoError(t, err)
 
 	// Create the extrinsic

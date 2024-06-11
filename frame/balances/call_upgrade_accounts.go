@@ -48,8 +48,8 @@ func (c callUpgradeAccounts) FunctionIndex() sc.U8 { return c.Callable.FunctionI
 func (c callUpgradeAccounts) Args() sc.VaryingData { return c.Callable.Args() }
 
 func (c callUpgradeAccounts) BaseWeight() primitives.Weight {
-	// TODO: weight
-	return primitives.WeightZero()
+	accounts := c.Arguments[0].(sc.Sequence[primitives.AccountId])
+	return callUpgradeAccountsWeight(c.module.constants.DbWeight, sc.U64(len(accounts)))
 }
 
 func (_ callUpgradeAccounts) WeighData(baseWeight primitives.Weight) primitives.Weight {

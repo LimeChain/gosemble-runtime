@@ -9,10 +9,6 @@ import (
 )
 
 func (m Module) Metadata() primitives.MetadataModule {
-	metadataIdBalancesCalls := m.mdGenerator.BuildCallsMetadata("Balances", m.functions, &sc.Sequence[primitives.MetadataTypeParameter]{
-		primitives.NewMetadataEmptyTypeParameter("T"),
-		primitives.NewMetadataEmptyTypeParameter("I")})
-
 	mdConstants := metadataConstants{
 		ExistentialDeposit: primitives.ExistentialDeposit{U128: m.constants.ExistentialDeposit},
 		MaxLocks:           primitives.MaxLocks{U32: m.constants.MaxLocks},
@@ -24,12 +20,12 @@ func (m Module) Metadata() primitives.MetadataModule {
 	dataV14 := primitives.MetadataModuleV14{
 		Name:    m.name(),
 		Storage: m.metadataStorage(),
-		Call:    sc.NewOption[sc.Compact](sc.ToCompact(metadataIdBalancesCalls)),
+		Call:    sc.NewOption[sc.Compact](sc.ToCompact(metadata.BalancesCalls)),
 		CallDef: sc.NewOption[primitives.MetadataDefinitionVariant](
 			primitives.NewMetadataDefinitionVariantStr(
 				m.name(),
 				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionFieldWithName(metadataIdBalancesCalls, "self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Balances, Runtime>"),
+					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.BalancesCalls, "self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Balances, Runtime>"),
 				},
 				m.Index,
 				"Call.Balances"),
@@ -290,6 +286,24 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 			),
 		),
 
+		primitives.NewMetadataTypeWithPath(metadata.TypesBalancesAdjustDirection,
+			"AdjustDirection",
+			sc.Sequence[sc.Str]{"frame_support", "traits", "tokens", "misc", "AdjustDirection"}, primitives.NewMetadataTypeDefinitionVariant(
+				sc.Sequence[primitives.MetadataDefinitionVariant]{
+					primitives.NewMetadataDefinitionVariant(
+						"Increase",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+						types.AdjustDirectionIncrease,
+						"AdjustDirection.Increase"),
+					primitives.NewMetadataDefinitionVariant(
+						"Decrease",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+						types.AdjustDirectionDecrease,
+						"AdjustDirection.Decrease"),
+				},
+			),
+		),
+
 		primitives.NewMetadataTypeWithParams(metadata.TypesBalancesErrors,
 			"pallet_balances pallet Error",
 			sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Error"},
@@ -360,5 +374,77 @@ func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 				primitives.NewMetadataEmptyTypeParameter("T"),
 				primitives.NewMetadataEmptyTypeParameter("I"),
 			}),
+
+		primitives.NewMetadataTypeWithParam(metadata.BalancesCalls,
+			"Balance calls",
+			sc.Sequence[sc.Str]{"pallet_balances", "pallet", "Call"},
+			primitives.NewMetadataTypeDefinitionVariant(
+				sc.Sequence[primitives.MetadataDefinitionVariant]{
+					primitives.NewMetadataDefinitionVariant(
+						"transfer_allow_death",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "dest", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesCompactU128, "value", "T::Balance"),
+						},
+						functionTransferAllowDeath,
+						"Transfer some liquid free balance to another account."),
+					primitives.NewMetadataDefinitionVariant(
+						"force_transfer",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "source", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "dest", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesCompactU128, "value", "T::Balance"),
+						},
+						functionForceTransfer,
+						"Exactly as `transfer_allow_death`, except the origin must be root and the source account may be specified."),
+					primitives.NewMetadataDefinitionVariant(
+						"transfer_keep_alive",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "dest", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesCompactU128, "value", "T::Balance"),
+						},
+						functionTransferKeepAlive,
+						"Same as the [`transfer_allow_death`] call, but with a check that the transfer will not kill the origin account."),
+					primitives.NewMetadataDefinitionVariant(
+						"transfer_all",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "dest", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesBool, "keep_alive", "bool"),
+						},
+						functionTransferAll,
+						"Transfer the entire transferable balance from the caller account."),
+					primitives.NewMetadataDefinitionVariant(
+						"force_unreserve",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "who", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "amount", "T::Balance"),
+						},
+						functionForceUnreserve,
+						"Unreserve some balance from a user by force."),
+					primitives.NewMetadataDefinitionVariant(
+						"upgrade_accounts",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceAddress32, "who", "Vec<AccountId>"),
+						},
+						functionForceUpgradeAccounts,
+						"Upgrade a specified account."),
+					primitives.NewMetadataDefinitionVariant(
+						"force_set_balance",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesMultiAddress, "who", "MultiAddress"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesCompactU128, "new_free", "T::Balance"),
+						},
+						functionForceSetBalance,
+						"Set the regular balance of a given account."),
+					primitives.NewMetadataDefinitionVariant(
+						"force_adjust_total_issuance",
+						sc.Sequence[primitives.MetadataTypeDefinitionField]{
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesBalancesAdjustDirection, "direction", "AdjustmentDireciton"),
+							primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesCompactU128, "delta", "T::Balance"),
+						},
+						functionForceAdjustTotalIssuance,
+						"Adjust the total issuance in a saturating way."),
+				}),
+			primitives.NewMetadataEmptyTypeParameter("T")),
 	}
 }

@@ -77,7 +77,7 @@ func Test_BuildConfig(t *testing.T) {
 	keyStorageAccount = append(keyStorageAccount, accId.Bytes()...)
 	accInfo := (*storage).Get(keyStorageAccount)
 	expectedBalance := sc.NewU128(uint64(1000000000000000000))
-	expectedAccInfo := types.AccountInfo{Data: types.AccountData{Free: expectedBalance}, Providers: 1}
+	expectedAccInfo := types.AccountInfo{Data: types.AccountData{Free: expectedBalance, Flags: types.DefaultExtraFlags}, Providers: 1}
 	assert.Equal(t, expectedAccInfo.Bytes(), accInfo)
 
 	// assert total issuance

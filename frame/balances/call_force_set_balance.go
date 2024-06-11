@@ -58,7 +58,7 @@ func (c callForceSetBalance) Args() sc.VaryingData {
 }
 
 func (c callForceSetBalance) BaseWeight() primitives.Weight {
-	return primitives.WeightZero()
+	return callForceSetBalanceCreatingWeight(c.module.constants.DbWeight).Max(callForceSetBalanceKillingWeight(c.module.constants.DbWeight))
 }
 
 func (_ callForceSetBalance) WeighData(baseWeight primitives.Weight) primitives.Weight {
