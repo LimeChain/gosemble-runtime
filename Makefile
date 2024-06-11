@@ -158,6 +158,10 @@ substrate-start-bob:
 	--rpc-port 9946 \
 	--validator
 
+start-network-aura:
+	cd ../../../..; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
+
 start-network-babe:
 	cd polkadot-sdk/substrate/bin/node/cli; \
 	cargo build --release; \

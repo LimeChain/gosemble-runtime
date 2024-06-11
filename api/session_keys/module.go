@@ -25,10 +25,10 @@ type Module struct {
 	sessions []types.Session
 	crypto   io.Crypto
 	memUtils utils.WasmMemoryTranslator
-	logger   log.Logger
+	logger   log.RuntimeLogger
 }
 
-func New(sessions []types.Session, logger log.Logger) Module {
+func New(sessions []types.Session, logger log.RuntimeLogger) Module {
 	return Module{
 		sessions: sessions,
 		crypto:   io.NewCrypto(),

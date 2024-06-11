@@ -151,6 +151,19 @@ func Test_Call_SetCodeWithoutChecks_Dispatch(t *testing.T) {
 	assert.Equal(t, sc.NewOption[primitives.Weight](blockWeights.MaxBlock), res.ActualWeight)
 }
 
+func Test_Call_SetCodeWithoutChecks_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallSetCodeWithoutChecks()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someSetCodeWithoutChecksArgs.Bytes()))
+	assert.Nil(t, err)
+
+	res, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	mockOnSetCode.AssertNotCalled(t, "SetCode", codeBlob)
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	assert.Equal(t, sc.NewOption[primitives.Weight](nil), res.ActualWeight)
+}
+
 func setupCallSetCodeWithoutChecks() primitives.Call {
 	mockOnSetCode = new(mocks.DefaultOnSetCode)
 	return newCallSetCodeWithoutChecks(moduleId, functionSetCodeWithoutChecksIndex, dbWeight, *moduleConstants, mockOnSetCode)

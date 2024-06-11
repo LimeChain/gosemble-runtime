@@ -6,6 +6,7 @@ import (
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/support"
+	"github.com/LimeChain/gosemble/frame/system"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -80,12 +81,10 @@ func (_ callPlanConfigChange) PaysFee(baseWeight primitives.Weight) primitives.P
 }
 
 func (c callPlanConfigChange) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return primitives.PostDispatchInfo{}, err
-	// }
+	err := system.EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	config := args[0].(NextConfigDescriptor)
 

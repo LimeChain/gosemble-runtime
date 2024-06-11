@@ -31,11 +31,13 @@ var (
 
 func Test_RuntimeApi_New(t *testing.T) {
 	target := setupRuntimeApi()
+
 	expect := RuntimeApi{
 		apis: []primitives.ApiModule{
 			mockApiModuleOne,
 			mockApiModuleTwo,
 		},
+		logger: logger,
 	}
 
 	assert.Equal(t, expect, target)

@@ -52,7 +52,7 @@ func Test_TransactionValidityError_Encode(t *testing.T) {
 func Test_TransactionValidityError_Encode_TypeError(t *testing.T) {
 	buffer := &bytes.Buffer{}
 
-	tve := TransactionValidityError(sc.NewVaryingData(sc.U8(6)))
+	tve := TransactionValidityError{sc.NewVaryingData(sc.U8(6))}
 
 	err := tve.Encode(buffer)
 

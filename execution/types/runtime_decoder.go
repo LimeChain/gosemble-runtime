@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/types"
@@ -29,10 +30,10 @@ type runtimeDecoder struct {
 	modules   []types.Module
 	extra     primitives.SignedExtra
 	sudoIndex sc.U8 // Used for additional decoding related to Sudo calls. Default is 0 and not considered a valid sudo index.
-	logger    log.WarnLogger
+	logger    log.RuntimeLogger
 }
 
-func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, sudoIndex sc.U8, logger log.WarnLogger) RuntimeDecoder {
+func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, sudoIndex sc.U8, logger log.RuntimeLogger) RuntimeDecoder {
 	return runtimeDecoder{
 		modules:   modules,
 		extra:     extra,

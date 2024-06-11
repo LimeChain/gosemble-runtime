@@ -36,10 +36,10 @@ type Module struct {
 	runtimeExtrinsic  extrinsic.RuntimeExtrinsic
 	memUtils          utils.WasmMemoryTranslator
 	generator         *primitives.MetadataTypeGenerator
-	logger            log.Logger
+	logger            log.RuntimeLogger
 }
 
-func New(runtimeExtrinsic extrinsic.RuntimeExtrinsic, runtimeApiModules []primitives.RuntimeApiModule, logger log.Logger, generator *primitives.MetadataTypeGenerator) Module {
+func New(runtimeExtrinsic extrinsic.RuntimeExtrinsic, runtimeApiModules []primitives.RuntimeApiModule, logger log.RuntimeLogger, generator *primitives.MetadataTypeGenerator) Module {
 	return Module{
 		runtimeApiModules: runtimeApiModules,
 		runtimeExtrinsic:  runtimeExtrinsic,
