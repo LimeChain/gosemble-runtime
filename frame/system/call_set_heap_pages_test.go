@@ -151,7 +151,21 @@ func Test_Call_SetHeapPages_Dispatch_Success(t *testing.T) {
 	mockLogDepositor.AssertCalled(t, "DepositLog", digestItem)
 }
 
+func Test_Call_SetHeapPages_Dispatch_Success_BadOrigin(t *testing.T) {
+	call := setupCallSetHeapPages()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someSetHeapPagesArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+
+	mockStorageHeapPages.AssertNotCalled(t, "Put", pages)
+	mockLogDepositor.AssertNotCalled(t, "DepositLog", digestItem)
+}
+
 func setupCallSetHeapPages() primitives.Call {
+	mockStorageHeapPages = new(mocks.StorageValue[sc.U64])
 	mockLogDepositor = new(mocks.SystemModule)
 	return newCallSetHeapPages(moduleId, functionSetHeapPagesIndex, dbWeight, mockStorageHeapPages, mockLogDepositor)
 }
