@@ -22,13 +22,20 @@ func Test_AuthorizeUpgrade_DispatchOutcome(t *testing.T) {
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
 
+	// Set Sudo Key
+	err = (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	assert.NoError(t, err)
+
 	testhelpers.InitializeBlock(t, rt, testhelpers.ParentHash, testhelpers.StateRoot, testhelpers.ExtrinsicsRoot, testhelpers.BlockNumber)
 
 	codeSpecVersion101, err := os.ReadFile(testhelpers.RuntimeWasmSpecVersion101)
 	assert.NoError(t, err)
 	codeHash := common.MustBlake2bHash(codeSpecVersion101)
 
-	call, err := ctypes.NewCall(metadata, "System.authorize_upgrade", codeHash)
+	callArg, err := ctypes.NewCall(metadata, "System.authorize_upgrade", codeHash)
+	assert.NoError(t, err)
+
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
 	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)
@@ -67,7 +74,7 @@ func Test_AuthorizeUpgrade_DispatchOutcome(t *testing.T) {
 
 	decodedCount, err := sc.DecodeCompact[sc.U32](buffer)
 	assert.NoError(t, err)
-	assert.Equal(t, sc.U32(3), decodedCount.Number)
+	assert.Equal(t, sc.U32(4), decodedCount.Number)
 
 	testhelpers.AssertEmittedSystemEvent(t, system.EventUpgradeAuthorized, buffer)
 

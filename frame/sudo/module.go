@@ -1,13 +1,14 @@
 package sudo
 
 import (
+	"reflect"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"reflect"
 )
 
 const (
@@ -30,10 +31,10 @@ type Module struct {
 	mdGenerator    *primitives.MetadataTypeGenerator
 	storage        *storage
 	eventDepositor primitives.EventDepositor
-	logger         log.Logger
+	logger         log.RuntimeLogger
 }
 
-func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	functions := make(map[sc.U8]primitives.Call)
 
 	module := Module{

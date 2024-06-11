@@ -31,10 +31,10 @@ type Module struct {
 	decoder     types.RuntimeDecoder
 	memUtils    utils.WasmMemoryTranslator
 	mdGenerator *primitives.MetadataTypeGenerator
-	logger      log.Logger
+	logger      log.RuntimeLogger
 }
 
-func New(executive executive.Module, decoder types.RuntimeDecoder, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(executive executive.Module, decoder types.RuntimeDecoder, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	return Module{
 		executive:   executive,
 		decoder:     decoder,

@@ -81,12 +81,10 @@ func (_ callKillPrefix) PaysFee(baseWeight primitives.Weight) primitives.Pays {
 }
 
 func (c callKillPrefix) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return primitives.PostDispatchInfo{}, err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	prefix := args[0].(sc.Sequence[sc.U8])
 	subkeys := args[1].(sc.U32)

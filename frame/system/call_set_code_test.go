@@ -196,6 +196,20 @@ func Test_Call_SetCode_Dispatch(t *testing.T) {
 	assert.Equal(t, sc.NewOption[primitives.Weight](blockWeights.MaxBlock), res.ActualWeight)
 }
 
+func Test_Call_SetCode_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallSetCode()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someSetCodeArgs.Bytes()))
+	assert.Nil(t, err)
+
+	res, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	mockCodeUpgrader.AssertNotCalled(t, "CanSetCode", codeBlob)
+	mockOnSetCode.AssertNotCalled(t, "SetCode", codeBlob)
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	assert.Equal(t, sc.NewOption[primitives.Weight](nil), res.ActualWeight)
+}
+
 func setupCallSetCode() primitives.Call {
 	mockCodeUpgrader = new(mocks.SystemModule)
 	mockOnSetCode = new(mocks.DefaultOnSetCode)

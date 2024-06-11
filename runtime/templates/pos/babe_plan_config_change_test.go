@@ -48,7 +48,14 @@ func Test_Babe_Plan_Config_Change(t *testing.T) {
 		SecondarySlots: 2,
 	}
 
-	call, err := ctypes.NewCall(metadata, "Babe.plan_config_change", versionedNextConfigData)
+	// Set Sudo Key
+	err := (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	assert.NoError(t, err)
+
+	callArg, err := ctypes.NewCall(metadata, "Babe.plan_config_change", versionedNextConfigData)
+
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
+	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)
 

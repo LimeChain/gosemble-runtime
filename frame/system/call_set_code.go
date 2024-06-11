@@ -86,16 +86,14 @@ func (_ callSetCode) PaysFee(baseWeight primitives.Weight) primitives.Pays {
 }
 
 func (c callSetCode) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return primitives.PostDispatchInfo{}, err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	codeBlob := args[0].(sc.Sequence[sc.U8])
 
-	err := c.codeUpgrader.CanSetCode(codeBlob)
+	err = c.codeUpgrader.CanSetCode(codeBlob)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, err
 	}

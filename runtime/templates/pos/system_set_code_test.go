@@ -62,7 +62,14 @@ func Test_Block_Execution_After_Code_Upgrade(t *testing.T) {
 	codeSpecVersion101, err := os.ReadFile(testhelpers.RuntimeWasmSpecVersion101)
 	assert.NoError(t, err)
 
-	call, err := ctypes.NewCall(metadata, "System.set_code_without_checks", codeSpecVersion101)
+	// Set Sudo Key
+	err = (*storage).Put(append(testhelpers.KeySudoHash, testhelpers.KeyKeyHash...), signature.TestKeyringPairAlice.PublicKey)
+	assert.NoError(t, err)
+
+	callArg, err := ctypes.NewCall(metadata, "System.set_code_without_checks", codeSpecVersion101)
+	assert.NoError(t, err)
+
+	call, err := ctypes.NewCall(metadata, "Sudo.sudo", callArg)
 	assert.NoError(t, err)
 
 	extrinsic := ctypes.NewExtrinsic(call)

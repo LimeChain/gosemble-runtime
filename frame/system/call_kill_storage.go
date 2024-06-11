@@ -77,12 +77,10 @@ func (_ callKillStorage) PaysFee(baseWeight primitives.Weight) primitives.Pays {
 }
 
 func (c callKillStorage) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	// TODO: enable once 'sudo' module is implemented
-	//
-	// err := EnsureRoot(origin)
-	// if err != nil {
-	// 	return primitives.PostDispatchInfo{}, err
-	// }
+	err := EnsureRoot(origin)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, err
+	}
 
 	keys := args[0].(sc.Sequence[sc.Sequence[sc.U8]])
 
