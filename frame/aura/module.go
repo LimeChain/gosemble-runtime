@@ -50,10 +50,10 @@ type Module struct {
 	mdGenerator        *primitives.MetadataTypeGenerator
 	logDepositor       system.LogDepositor
 	disabledValidators primitives.DisabledValidators
-	logger             log.Logger
+	logger             log.RuntimeLogger
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	storage := newStorage()
 
 	return Module{

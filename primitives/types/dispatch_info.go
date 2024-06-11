@@ -50,7 +50,7 @@ func (di DispatchInfo) Bytes() []byte {
 	return sc.EncodedBytes(di)
 }
 
-func (di DispatchInfo) IsMendatory() (sc.Bool, error) {
+func (di DispatchInfo) IsMandatory() (sc.Bool, error) {
 	return di.Class.Is(DispatchClassMandatory)
 }
 

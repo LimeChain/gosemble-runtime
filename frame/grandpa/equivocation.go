@@ -40,10 +40,10 @@ type EquivocationReportSystem struct {
 	grandpaModule           Module
 	authorshipModule        authorship.Module
 	sessionHistoricalModule session_historical.Module
-	logger                  log.Logger
+	logger                  log.RuntimeLogger
 }
 
-func NewEquivocationReportSystem(sessionHistoricalModule session_historical.Module, authorshipModule authorship.Module, logger log.Logger) EquivocationReportSystem {
+func NewEquivocationReportSystem(sessionHistoricalModule session_historical.Module, authorshipModule authorship.Module, logger log.RuntimeLogger) EquivocationReportSystem {
 	return EquivocationReportSystem{
 		authorshipModule:        authorshipModule,
 		sessionHistoricalModule: sessionHistoricalModule,

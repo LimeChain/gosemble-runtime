@@ -22,10 +22,10 @@ const (
 type Module struct {
 	aura     aura.AuraModule
 	memUtils utils.WasmMemoryTranslator
-	logger   log.Logger
+	logger   log.RuntimeLogger
 }
 
-func New(aura aura.AuraModule, logger log.Logger) Module {
+func New(aura aura.AuraModule, logger log.RuntimeLogger) Module {
 	return Module{
 		aura:     aura,
 		memUtils: utils.NewMemoryTranslator(),

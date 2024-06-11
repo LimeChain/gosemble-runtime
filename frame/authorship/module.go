@@ -28,10 +28,10 @@ type module struct {
 	functions    map[sc.U8]primitives.Call
 	systemModule system.Module
 	mdGenerator  *primitives.MetadataTypeGenerator
-	logger       log.Logger
+	logger       log.RuntimeLogger
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	storage := newStorage()
 
 	return module{

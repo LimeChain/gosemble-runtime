@@ -19,7 +19,7 @@ type checkedExtrinsic struct {
 	transactional support.Transactional[primitives.PostDispatchInfo]
 }
 
-func NewCheckedExtrinsic(signer sc.Option[primitives.AccountId], function primitives.Call, extra primitives.SignedExtra, logger log.WarnLogger) primitives.CheckedExtrinsic {
+func NewCheckedExtrinsic(signer sc.Option[primitives.AccountId], function primitives.Call, extra primitives.SignedExtra, logger log.RuntimeLogger) primitives.CheckedExtrinsic {
 	return checkedExtrinsic{
 		signer:        signer,
 		function:      function,
@@ -67,12 +67,12 @@ func (c checkedExtrinsic) Apply(validator primitives.UnsignedValidator, info *pr
 		maybeWho, maybePre = sc.NewOption[primitives.AccountId](nil), sc.NewOption[sc.Sequence[primitives.Pre]](nil)
 	}
 
+	// TODO: revise if the error handling is correct
 	postInfo, err := c.transactional.WithStorageLayer(
 		func() (primitives.PostDispatchInfo, error) {
 			return c.dispatch(maybeWho)
 		},
 	)
-	// TODO: handle error
 
 	if err := c.extra.PostDispatch(maybePre, info, &postInfo, length, err); err != nil {
 		return primitives.PostDispatchInfo{}, err

@@ -30,10 +30,10 @@ type module struct {
 	constants     *consts
 	sessionModule session.Module
 	mdGenerator   *primitives.MetadataTypeGenerator
-	logger        log.Logger
+	logger        log.RuntimeLogger
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	storage := newStorage()
 
 	return module{
