@@ -2,8 +2,9 @@ package types
 
 import (
 	"bytes"
-	sc "github.com/LimeChain/goscale"
 	"math/big"
+
+	sc "github.com/LimeChain/goscale"
 )
 
 var (

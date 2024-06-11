@@ -2,6 +2,7 @@ package balances
 
 import (
 	"bytes"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	primitives "github.com/LimeChain/gosemble/primitives/types"

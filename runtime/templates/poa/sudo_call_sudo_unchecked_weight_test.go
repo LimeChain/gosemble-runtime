@@ -2,9 +2,10 @@ package main
 
 import (
 	"bytes"
-	"github.com/LimeChain/gosemble/primitives/types"
 	"math/big"
 	"testing"
+
+	"github.com/LimeChain/gosemble/primitives/types"
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
