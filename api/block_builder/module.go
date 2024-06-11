@@ -91,7 +91,8 @@ func (m Module) ApplyExtrinsic(dataPtr int32, dataLen int32) int64 {
 	case primitives.DispatchError:
 		dispatchOutcome := primitives.DispatchOutcome(sc.NewVaryingData(typedErr))
 		applyExtrinsicResult, err = primitives.NewApplyExtrinsicResult(dispatchOutcome)
-	default:
+	}
+	if err != nil {
 		m.logger.Critical(err.Error())
 	}
 
