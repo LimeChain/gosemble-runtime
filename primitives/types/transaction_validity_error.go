@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"reflect"
 
 	sc "github.com/LimeChain/goscale"
 )
@@ -17,53 +16,48 @@ const (
 )
 
 // TransactionValidityError Errors that can occur while checking the validity of a transaction.
-type TransactionValidityError sc.VaryingData
+type TransactionValidityError struct {
+	sc.VaryingData
+}
 
 func NewTransactionValidityError(value sc.Encodable) error {
 	// InvalidTransaction = 0 - Transaction is invalid.
-	// UnknownTransaction = 1 - Transaction validity can’t be determined.
+	// UnknownTransaction = 1 - Transaction validity can't be determined.
 	switch value.(type) {
-	case InvalidTransaction, UnknownTransaction:
+	case InvalidTransaction:
+		return TransactionValidityError{sc.NewVaryingData(TransactionValidityErrorInvalidTransaction, value)}
+	case UnknownTransaction:
+		return TransactionValidityError{sc.NewVaryingData(TransactionValidityErrorUnknownTransaction, value)}
 	default:
 		return errInvalidTransactionValidityErrorType
-	}
-	return TransactionValidityError(sc.NewVaryingData(value))
-}
-
-func (err TransactionValidityError) Error() string {
-	if len(err) == 0 {
-		return errInvalidTransactionValidityErrorType.Error()
-	}
-
-	switch err[0] {
-	case TransactionValidityErrorUnknownTransaction:
-		return err[1].(UnknownTransaction).Error()
-	case TransactionValidityErrorInvalidTransaction:
-		return err[1].(InvalidTransaction).Error()
-	default:
-		return errInvalidTransactionValidityErrorType.Error()
 	}
 }
 
 func (e TransactionValidityError) Encode(buffer *bytes.Buffer) error {
-	value := e[0]
-
-	switch reflect.TypeOf(value) {
-	case reflect.TypeOf(*new(InvalidTransaction)):
-		err := TransactionValidityErrorInvalidTransaction.Encode(buffer)
-		if err != nil {
-			return err
-		}
-	case reflect.TypeOf(*new(UnknownTransaction)):
-		err := TransactionValidityErrorUnknownTransaction.Encode(buffer)
-		if err != nil {
-			return err
-		}
+	if len(e.VaryingData) != 2 {
+		return errInvalidTransactionValidityErrorType
+	}
+	switch e.VaryingData[0] {
+	case TransactionValidityErrorUnknownTransaction, TransactionValidityErrorInvalidTransaction:
+		return e.VaryingData.Encode(buffer)
 	default:
 		return errInvalidTransactionValidityErrorType
 	}
+}
 
-	return value.Encode(buffer)
+func (err TransactionValidityError) Error() string {
+	if len(err.VaryingData) != 2 {
+		return errInvalidTransactionValidityErrorType.Error()
+	}
+
+	switch err.VaryingData[0] {
+	case TransactionValidityErrorUnknownTransaction:
+		return err.VaryingData[1].(UnknownTransaction).Error()
+	case TransactionValidityErrorInvalidTransaction:
+		return err.VaryingData[1].(InvalidTransaction).Error()
+	default:
+		return errInvalidTransactionValidityErrorType.Error()
+	}
 }
 
 func DecodeTransactionValidityError(buffer *bytes.Buffer) (TransactionValidityError, error) {
@@ -96,10 +90,6 @@ func DecodeTransactionValidityError(buffer *bytes.Buffer) (TransactionValidityEr
 	default:
 		return TransactionValidityError{}, errInvalidTransactionValidityErrorType
 	}
-}
-
-func (e TransactionValidityError) Bytes() []byte {
-	return sc.EncodedBytes(e)
 }
 
 func (e TransactionValidityError) MetadataDefinition(typesInvalidTxId int, typesUnknownTxId int) *MetadataTypeDefinition {

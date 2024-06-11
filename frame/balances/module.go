@@ -36,7 +36,7 @@ type Module struct {
 	mdGenerator *primitives.MetadataTypeGenerator
 }
 
-func New(index sc.U8, config *Config, logger log.DebugLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
+func New(index sc.U8, config *Config, logger log.RuntimeLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	constants := newConstants(config.DbWeight, config.MaxLocks, config.MaxReserves, config.ExistentialDeposit)
 	storage := newStorage()
 

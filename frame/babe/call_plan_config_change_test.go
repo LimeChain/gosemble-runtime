@@ -160,6 +160,18 @@ func Test_Call_PlanConfigChange_Dispatch(t *testing.T) {
 	mockStoragePendingEpochConfigChange.AssertCalled(t, "Put", nextConfig)
 }
 
+func Test_Call_PlanConfigChange_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallPlanConfigChange()
+
+	call, err := call.DecodeArgs(bytes.NewBuffer(somePlanConfigChangeArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	mockStoragePendingEpochConfigChange.AssertNotCalled(t, "Put", nextConfig)
+}
+
 func setupCallPlanConfigChange() primitives.Call {
 	mockStoragePendingEpochConfigChange = new(mocks.StorageValue[NextConfigDescriptor])
 

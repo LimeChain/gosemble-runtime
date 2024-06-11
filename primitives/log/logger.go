@@ -9,86 +9,59 @@ import (
 	"github.com/LimeChain/gosemble/utils"
 )
 
-const (
-	CriticalLevel = iota
-	WarnLevel
-	InfoLevel
-	DebugLevel
-	TraceLevel
-)
-
-const target = "runtime"
-
-type TraceLogger interface {
-	Trace(message string)
-	Tracef(message string, a ...any)
-}
-
-type DebugLogger interface {
-	TraceLogger
-	Debug(message string)
-	Debugf(message string, a ...any)
-}
-
-type WarnLogger interface {
-	DebugLogger
-	Warn(message string)
-	Warnf(message string, a ...any)
-}
-
-type Logger struct {
+type logger struct {
 	memUtils utils.WasmMemoryTranslator
 }
 
-func NewLogger() Logger {
-	return Logger{
+func NewLogger() RuntimeLogger {
+	return logger{
 		memUtils: utils.NewMemoryTranslator(),
 	}
 }
 
-func (l Logger) Critical(message string) {
+func (l logger) Critical(message string) {
 	l.log(CriticalLevel, []byte(target), []byte(message))
 	panic(message)
 }
 
-func (l Logger) Criticalf(message string, a ...any) {
+func (l logger) Criticalf(message string, a ...any) {
 	l.Critical(fmt.Sprintf(message, a...))
 }
 
-func (l Logger) Warn(message string) {
+func (l logger) Warn(message string) {
 	l.log(WarnLevel, []byte(target), []byte(message))
 }
 
-func (l Logger) Warnf(message string, a ...any) {
+func (l logger) Warnf(message string, a ...any) {
 	l.Warn(fmt.Sprintf(message, a...))
 }
 
-func (l Logger) Info(message string) {
+func (l logger) Info(message string) {
 	l.log(InfoLevel, []byte(target), []byte(message))
 }
 
-func (l Logger) Infof(message string, a ...any) {
+func (l logger) Infof(message string, a ...any) {
 	l.Info(fmt.Sprintf(message, a...))
 }
 
-func (l Logger) Debug(message string) {
+func (l logger) Debug(message string) {
 	l.log(DebugLevel, []byte(target), []byte(message))
 }
 
-func (l Logger) Debugf(message string, a ...any) {
+func (l logger) Debugf(message string, a ...any) {
 	l.Debug(fmt.Sprintf(message, a...))
 }
 
-func (l Logger) Trace(message string) {
+func (l logger) Trace(message string) {
 	l.log(TraceLevel, []byte(target), []byte(message))
 }
 
-func (l Logger) Tracef(message string, a ...any) {
+func (l logger) Tracef(message string, a ...any) {
 	l.Trace(fmt.Sprintf(message, a...))
 }
 
-func (l Logger) log(level int32, target []byte, message []byte) {
+func (l logger) log(level logLevel, target []byte, message []byte) {
 	targetOffsetSize := l.memUtils.BytesToOffsetAndSize(target)
 	messageOffsetSize := l.memUtils.BytesToOffsetAndSize(message)
-	env.ExtLoggingLogVersion1(level, targetOffsetSize, messageOffsetSize)
+	env.ExtLoggingLogVersion1(int32(level), targetOffsetSize, messageOffsetSize)
 }

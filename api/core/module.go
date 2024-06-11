@@ -34,10 +34,10 @@ type Module struct {
 	runtimeVersion *primitives.RuntimeVersion
 	memUtils       utils.WasmMemoryTranslator
 	mdGenerator    *primitives.MetadataTypeGenerator
-	logger         log.Logger
+	logger         log.RuntimeLogger
 }
 
-func New(module executive.Module, decoder types.RuntimeDecoder, runtimeVersion *primitives.RuntimeVersion, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(module executive.Module, decoder types.RuntimeDecoder, runtimeVersion *primitives.RuntimeVersion, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	return Module{
 		executive:      module,
 		decoder:        decoder,

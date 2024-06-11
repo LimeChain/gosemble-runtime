@@ -62,10 +62,10 @@ type module struct {
 	systemModule             system.Module
 	sessionModule            session.Module
 	mdGenerator              *primitives.MetadataTypeGenerator
-	logger                   log.Logger
+	logger                   log.RuntimeLogger
 }
 
-func New(index sc.U8, config *Config, logger log.Logger, mdGenerator *primitives.MetadataTypeGenerator) Module {
+func New(index sc.U8, config *Config, logger log.RuntimeLogger, mdGenerator *primitives.MetadataTypeGenerator) Module {
 	functions := map[sc.U8]primitives.Call{}
 
 	moduleInstance := module{

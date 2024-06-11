@@ -22,10 +22,10 @@ const (
 type Module struct {
 	babe     babe.Module
 	memUtils utils.WasmMemoryTranslator
-	logger   log.Logger
+	logger   log.RuntimeLogger
 }
 
-func New(babe babe.Module, logger log.Logger) Module {
+func New(babe babe.Module, logger log.RuntimeLogger) Module {
 	return Module{
 		babe:     babe,
 		memUtils: utils.NewMemoryTranslator(),

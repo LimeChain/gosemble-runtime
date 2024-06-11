@@ -77,7 +77,7 @@ func Test_IsMendatory(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := DispatchInfo{Class: tt.class}.IsMendatory()
+			res, err := DispatchInfo{Class: tt.class}.IsMandatory()
 			assert.Equal(t, tt.expectedErr, err)
 			assert.Equal(t, sc.Bool(tt.expectedRes), res)
 		})

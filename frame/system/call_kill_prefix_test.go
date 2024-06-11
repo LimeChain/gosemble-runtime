@@ -148,6 +148,17 @@ func Test_Call_KillPrefix_Dispatch(t *testing.T) {
 	mockIoStorage.AssertCalled(t, "ClearPrefix", prefixBytes, sc.NewOption[sc.U32](subkeys).Bytes())
 }
 
+func Test_Call_KillPrefix_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallKillPrefix()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someKillPrefixArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	mockIoStorage.AssertNotCalled(t, "ClearPrefix", prefixBytes, sc.NewOption[sc.U32](subkeys).Bytes())
+}
+
 func setupCallKillPrefix() primitives.Call {
 	initMockStorage()
 	return newCallKillPrefix(moduleId, functionKillPrefixIndex, dbWeight, mockIoStorage)

@@ -32,7 +32,7 @@ import (
 )
 
 const RuntimeWasm = "../../../build/runtime-benchmarks.wasm"
-const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_spec_version_101.wasm"
+const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_poa_template_spec_version_101.wasm"
 
 const (
 	SystemIndex sc.U8 = iota
@@ -288,6 +288,16 @@ func AssertStorageDigestItem(t *testing.T, storage *runtime.Storage, digestItem 
 	if decodeDigest.Sequence[0].VaryingData[0] == digestItem {
 		assert.True(t, true)
 	}
+}
+
+func AssertEmittedSudoEvent(t assert.TestingT, event sc.U8, buffer *bytes.Buffer) {
+	var emitted bool
+	eventRecord, err := types.DecodeEventRecord(SudoIndex, sudo.DecodeEvent, buffer)
+	assert.NoError(t, err)
+	if eventRecord.Event.VaryingData[1] == event {
+		emitted = true
+	}
+	assert.True(t, emitted)
 }
 
 func SetStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byte, freeBalance *big.Int, nonce uint32) (storageKey []byte, info gossamertypes.AccountInfo) {

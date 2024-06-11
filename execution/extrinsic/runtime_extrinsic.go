@@ -26,10 +26,10 @@ type runtimeExtrinsic struct {
 	modules     []primitives.Module
 	extra       primitives.SignedExtra
 	mdGenerator *primitives.MetadataTypeGenerator
-	logger      log.DebugLogger
+	logger      log.RuntimeLogger
 }
 
-func New(modules []primitives.Module, extra primitives.SignedExtra, mdGenerator *primitives.MetadataTypeGenerator, logger log.DebugLogger) RuntimeExtrinsic {
+func New(modules []primitives.Module, extra primitives.SignedExtra, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) RuntimeExtrinsic {
 	return runtimeExtrinsic{
 		modules:     modules,
 		extra:       extra,

@@ -8,10 +8,10 @@ import (
 
 type RuntimeApi struct {
 	apis   []primitives.ApiModule
-	logger log.Logger
+	logger log.RuntimeLogger
 }
 
-func NewRuntimeApi(apis []primitives.ApiModule, logger log.Logger) RuntimeApi {
+func NewRuntimeApi(apis []primitives.ApiModule, logger log.RuntimeLogger) RuntimeApi {
 	return RuntimeApi{apis: apis, logger: logger}
 }
 

@@ -84,7 +84,7 @@ type module struct {
 	constants          *consts
 	functions          map[sc.U8]primitives.Call
 	storage            *storage
-	logger             log.Logger
+	logger             log.RuntimeLogger
 	systemModule       system.Module
 	disabledValidators primitives.DisabledValidators
 	epochChangeTrigger EpochChangeTrigger
@@ -92,7 +92,7 @@ type module struct {
 	mdGenerator        *primitives.MetadataTypeGenerator
 }
 
-func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.Logger) Module {
+func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	storage := newStorage()
 
 	functions := map[sc.U8]primitives.Call{

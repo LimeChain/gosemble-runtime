@@ -153,6 +153,18 @@ func Test_Call_KillStorage_Dispatch(t *testing.T) {
 	mockIoStorage.AssertCalled(t, "Clear", []byte("testkey2"))
 }
 
+func Test_Call_KillStorage_Dispatch_BadOrigin(t *testing.T) {
+	call := setupCallKillStorage()
+	call, err := call.DecodeArgs(bytes.NewBuffer(someKillStorageArgs.Bytes()))
+	assert.Nil(t, err)
+
+	_, dispatchErr := call.Dispatch(primitives.NewRawOriginNone(), call.Args())
+
+	assert.Equal(t, primitives.NewDispatchErrorBadOrigin(), dispatchErr)
+	mockIoStorage.AssertNotCalled(t, "Clear", []byte("testkey1"))
+	mockIoStorage.AssertNotCalled(t, "Clear", []byte("testkey2"))
+}
+
 func setupCallKillStorage() primitives.Call {
 	initMockStorage()
 	return newCallKillStorage(moduleId, functionKillStorageIndex, dbWeight, mockIoStorage)

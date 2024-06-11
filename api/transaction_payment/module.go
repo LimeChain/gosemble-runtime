@@ -28,10 +28,10 @@ type Module struct {
 	decoder    types.RuntimeDecoder
 	txPayments transaction_payment.Module
 	memUtils   utils.WasmMemoryTranslator
-	logger     log.Logger
+	logger     log.RuntimeLogger
 }
 
-func New(decoder types.RuntimeDecoder, txPayments transaction_payment.Module, logger log.Logger) Module {
+func New(decoder types.RuntimeDecoder, txPayments transaction_payment.Module, logger log.RuntimeLogger) Module {
 	return Module{
 		decoder:    decoder,
 		txPayments: txPayments,
