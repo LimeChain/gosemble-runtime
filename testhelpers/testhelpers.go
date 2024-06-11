@@ -30,7 +30,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-const RuntimeWasm = "../../../build/runtime.wasm"
+const RuntimeWasm = "../../../build/runtime-benchmarks.wasm"
 const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_poa_template_spec_version_101.wasm"
 
 const (

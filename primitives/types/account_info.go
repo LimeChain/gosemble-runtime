@@ -8,6 +8,14 @@ import (
 
 type RefCount = sc.U32
 
+func DefaultAccountInfo() AccountInfo {
+	return AccountInfo{
+		Data: AccountData{
+			Flags: DefaultExtraFlags,
+		},
+	}
+}
+
 type AccountInfo struct {
 	Nonce       AccountIndex
 	Consumers   RefCount

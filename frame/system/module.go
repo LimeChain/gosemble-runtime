@@ -252,24 +252,7 @@ func (m module) StorageLastRuntimeUpgradeSet(lrui types.LastRuntimeUpgradeInfo) 
 }
 
 func (m module) StorageAccount(key types.AccountId) (types.AccountInfo, error) {
-	accInfo, err := m.storage.Account.Get(key)
-	if err != nil {
-		return types.AccountInfo{}, err
-	}
-
-	if reflect.DeepEqual(accInfo, types.AccountInfo{}) {
-		return types.AccountInfo{
-			Nonce:       0,
-			Consumers:   0,
-			Providers:   0,
-			Sufficients: 0,
-			Data: primitives.AccountData{
-				Flags: primitives.DefaultExtraFlags,
-			},
-		}, nil
-	}
-
-	return accInfo, nil
+	return m.storage.Account.Get(key)
 }
 
 func (m module) StorageAccountSet(key types.AccountId, value types.AccountInfo) {
@@ -465,24 +448,7 @@ func (m module) ResetEvents() {
 }
 
 func (m module) Get(key primitives.AccountId) (primitives.AccountInfo, error) {
-	accInfo, err := m.storage.Account.Get(key)
-	if err != nil {
-		return types.AccountInfo{}, err
-	}
-
-	if reflect.DeepEqual(accInfo, types.AccountInfo{}) {
-		return types.AccountInfo{
-			Nonce:       0,
-			Consumers:   0,
-			Providers:   0,
-			Sufficients: 0,
-			Data: primitives.AccountData{
-				Flags: primitives.DefaultExtraFlags,
-			},
-		}, nil
-	}
-
-	return accInfo, nil
+	return m.storage.Account.Get(key)
 }
 
 func (m module) CanDecProviders(who primitives.AccountId) (bool, error) {
