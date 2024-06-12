@@ -22,7 +22,7 @@ import (
 
 var (
 	dateTime    = time.Date(2023, time.January, 2, 3, 4, 5, 6, time.UTC)
-	storageRoot = common.MustHexToHash("0xd940e147feef433028c8ca2db9ef6c7c51bf6e9538b81301fff3ff24950fa056") // Depends on date
+	storageRoot = common.MustHexToHash("0x104a0c104217efdf4c8a6adb259ed24ed581fdf6afb61fc5189b4c1162244955") // Depends on date
 )
 
 func Test_BlockExecution(t *testing.T) {

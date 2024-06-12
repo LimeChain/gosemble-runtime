@@ -475,14 +475,11 @@ func (m module) TryMutateExists(who primitives.AccountId, f func(*primitives.Acc
 	if err != nil {
 		return nil, err
 	}
-	isDefault := false
-	if !reflect.DeepEqual(account.Data, primitives.DefaultAccountData()) {
-		isDefault = true
-	}
 
-	data := primitives.DefaultAccountData()
-	someData := &data
-	if isDefault {
+	defaultData := primitives.DefaultAccountData()
+	isDefault := reflect.DeepEqual(account.Data, defaultData)
+	someData := &defaultData
+	if !isDefault {
 		someData = &account.Data
 	}
 
