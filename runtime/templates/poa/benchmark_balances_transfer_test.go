@@ -6,8 +6,10 @@ import (
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,14 +18,14 @@ import (
 // * Transfer will kill the sender account.
 // * Transfer will create the recipient account.
 func BenchmarkBalancesTransferAllowDeath(b *testing.B) {
-	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_transfer_weight.go", func(i *benchmarking.Instance) {
+	benchmarking.RunDispatchCall(b, "../../../frame/balances/call_transfer_allow_death_weight.go", func(i *benchmarking.Instance) {
 		balance := existentialMultiplier * existentialAmount
 		transferAmount := existentialAmount*(existentialMultiplier-1) + 1
 
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
-			Producers:   0,
+			Producers:   1,
 			Sufficients: 0,
 			Data: gossamertypes.AccountData{
 				Free:       scale.MustNewUint128(big.NewInt(balance)),
@@ -36,8 +38,12 @@ func BenchmarkBalancesTransferAllowDeath(b *testing.B) {
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
 		assert.NoError(b, err)
 
+		keyTotalIssuance := append(testhelpers.KeyBalancesHash, testhelpers.KeyTotalIssuanceHash...)
+		err = (*i.Storage()).Put(keyTotalIssuance, sc.NewU128(balance).Bytes())
+		assert.NoError(b, err)
+
 		err = i.ExecuteExtrinsic(
-			"Balances.transfer",
+			"Balances.transfer_allow_death",
 			types.NewRawOriginSigned(aliceAccountId),
 			bobAddress,
 			ctypes.NewUCompact(big.NewInt(transferAmount)),

@@ -17,7 +17,7 @@ func BenchmarkBalancesForceFree(b *testing.B) {
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
-			Producers:   0,
+			Producers:   1,
 			Sufficients: 0,
 			Data: gossamertypes.AccountData{
 				Free:       scale.MustNewUint128(big.NewInt(existentialAmount)),
