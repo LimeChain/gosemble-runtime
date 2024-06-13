@@ -93,7 +93,7 @@ type module struct {
 }
 
 func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 
 	functions := map[sc.U8]primitives.Call{
 		functionPlanConfigChangeIndex: newCallPlanConfigChange(index, functionPlanConfigChangeIndex, config.DbWeight, storage.PendingEpochConfigChange),

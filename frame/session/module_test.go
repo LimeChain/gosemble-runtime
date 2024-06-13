@@ -54,6 +54,7 @@ var (
 )
 
 var (
+	mockStorage          *mocks.IoStorage
 	mockSystemModule     *mocks.SystemModule
 	mockShouldEndSession *mocks.ShouldEndSession
 	mockSessionHandler   *MockSessionHandler
@@ -610,11 +611,12 @@ func Test_Module_Metadata(t *testing.T) {
 }
 
 func setupModule() module {
+	mockStorage = new(mocks.IoStorage)
 	mockSystemModule = new(mocks.SystemModule)
 	mockShouldEndSession = new(mocks.ShouldEndSession)
 	mockSessionHandler = new(MockSessionHandler)
 
-	config := NewConfig(dbWeight, blockWeights, mockSystemModule, mockShouldEndSession, mockSessionHandler, DefaultManager{})
+	config := NewConfig(mockStorage, dbWeight, blockWeights, mockSystemModule, mockShouldEndSession, mockSessionHandler, DefaultManager{})
 
 	initMockStorage()
 

@@ -22,6 +22,7 @@ var (
 )
 
 var (
+	mockStorage               *mocks.IoStorage
 	mockTypeMutateAccountData = mock.AnythingOfType("func(*types.AccountData) (goscale.Encodable, error)")
 	logger                    = log.NewLogger()
 )
@@ -835,8 +836,9 @@ func Test_Module_Metadata(t *testing.T) {
 }
 
 func setupModule() Module {
+	mockStorage = new(mocks.IoStorage)
 	mockStoredMap = new(mocks.StoredMap)
-	config := NewConfig(dbWeight, maxLocks, maxReserves, existentialDeposit, mockStoredMap)
+	config := NewConfig(mockStorage, dbWeight, maxLocks, maxReserves, existentialDeposit, mockStoredMap)
 
 	fromAccountData = &primitives.AccountData{
 		Free: sc.NewU128(5),

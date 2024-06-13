@@ -2,6 +2,7 @@ package sudo
 
 import (
 	"github.com/LimeChain/gosemble/frame/support"
+	"github.com/LimeChain/gosemble/primitives/io"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -14,8 +15,8 @@ type storage struct {
 	Key support.StorageValue[primitives.AccountId]
 }
 
-func newStorage() *storage {
+func newStorage(s io.Storage) *storage {
 	return &storage{
-		Key: support.NewHashStorageValue(keySudo, keyKey, primitives.DecodeAccountId),
+		Key: support.NewHashStorageValue(s, keySudo, keyKey, primitives.DecodeAccountId),
 	}
 }

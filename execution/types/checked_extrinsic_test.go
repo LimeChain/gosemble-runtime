@@ -43,6 +43,8 @@ var (
 )
 
 var (
+	mockStorage           *mocks.IoStorage
+	mockTransactionBroker *mocks.IoTransactionBroker
 	mockTransactional     *mocks.IoTransactional[types.PostDispatchInfo]
 	mockUnsignedValidator *mocks.UnsignedValidator
 
@@ -387,12 +389,13 @@ func Test_CheckedExtrinsic_dispatch_Fails(t *testing.T) {
 }
 
 func setupCheckedExtrinsic(signer sc.Option[types.AccountId]) checkedExtrinsic {
+	mockStorage = new(mocks.IoStorage)
 	mockCall = new(mocks.Call)
 	mockSignedExtra = new(mocks.SignedExtra)
 	mockTransactional = new(mocks.IoTransactional[types.PostDispatchInfo])
 	mockUnsignedValidator = new(mocks.UnsignedValidator)
 
-	target := NewCheckedExtrinsic(signer, mockCall, mockSignedExtra, logger).(checkedExtrinsic)
+	target := NewCheckedExtrinsic(signer, mockCall, mockSignedExtra, mockStorage, mockTransactionBroker, logger).(checkedExtrinsic)
 	target.transactional = mockTransactional
 
 	return target

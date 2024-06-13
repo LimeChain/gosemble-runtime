@@ -2,6 +2,8 @@ package sudo
 
 import (
 	"errors"
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
@@ -9,7 +11,6 @@ import (
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (
@@ -38,6 +39,7 @@ var (
 	dispatchOutomeErr, _                  = primitives.NewDispatchOutcome(dispatchErrOther)
 )
 var (
+	mockStorage        *mocks.IoStorage
 	mockEventDepositor *mocks.EventDepositor
 	mockStorageKey     *mocks.StorageValue[primitives.AccountId]
 	mockCall           *mocks.Call
@@ -342,11 +344,12 @@ func Test_Module_Metadata(t *testing.T) {
 }
 
 func setupModule() Module {
+	mockStorage = new(mocks.IoStorage)
 	mockEventDepositor = new(mocks.EventDepositor)
 	mockStorageKey = new(mocks.StorageValue[primitives.AccountId])
 	mockCall = new(mocks.Call)
 
-	config := NewConfig(dbWeight, mockEventDepositor)
+	config := NewConfig(mockStorage, dbWeight, mockEventDepositor)
 
 	target := New(moduleId, config, mdGenerator, log.NewLogger())
 

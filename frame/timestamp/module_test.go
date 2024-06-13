@@ -18,6 +18,7 @@ var (
 	}
 	minimumPeriod = sc.U64(5)
 	ts            = sc.U64(1000)
+	mockIoStorage *mocks.IoStorage
 	mockCall      *mocks.Call
 )
 
@@ -389,12 +390,13 @@ func Test_Module_Metadata(t *testing.T) {
 }
 
 func setupModule() Module {
+	mockIoStorage = new(mocks.IoStorage)
 	mockOnTimestampSet = new(mocks.OnTimestampSet)
 	mockStorageNow = new(mocks.StorageValue[sc.U64])
 	mockStorageDidUpdate = new(mocks.StorageValue[sc.Bool])
 	mockCall = new(mocks.Call)
 
-	config := NewConfig(mockOnTimestampSet, dbWeight, minimumPeriod)
+	config := NewConfig(mockIoStorage, mockOnTimestampSet, dbWeight, minimumPeriod)
 
 	target := New(moduleId, config, mdGenerator)
 	target.storage.DidUpdate = mockStorageDidUpdate

@@ -3,14 +3,15 @@ package system
 import (
 	"testing"
 
+	"github.com/LimeChain/gosemble/hooks"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/mocks"
-	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	onSetCode defaultOnSetCode
+	onSetCode hooks.OnSetCode
 )
 
 var (
@@ -35,16 +36,10 @@ func Test_DefaultOnSetCode_SetCode(t *testing.T) {
 
 	codeBlob := sc.BytesToSequenceU8([]byte{1, 2, 3})
 
-	systemModule.On("StorageCodeSet", codeBlob).Return()
-	systemModule.On("DepositLog", primitives.NewDigestItemRuntimeEnvironmentUpgrade()).Return()
-	systemModule.On("GetIndex").Return(sc.U8(moduleId))
-	systemModule.On("DepositEvent", primitives.NewEvent(moduleId, EventCodeUpdated)).Return()
+	systemModule.On("UpdateCodeInStorage", codeBlob).Return()
 
 	err := onSetCode.SetCode(codeBlob)
 
 	assert.Nil(t, err)
-	systemModule.AssertCalled(t, "StorageCodeSet", codeBlob)
-	systemModule.AssertCalled(t, "DepositLog", primitives.NewDigestItemRuntimeEnvironmentUpgrade())
-	systemModule.AssertCalled(t, "GetIndex")
-	systemModule.AssertCalled(t, "DepositEvent", primitives.NewEvent(sc.U8(moduleId), EventCodeUpdated))
+	systemModule.AssertCalled(t, "UpdateCodeInStorage", codeBlob)
 }

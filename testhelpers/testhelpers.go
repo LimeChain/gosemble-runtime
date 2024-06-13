@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
-	"github.com/LimeChain/gosemble/frame/session"
 	"math/big"
 	"testing"
+
+	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
+	"github.com/LimeChain/gosemble/frame/session"
 
 	"github.com/LimeChain/gosemble/frame/sudo"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/balances"
-	"github.com/LimeChain/gosemble/frame/session"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
@@ -32,11 +32,9 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-const POLKADOT_RUNTIME = "../build/polkadot_runtime-v9400.compact.compressed.wasm"
-const NODE_TEMPLATE_RUNTIME = "../build/node_template_runtime.wasm"
-const WASM_RUNTIME = "../build/runtime.wasm"
-const PARACHAIN_RUNTIME = "../build/parachain_runtime.wasm"
-const ROCOCO_PARACHAIN_RUNTIME = "../build/rococo_parachain_runtime.wasm"
+const RuntimeWasm = "../../../build/runtime-benchmarks.wasm"
+const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_poa_template_spec_version_101.wasm"
+const ParachainWasm = "../../../build/parachain.wasm"
 
 const (
 	SystemIndex sc.U8 = iota
@@ -110,11 +108,16 @@ var (
 
 // Sudo storage keys
 var (
-	parentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
-	stateRoot      = common.MustHexToHash("0x14cf3fe7f5666e63d0981d80c69b6b8bebbb7c94e3eeacaeca27ae6cfa328631")
-	extrinsicsRoot = common.MustHexToHash("0x105165e71964828f2b8d1fd89904602cfb9b8930951d87eb249aa2d7c4b51ee7")
-	blockNumber    = uint64(1)
-	sealDigest     = gossamertypes.SealDigest{
+	KeySudoHash, _ = common.Twox128Hash([]byte("Sudo"))
+	KeyKeyHash, _  = common.Twox128Hash([]byte("Key"))
+)
+
+var (
+	ParentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
+	StateRoot      = common.MustHexToHash("0x14cf3fe7f5666e63d0981d80c69b6b8bebbb7c94e3eeacaeca27ae6cfa328631")
+	ExtrinsicsRoot = common.MustHexToHash("0x105165e71964828f2b8d1fd89904602cfb9b8930951d87eb249aa2d7c4b51ee7")
+	BlockNumber    = uint64(1)
+	SealDigest     = gossamertypes.SealDigest{
 		ConsensusEngineID: gossamertypes.BabeEngineID,
 		// bytes for SealDigest that was created in setupHeaderFile function
 		Data: []byte{158, 127, 40, 221, 220, 242, 124, 30, 107, 50, 141, 86, 148, 195, 104, 213, 178, 236, 93, 190,
@@ -168,7 +171,7 @@ var (
 	dispatchOutcomeSessionNoKeysErr, _ = primitives.NewDispatchOutcome(
 		primitives.NewDispatchErrorModule(
 			primitives.CustomModuleError{
-				Index: 7,
+				Index: SessionIndex,
 				Err:   sc.U32(session.ErrorNoKeys),
 			}))
 
@@ -202,31 +205,11 @@ var (
 // and use the "Client" type instead
 
 func NewRuntimeInstance(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
-	tt := trie.NewEmptyTrie()
+	tt := inmemory.NewEmptyTrie()
 	runtime := wazero_runtime.NewTestInstance(t, RuntimeWasm, wazero_runtime.TestWithTrie(tt))
-func newTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
-	tt := inmemory.NewEmptyTrie()
-	runtime := wazero_runtime.NewTestInstance(t, WASM_RUNTIME, wazero_runtime.TestWithTrie(tt))
 	return runtime, &runtime.Context.Storage
 }
 
-func newRococoRustTestRuntime(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
-	tt := inmemory.NewEmptyTrie()
-	runtime := wazero_runtime.NewTestInstance(t, ROCOCO_PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(tt))
-	return runtime, &runtime.Context.Storage
-}
-
-func newRococoTestRuntimeWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
-	runtime := wazero_runtime.NewTestInstance(t, ROCOCO_PARACHAIN_RUNTIME, wazero_runtime.TestWithTrie(trie))
-	return runtime, &runtime.Context.Storage
-}
-
-func newTestRuntimeWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
-	runtime := wazero_runtime.NewTestInstance(t, WASM_RUNTIME, wazero_runtime.TestWithTrie(trie))
-	return runtime, &runtime.Context.Storage
-}
-
-func newTestRuntimeFromCode(t *testing.T, parentRuntime *wazero_runtime.Instance, code []byte) (*wazero_runtime.Instance, *runtime.Storage) {
 func NewRuntimeInstanceFromCode(t *testing.T, parentRuntime *wazero_runtime.Instance, code []byte) (*wazero_runtime.Instance, *runtime.Storage) {
 	cfg := wazero_runtime.Config{
 		Storage: parentRuntime.Context.Storage,

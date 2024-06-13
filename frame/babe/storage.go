@@ -54,27 +54,27 @@ type storage struct {
 	UnderConstruction        support.StorageMap[sc.U32, babetypes.Randomness]
 }
 
-func newStorage() *storage {
+func newStorage(s io.Storage) *storage {
 	hashing := io.NewHashing()
 
 	return &storage{
-		Authorities:              support.NewHashStorageValue(keyBabe, keyAuthorities, primitives.DecodeAuthorityList),
-		AuthorVrfRandomness:      support.NewHashStorageValue(keyBabe, keyAuthorVrfRandomness, decodeOptionRandomness),
-		CurrentSlot:              support.NewHashStorageValue(keyBabe, keyCurrentSlot, sc.DecodeU64),
-		EpochConfig:              support.NewHashStorageValue(keyBabe, keyEpochConfig, babetypes.DecodeEpochConfiguration),
-		EpochIndex:               support.NewHashStorageValue(keyBabe, keyEpochIndex, sc.DecodeU64),
-		EpochStart:               support.NewHashStorageValue(keyBabe, keyEpochStart, babetypes.DecodeEpochStartBlocks),
-		GenesisSlot:              support.NewHashStorageValue(keyBabe, keyGenesisSlot, sc.DecodeU64),
-		Initialized:              support.NewHashStorageValue(keyBabe, keyInitialized, decodePreDigest),
-		Lateness:                 support.NewHashStorageValue(keyBabe, keyLateness, sc.DecodeU64),
-		NextAuthorities:          support.NewHashStorageValue(keyBabe, keyNextAuthorities, primitives.DecodeAuthorityList),
-		NextEpochConfig:          support.NewHashStorageValue(keyBabe, keyNextEpochConfig, babetypes.DecodeEpochConfiguration),
-		NextRandomness:           support.NewHashStorageValueWithDefault(keyBabe, keyNextRandomness, decodeRandomness, &defaultRandomnessValue),
-		PendingEpochConfigChange: support.NewHashStorageValue(keyBabe, keyPendingEpochConfigChange, DecodeNextConfigDescriptor),
-		Randomness:               support.NewHashStorageValueWithDefault(keyBabe, keyRandomness, decodeRandomness, &defaultRandomnessValue),
-		SegmentIndex:             support.NewHashStorageValue(keyBabe, keySegmentIndex, sc.DecodeU32),
-		SkippedEpochs:            support.NewHashStorageValue(keyBabe, keySkippedEpochs, decodeSkippedEpochs),
-		UnderConstruction:        support.NewHashStorageMap[sc.U32, babetypes.Randomness](keyBabe, keyUnderConstruction, hashing.Twox64, decodeRandomness),
+		Authorities:              support.NewHashStorageValue(s, keyBabe, keyAuthorities, primitives.DecodeAuthorityList),
+		AuthorVrfRandomness:      support.NewHashStorageValue(s, keyBabe, keyAuthorVrfRandomness, decodeOptionRandomness),
+		CurrentSlot:              support.NewHashStorageValue(s, keyBabe, keyCurrentSlot, sc.DecodeU64),
+		EpochConfig:              support.NewHashStorageValue(s, keyBabe, keyEpochConfig, babetypes.DecodeEpochConfiguration),
+		EpochIndex:               support.NewHashStorageValue(s, keyBabe, keyEpochIndex, sc.DecodeU64),
+		EpochStart:               support.NewHashStorageValue(s, keyBabe, keyEpochStart, babetypes.DecodeEpochStartBlocks),
+		GenesisSlot:              support.NewHashStorageValue(s, keyBabe, keyGenesisSlot, sc.DecodeU64),
+		Initialized:              support.NewHashStorageValue(s, keyBabe, keyInitialized, decodePreDigest),
+		Lateness:                 support.NewHashStorageValue(s, keyBabe, keyLateness, sc.DecodeU64),
+		NextAuthorities:          support.NewHashStorageValue(s, keyBabe, keyNextAuthorities, primitives.DecodeAuthorityList),
+		NextEpochConfig:          support.NewHashStorageValue(s, keyBabe, keyNextEpochConfig, babetypes.DecodeEpochConfiguration),
+		NextRandomness:           support.NewHashStorageValueWithDefault(s, keyBabe, keyNextRandomness, decodeRandomness, &defaultRandomnessValue),
+		PendingEpochConfigChange: support.NewHashStorageValue(s, keyBabe, keyPendingEpochConfigChange, DecodeNextConfigDescriptor),
+		Randomness:               support.NewHashStorageValueWithDefault(s, keyBabe, keyRandomness, decodeRandomness, &defaultRandomnessValue),
+		SegmentIndex:             support.NewHashStorageValue(s, keyBabe, keySegmentIndex, sc.DecodeU32),
+		SkippedEpochs:            support.NewHashStorageValue(s, keyBabe, keySkippedEpochs, decodeSkippedEpochs),
+		UnderConstruction:        support.NewHashStorageMap[sc.U32, babetypes.Randomness](s, keyBabe, keyUnderConstruction, hashing.Twox64, decodeRandomness),
 	}
 }
 

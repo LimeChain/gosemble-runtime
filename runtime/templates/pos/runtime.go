@@ -34,6 +34,7 @@ import (
 	txExtensions "github.com/LimeChain/gosemble/frame/transaction_payment/extensions"
 	"github.com/LimeChain/gosemble/hooks"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
 	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
@@ -127,12 +128,14 @@ var (
 )
 
 var (
-	logger      = log.NewLogger()
-	mdGenerator = primitives.NewMetadataTypeGenerator()
+	logger              = log.NewLogger()
+	ioStorage           = io.NewStorage()
+	ioTransactionBroker = io.NewTransactionBroker()
+	mdGenerator         = primitives.NewMetadataTypeGenerator()
 	// Modules contains all the modules used by the runtime.
-	modules = initializeModules()
+	modules = initializeModules(ioStorage, ioTransactionBroker)
 	extra   = newSignedExtra()
-	decoder = types.NewRuntimeDecoder(modules, extra, SudoIndex, logger)
+	decoder = types.NewRuntimeDecoder(modules, extra, SudoIndex, ioStorage, ioTransactionBroker, logger)
 )
 
 func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength) {
@@ -151,10 +154,11 @@ func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength)
 
 // Construct runtime modules
 
-func initializeModules() []primitives.Module {
+func initializeModules(storage io.Storage, transactionBroker io.TransactionBroker) []primitives.Module {
 	systemModule := system.New(
 		SystemIndex,
 		system.NewConfig(
+			storage,
 			primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)},
 			blockWeights,
 			blockLength,
@@ -173,6 +177,7 @@ func initializeModules() []primitives.Module {
 	sessionModule := session.New(
 		SessionIndex,
 		session.NewConfig(
+			storage,
 			DbWeight,
 			blockWeights,
 			systemModule,
@@ -189,6 +194,7 @@ func initializeModules() []primitives.Module {
 	babeModule := babe.New(
 		BabeIndex,
 		babe.NewConfig(
+			storage,
 			DbWeight,
 			primitives.PublicKeySr25519,
 			BabeGenesisEpochConfig,
@@ -217,6 +223,7 @@ func initializeModules() []primitives.Module {
 	authorshipModule := authorship.New(
 		AuthorshipIndex,
 		authorship.NewConfig(
+			storage,
 			sessionFindAccount,
 			authorship.DefaulthEventHandler{}, // TODO: implemented by "imonline" module
 			systemModule,
@@ -230,6 +237,7 @@ func initializeModules() []primitives.Module {
 	grandpaModule := grandpa.New(
 		GrandpaIndex,
 		grandpa.NewConfig(
+			storage,
 			DbWeight,
 			primitives.PublicKeyEd25519,
 			GrandpaMaxAuthorities,
@@ -247,26 +255,26 @@ func initializeModules() []primitives.Module {
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
-		timestamp.NewConfig(babeModule, DbWeight, TimestampMinimumPeriod),
+		timestamp.NewConfig(storage, babeModule, DbWeight, TimestampMinimumPeriod),
 		mdGenerator,
 	)
 
 	balancesModule := balances.New(
 		BalancesIndex,
-		balances.NewConfig(DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
+		balances.NewConfig(storage, DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
 		logger,
 		mdGenerator,
 	)
 
 	tpmModule := transaction_payment.New(
 		TxPaymentsIndex,
-		transaction_payment.NewConfig(OperationalFeeMultiplier, WeightToFee, LengthToFee, blockWeights),
+		transaction_payment.NewConfig(storage, OperationalFeeMultiplier, WeightToFee, LengthToFee, blockWeights),
 		mdGenerator,
 	)
 
-	sudoModule := sudo.New(SudoIndex, sudo.NewConfig(DbWeight, systemModule), mdGenerator, logger)
+	sudoModule := sudo.New(SudoIndex, sudo.NewConfig(storage, DbWeight, systemModule), mdGenerator, logger)
 
-	testableModule := tm.New(TestableIndex, mdGenerator)
+	testableModule := tm.New(TestableIndex, storage, transactionBroker, mdGenerator)
 
 	return []primitives.Module{
 		systemModule,
@@ -605,6 +613,8 @@ func BenchmarkDispatch(dataPtr int32, dataLen int32) int64 {
 		SystemIndex,
 		modules,
 		decoder,
+		ioStorage,
+		ioTransactionBroker,
 		logger,
 	).BenchmarkDispatch(dataPtr, dataLen)
 }
@@ -615,6 +625,8 @@ func BenchmarkHook(dataPtr int32, dataLen int32) int64 {
 		SystemIndex,
 		modules,
 		decoder,
+		ioStorage,
+		ioTransactionBroker,
 		logger,
 	).BenchmarkHook(dataPtr, dataLen)
 }

@@ -122,6 +122,7 @@ var (
 )
 
 var (
+	mockStorage                         *mocks.IoStorage
 	mockStorageAuthorities              *mocks.StorageValue[sc.Sequence[primitives.Authority]]
 	mockStorageNextEpochConfig          *mocks.StorageValue[babetypes.EpochConfiguration]
 	mockStorageCurrentSlot              *mocks.StorageValue[babetypes.Slot]
@@ -152,6 +153,7 @@ var (
 var target module
 
 func setupModule() module {
+	mockStorage = new(mocks.IoStorage)
 	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[primitives.Authority]])
 	mockStorageNextEpochConfig = new(mocks.StorageValue[babetypes.EpochConfiguration])
 	mockStorageCurrentSlot = new(mocks.StorageValue[babetypes.Slot])
@@ -175,6 +177,7 @@ func setupModule() module {
 	mockIoHashing = new(mocks.IoHashing)
 
 	config := NewConfig(
+		mockStorage,
 		dbWeight,
 		primitives.PublicKeySr25519,
 		epochConfig,
