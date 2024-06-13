@@ -3,13 +3,14 @@ package aura_ext
 import (
 	"errors"
 	"fmt"
+	"reflect"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/aura"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/primitives/io"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"reflect"
 )
 
 type BlockExecutor struct {

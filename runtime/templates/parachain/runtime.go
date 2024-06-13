@@ -109,8 +109,8 @@ const (
 var (
 	// RuntimeVersion contains the version identifiers of the Runtime.
 	RuntimeVersion = &primitives.RuntimeVersion{
-		SpecName:           sc.Str(constants.SpecName),
-		ImplName:           sc.Str(constants.ImplName),
+		SpecName:           sc.Str("gosemble-parachain"),
+		ImplName:           sc.Str("gosemble-parachain"),
 		AuthoringVersion:   sc.U32(constants.AuthoringVersion),
 		SpecVersion:        sc.U32(constants.SpecVersion),
 		ImplVersion:        sc.U32(constants.ImplVersion),

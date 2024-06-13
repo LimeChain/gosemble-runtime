@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/LimeChain/gosemble/primitives/io"
-
 	sc "github.com/LimeChain/goscale"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"

@@ -28,5 +28,5 @@ func Test_CoreVersion(t *testing.T) {
 	assert.Equal(t, uint32(100), runtimeVersion.SpecVersion)
 	assert.Equal(t, uint32(1), runtimeVersion.ImplVersion)
 	assert.Equal(t, uint32(1), runtimeVersion.TransactionVersion)
-	assert.Equal(t, uint8(1), runtimeVersion.StateVersion)
+	assert.Equal(t, uint8(0), runtimeVersion.StateVersion)
 }

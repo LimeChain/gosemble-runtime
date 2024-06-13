@@ -6,12 +6,11 @@ import (
 	"io"
 	"testing"
 
-	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/primitives/log"
-
 	sc "github.com/LimeChain/goscale"
+	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/mocks"
+	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

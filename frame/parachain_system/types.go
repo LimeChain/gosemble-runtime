@@ -2,6 +2,7 @@ package parachain_system
 
 import (
 	"bytes"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/parachain"
 )
