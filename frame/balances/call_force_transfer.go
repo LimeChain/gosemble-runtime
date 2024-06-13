@@ -10,10 +10,10 @@ import (
 
 type callForceTransfer struct {
 	primitives.Callable
-	module Module
+	module module
 }
 
-func newCallForceTransfer(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallForceTransfer(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
 	return callForceTransfer{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,

@@ -10,10 +10,10 @@ import (
 
 type callTransferAll struct {
 	primitives.Callable
-	module Module
+	module module
 }
 
-func newCallTransferAll(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallTransferAll(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
 	return callTransferAll{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,

@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"reflect"
 
+	"github.com/LimeChain/goscale"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/frame/balances/types"
+	"github.com/LimeChain/gosemble/frame/support"
 	"github.com/LimeChain/gosemble/hooks"
 	"github.com/LimeChain/gosemble/primitives/log"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
@@ -27,7 +29,21 @@ const (
 	name = sc.Str("Balances")
 )
 
-type Module struct {
+type Module interface {
+	primitives.Module
+
+	DepositIntoExisting(who primitives.AccountId, value sc.U128) (primitives.Balance, error)
+	Withdraw(who primitives.AccountId, value sc.U128, reasons sc.U8, liveness primitives.ExistenceRequirement) (primitives.Balance, error)
+	MutateAccountHandlingDust(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error)
+	Unreserve(who primitives.AccountId, value sc.U128) (sc.U128, error)
+
+	DepositEvent(event primitives.Event)
+	DbWeight() primitives.RuntimeDbWeight
+	ExistentialDeposit() sc.U128
+	TotalIssuance() support.StorageValue[goscale.U128]
+}
+
+type module struct {
 	primitives.DefaultInherentProvider
 	hooks.DefaultDispatchModule
 	Index       sc.U8
@@ -43,7 +59,7 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	constants := newConstants(config.DbWeight, config.MaxLocks, config.MaxReserves, config.ExistentialDeposit)
 	storage := newStorage()
 
-	module := Module{
+	moduleInstance := module{
 		Index:       index,
 		Config:      config,
 		constants:   constants,
@@ -52,43 +68,43 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 		logger:      logger,
 	}
 	functions := make(map[sc.U8]primitives.Call)
-	functions[functionTransferAllowDeath] = newCallTransferAllowDeath(index, functionTransferAllowDeath, module)
-	functions[functionForceTransfer] = newCallForceTransfer(index, functionForceTransfer, module)
-	functions[functionTransferKeepAlive] = newCallTransferKeepAlive(index, functionTransferKeepAlive, module)
-	functions[functionTransferAll] = newCallTransferAll(index, functionTransferAll, module)
-	functions[functionForceUnreserve] = newCallForceUnreserve(index, functionForceUnreserve, module)
-	functions[functionForceUpgradeAccounts] = newCallUpgradeAccounts(index, functionForceUpgradeAccounts, module)
-	functions[functionForceSetBalance] = newCallForceSetBalance(index, functionForceSetBalance, module)
+	functions[functionTransferAllowDeath] = newCallTransferAllowDeath(index, functionTransferAllowDeath, moduleInstance)
+	functions[functionForceTransfer] = newCallForceTransfer(index, functionForceTransfer, moduleInstance)
+	functions[functionTransferKeepAlive] = newCallTransferKeepAlive(index, functionTransferKeepAlive, moduleInstance)
+	functions[functionTransferAll] = newCallTransferAll(index, functionTransferAll, moduleInstance)
+	functions[functionForceUnreserve] = newCallForceUnreserve(index, functionForceUnreserve, moduleInstance)
+	functions[functionForceUpgradeAccounts] = newCallUpgradeAccounts(index, functionForceUpgradeAccounts, moduleInstance)
+	functions[functionForceSetBalance] = newCallForceSetBalance(index, functionForceSetBalance, moduleInstance)
 	functions[functionForceAdjustTotalIssuance] = newCallForceAdjustTotalIssuance(index, functionForceAdjustTotalIssuance, config.StoredMap, storage)
 
-	module.functions = functions
+	moduleInstance.functions = functions
 
-	return module
+	return moduleInstance
 }
 
-func (m Module) GetIndex() sc.U8 {
+func (m module) GetIndex() sc.U8 {
 	return m.Index
 }
 
-func (m Module) name() sc.Str {
+func (m module) name() sc.Str {
 	return name
 }
 
-func (m Module) Functions() map[sc.U8]primitives.Call {
+func (m module) Functions() map[sc.U8]primitives.Call {
 	return m.functions
 }
 
-func (m Module) PreDispatch(_ primitives.Call) (sc.Empty, error) {
+func (m module) PreDispatch(_ primitives.Call) (sc.Empty, error) {
 	return sc.Empty{}, nil
 }
 
-func (m Module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
+func (m module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
 	return primitives.ValidTransaction{}, primitives.NewTransactionValidityError(primitives.NewUnknownTransactionNoUnsignedValidator())
 }
 
 // DepositIntoExisting deposits `value` into the free balance of an existing target account `who`.
 // If `value` is 0, it does nothing.
-func (m Module) DepositIntoExisting(who primitives.AccountId, value sc.U128) (primitives.Balance, error) {
+func (m module) DepositIntoExisting(who primitives.AccountId, value sc.U128) (primitives.Balance, error) {
 	if value.Eq(constants.Zero) {
 		return sc.NewU128(0), nil
 	}
@@ -106,7 +122,7 @@ func (m Module) DepositIntoExisting(who primitives.AccountId, value sc.U128) (pr
 	return result.(primitives.Balance), nil
 }
 
-func (m Module) Withdraw(who primitives.AccountId, value sc.U128, reasons sc.U8, liveness primitives.ExistenceRequirement) (primitives.Balance, error) {
+func (m module) Withdraw(who primitives.AccountId, value sc.U128, reasons sc.U8, liveness primitives.ExistenceRequirement) (primitives.Balance, error) {
 	if value.Eq(constants.Zero) {
 		return sc.NewU128(0), nil
 	}
@@ -125,7 +141,7 @@ func (m Module) Withdraw(who primitives.AccountId, value sc.U128, reasons sc.U8,
 	return result.(primitives.Balance), nil
 }
 
-func (m Module) deposit(who primitives.AccountId, account *primitives.AccountData, isNew bool, value sc.U128) (sc.Encodable, error) {
+func (m module) deposit(who primitives.AccountId, account *primitives.AccountData, isNew bool, value sc.U128) (sc.Encodable, error) {
 	if isNew {
 		return nil, primitives.NewDispatchErrorModule(primitives.CustomModuleError{
 			Index:   m.Index,
@@ -145,7 +161,7 @@ func (m Module) deposit(who primitives.AccountId, account *primitives.AccountDat
 	return value, nil
 }
 
-func (m Module) withdraw(who primitives.AccountId, value sc.U128, account *primitives.AccountData, reasons sc.U8, liveness primitives.ExistenceRequirement) (sc.Encodable, error) {
+func (m module) withdraw(who primitives.AccountId, value sc.U128, account *primitives.AccountData, reasons sc.U8, liveness primitives.ExistenceRequirement) (sc.Encodable, error) {
 	newFreeAccount, err := sc.CheckedSubU128(account.Free, value)
 	if err != nil {
 		return nil, primitives.NewDispatchErrorModule(primitives.CustomModuleError{
@@ -177,7 +193,7 @@ func (m Module) withdraw(who primitives.AccountId, value sc.U128, account *primi
 }
 
 // ensureCanWithdraw checks that an account can withdraw from their balance given any existing withdraw restrictions.
-func (m Module) ensureCanWithdraw(who primitives.AccountId, amount sc.U128, _reasons primitives.Reasons, newBalance sc.U128) error {
+func (m module) ensureCanWithdraw(who primitives.AccountId, amount sc.U128, _reasons primitives.Reasons, newBalance sc.U128) error {
 	if amount.Eq(constants.Zero) {
 		return nil
 	}
@@ -199,7 +215,7 @@ func (m Module) ensureCanWithdraw(who primitives.AccountId, amount sc.U128, _rea
 	return nil
 }
 
-func (m Module) ensureUpgraded(who primitives.AccountId) (bool, error) {
+func (m module) ensureUpgraded(who primitives.AccountId) (bool, error) {
 	acc, err := m.Config.StoredMap.Get(who)
 	if err != nil {
 		return false, err
@@ -237,7 +253,7 @@ func (m Module) ensureUpgraded(who primitives.AccountId) (bool, error) {
 	return true, nil
 }
 
-func (m Module) transfer(from primitives.AccountId, to primitives.AccountId, value sc.U128, preservation types.Preservation) error {
+func (m module) transfer(from primitives.AccountId, to primitives.AccountId, value sc.U128, preservation types.Preservation) error {
 	withdrawalConsequence, err := m.canWithdraw(from, value)
 	if err != nil {
 		return err
@@ -276,7 +292,7 @@ func (m Module) transfer(from primitives.AccountId, to primitives.AccountId, val
 	return nil
 }
 
-func (m Module) increaseBalance(who primitives.AccountId, amount sc.U128, precision types.Precision) (sc.U128, error) {
+func (m module) increaseBalance(who primitives.AccountId, amount sc.U128, precision types.Precision) (sc.U128, error) {
 	acc, err := m.Config.StoredMap.Get(who)
 	if err != nil {
 		return sc.U128{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -320,7 +336,7 @@ func (m Module) increaseBalance(who primitives.AccountId, amount sc.U128, precis
 	return sc.SaturatingSubU128(newBalance, oldBalance), nil
 }
 
-func (m Module) decreaseBalance(who primitives.AccountId, value sc.U128, precision types.Precision, preservation types.Preservation, fortitude types.Fortitude) (sc.U128, error) {
+func (m module) decreaseBalance(who primitives.AccountId, value sc.U128, precision types.Precision, preservation types.Preservation, fortitude types.Fortitude) (sc.U128, error) {
 	acc, err := m.Config.StoredMap.Get(who)
 	if err != nil {
 		return sc.U128{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -366,16 +382,16 @@ func (m Module) decreaseBalance(who primitives.AccountId, value sc.U128, precisi
 // the entire fungibles API. The `amount` is capped at [`Inspect::minimum_balance()`] - 1`.
 //
 // This should not be reimplemented.
-func (m Module) handleRawDust(dust sc.U128) error {
+func (m module) handleRawDust(dust sc.U128) error {
 	return m.handleDust(sc.Min128(dust, sc.SaturatingSubU128(m.Config.ExistentialDeposit, constants.One)))
 }
 
-func (m Module) handleDust(dust sc.U128) error {
+func (m module) handleDust(dust sc.U128) error {
 	// TODO: handle dust
 	return nil
 }
 
-func (m Module) writeBalance(who primitives.AccountId, amount sc.U128) (sc.Option[sc.U128], error) {
+func (m module) writeBalance(who primitives.AccountId, amount sc.U128) (sc.Option[sc.U128], error) {
 	maxReduction, err := m.reducibleBalance(who, types.PreservationExpendable, types.FortitudeForce)
 	if err != nil {
 		return sc.Option[sc.U128]{}, err
@@ -402,7 +418,7 @@ func (m Module) writeBalance(who primitives.AccountId, amount sc.U128) (sc.Optio
 	return resultValue[1].(sc.Option[sc.U128]), nil
 }
 
-func (m Module) tryMutateAccountHandlingDust(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
+func (m module) tryMutateAccountHandlingDust(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
 	result, err := m.tryMutateAccount(who, f)
 	if err != nil {
 		return result, err
@@ -424,7 +440,7 @@ func (m Module) tryMutateAccountHandlingDust(who primitives.AccountId, f func(wh
 	return resultValue[0], nil
 }
 
-func (m Module) mutateAccountHandlingDust(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
+func (m module) MutateAccountHandlingDust(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
 	result, err := m.tryMutateAccount(who, f)
 	if err != nil {
 		return result, err
@@ -446,10 +462,10 @@ func (m Module) mutateAccountHandlingDust(who primitives.AccountId, f func(who *
 	return resultValue[0], nil
 }
 
-func (m Module) tryMutateAccount(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
+func (m module) tryMutateAccount(who primitives.AccountId, f func(who *primitives.AccountData, bool bool) (sc.Encodable, error)) (sc.Encodable, error) {
 	_, err := m.ensureUpgraded(who)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	result, err := m.Config.StoredMap.TryMutateExists(who, func(maybeAccount *primitives.AccountData) (sc.Encodable, error) {
@@ -473,7 +489,7 @@ func (m Module) tryMutateAccount(who primitives.AccountId, f func(who *primitive
 	return sc.NewVaryingData(resultValue[2], maybeDust), nil
 }
 
-func (m Module) mutateAccount(who primitives.AccountId, maybeAccount *primitives.AccountData, f func(who *primitives.AccountData, _ bool) (sc.Encodable, error)) (sc.Encodable, error) {
+func (m module) mutateAccount(who primitives.AccountId, maybeAccount *primitives.AccountData, f func(who *primitives.AccountData, _ bool) (sc.Encodable, error)) (sc.Encodable, error) {
 	data := primitives.DefaultAccountData()
 	account := &data
 	isNew := true
@@ -559,7 +575,7 @@ func (m Module) mutateAccount(who primitives.AccountId, maybeAccount *primitives
 	return sc.NewVaryingData(maybeEndowed, maybeDust, result), nil
 }
 
-func (m Module) canWithdraw(who primitives.AccountId, value sc.U128) (types.WithdrawalConsequence, error) {
+func (m module) canWithdraw(who primitives.AccountId, value sc.U128) (types.WithdrawalConsequence, error) {
 	if value.Eq(constants.Zero) {
 		return types.NewWithdrawalConsequenceSuccess(), nil
 	}
@@ -626,7 +642,7 @@ func (m Module) canWithdraw(who primitives.AccountId, value sc.U128) (types.With
 // - `who`: The account of which the balance should be increased by `amount`.
 // - `amount`: How much should the balance be increased?
 // - `provenance`: Will `amount` be minted to deposit it into `account` or is it already in the system?
-func (m Module) canDeposit(who primitives.AccountId, amount primitives.Balance, minted bool) (types.DepositConsequence, error) {
+func (m module) canDeposit(who primitives.AccountId, amount primitives.Balance, minted bool) (types.DepositConsequence, error) {
 	if amount.Eq(constants.Zero) {
 		return types.NewDepositConsequenceSuccess(), nil
 	}
@@ -666,7 +682,7 @@ func (m Module) canDeposit(who primitives.AccountId, amount primitives.Balance, 
 // reduction and potentially go below user-level restrictions on the minimum amount of the account.
 //
 // Always less than or equal to [`Inspect::balance`].
-func (m Module) reducibleBalance(who primitives.AccountId, preservation types.Preservation, force types.Fortitude) (primitives.Balance, error) {
+func (m module) reducibleBalance(who primitives.AccountId, preservation types.Preservation, force types.Fortitude) (primitives.Balance, error) {
 	acc, err := m.Config.StoredMap.Get(who)
 	if err != nil {
 		return primitives.Balance{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -697,7 +713,7 @@ func (m Module) reducibleBalance(who primitives.AccountId, preservation types.Pr
 	return sc.SaturatingSubU128(acc.Data.Free, untouchable), nil
 }
 
-func (m Module) unreserve(who primitives.AccountId, value sc.U128) (sc.U128, error) {
+func (m module) Unreserve(who primitives.AccountId, value sc.U128) (sc.U128, error) {
 	if value.Eq(constants.Zero) {
 		return constants.Zero, nil
 	}
@@ -712,7 +728,7 @@ func (m Module) unreserve(who primitives.AccountId, value sc.U128) (sc.U128, err
 		return value, nil
 	}
 
-	result, err := m.mutateAccountHandlingDust(who, func(accountData *primitives.AccountData, bool bool) (sc.Encodable, error) {
+	result, err := m.MutateAccountHandlingDust(who, func(accountData *primitives.AccountData, bool bool) (sc.Encodable, error) {
 		return removeReserveAndFree(accountData, value), nil
 	})
 	if err != nil {
@@ -739,4 +755,20 @@ func updateAccount(account *primitives.AccountData, data primitives.AccountData)
 	account.Reserved = data.Reserved
 	account.Frozen = data.Frozen
 	account.Flags = data.Flags
+}
+
+func (m module) TotalIssuance() support.StorageValue[goscale.U128] {
+	return m.storage.TotalIssuance
+}
+
+func (m module) DbWeight() primitives.RuntimeDbWeight {
+	return m.constants.DbWeight
+}
+
+func (m module) DepositEvent(event primitives.Event) {
+	m.Config.StoredMap.DepositEvent(event)
+}
+
+func (m module) ExistentialDeposit() sc.U128 {
+	return m.Config.ExistentialDeposit
 }

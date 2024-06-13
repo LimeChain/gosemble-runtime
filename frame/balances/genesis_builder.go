@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/vedhavyas/go-subkey"
@@ -78,14 +79,14 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (m Module) CreateDefaultConfig() ([]byte, error) {
+func (m module) CreateDefaultConfig() ([]byte, error) {
 	gc := &genesisConfigJsonStruct{}
 	gc.BalancesGenesisConfig.Balances = [][2]interface{}{}
 
 	return json.Marshal(gc)
 }
 
-func (m Module) BuildConfig(config []byte) error {
+func (m module) BuildConfig(config []byte) error {
 	gc := GenesisConfig{}
 	if err := json.Unmarshal(config, &gc); err != nil {
 		return err

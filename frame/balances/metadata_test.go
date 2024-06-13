@@ -1,88 +1,19 @@
 package balances
 
 import (
-	"reflect"
+	"testing"
 
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/frame/balances/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"github.com/stretchr/testify/assert"
 )
 
-func (m module) Metadata() primitives.MetadataModule {
-	mdConstants := metadataConstants{
-		ExistentialDeposit: primitives.ExistentialDeposit{U128: m.constants.ExistentialDeposit},
-		MaxLocks:           primitives.MaxLocks{U32: m.constants.MaxLocks},
-		MaxReserves:        primitives.MaxReserves{U32: m.constants.MaxReserves},
-	}
+func Test_Module_Metadata(t *testing.T) {
+	target = setupModule()
 
-	moduleMdConstants := m.mdGenerator.BuildModuleConstants(reflect.ValueOf(mdConstants))
-
-	dataV14 := primitives.MetadataModuleV14{
-		Name:    m.name(),
-		Storage: m.metadataStorage(),
-		Call:    sc.NewOption[sc.Compact](sc.ToCompact(metadata.BalancesCalls)),
-		CallDef: sc.NewOption[primitives.MetadataDefinitionVariant](
-			primitives.NewMetadataDefinitionVariantStr(
-				m.name(),
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.BalancesCalls, "self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Balances, Runtime>"),
-				},
-				m.Index,
-				"Call.Balances"),
-		),
-		Event: sc.NewOption[sc.Compact](sc.ToCompact(metadata.TypesBalancesEvent)),
-		EventDef: sc.NewOption[primitives.MetadataDefinitionVariant](
-			primitives.NewMetadataDefinitionVariantStr(
-				m.name(),
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesBalancesEvent, "pallet_balances::Event<Runtime>"),
-				},
-				m.Index,
-				"Events.Balances"),
-		),
-		Constants: moduleMdConstants,
-		Error:     sc.NewOption[sc.Compact](sc.ToCompact(metadata.TypesBalancesErrors)),
-		ErrorDef: sc.NewOption[primitives.MetadataDefinitionVariant](
-			primitives.NewMetadataDefinitionVariantStr(
-				m.name(),
-				sc.Sequence[primitives.MetadataTypeDefinitionField]{
-					primitives.NewMetadataTypeDefinitionField(metadata.TypesBalancesErrors),
-				},
-				m.Index,
-				"Errors.Balances"),
-		),
-		Index: m.Index,
-	}
-
-	m.mdGenerator.AppendMetadataTypes(m.metadataTypes())
-
-	return primitives.MetadataModule{
-		Version:   primitives.ModuleVersion14,
-		ModuleV14: dataV14,
-	}
-}
-
-func (m module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
-	return sc.NewOption[primitives.MetadataModuleStorage](primitives.MetadataModuleStorage{
-		Prefix: m.name(),
-		Items: sc.Sequence[primitives.MetadataModuleStorageEntry]{
-			primitives.NewMetadataModuleStorageEntry(
-				"TotalIssuance",
-				primitives.MetadataModuleStorageEntryModifierDefault,
-				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
-				"The total units issued in the system."),
-			primitives.NewMetadataModuleStorageEntry(
-				"InactiveIssuance",
-				primitives.MetadataModuleStorageEntryModifierDefault,
-				primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
-				"The total units of outstanding deactivated balance in the system."),
-		},
-	})
-}
-
-func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
-	return sc.Sequence[primitives.MetadataType]{
+	expectedMetadataTypes := sc.Sequence[primitives.MetadataType]{
 		primitives.NewMetadataTypeWithPath(
 			metadata.TypesBalancesEvent,
 			"pallet_balances pallet Event",
@@ -448,4 +379,94 @@ func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 				}),
 			primitives.NewMetadataEmptyTypeParameter("T")),
 	}
+
+	expectedMetadataV14 := primitives.MetadataModuleV14{
+		Name: "Balances",
+		Storage: sc.NewOption[primitives.MetadataModuleStorage](primitives.MetadataModuleStorage{
+			Prefix: "Balances",
+			Items: sc.Sequence[primitives.MetadataModuleStorageEntry]{
+				primitives.NewMetadataModuleStorageEntry(
+					"TotalIssuance",
+					primitives.MetadataModuleStorageEntryModifierDefault,
+					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
+					"The total units issued in the system."),
+				primitives.NewMetadataModuleStorageEntry(
+					"InactiveIssuance",
+					primitives.MetadataModuleStorageEntryModifierDefault,
+					primitives.NewMetadataModuleStorageEntryDefinitionPlain(sc.ToCompact(metadata.PrimitiveTypesU128)),
+					"The total units of outstanding deactivated balance in the system."),
+			},
+		}),
+		Call: sc.NewOption[sc.Compact](sc.ToCompact(metadata.BalancesCalls)),
+		CallDef: sc.NewOption[primitives.MetadataDefinitionVariant](
+			primitives.NewMetadataDefinitionVariantStr(
+				"Balances",
+				sc.Sequence[primitives.MetadataTypeDefinitionField]{
+					primitives.NewMetadataTypeDefinitionFieldWithName(
+						metadata.BalancesCalls,
+						"self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Balances, Runtime>",
+					),
+				},
+				moduleId,
+				"Call.Balances",
+			),
+		),
+		Event: sc.NewOption[sc.Compact](sc.ToCompact(metadata.TypesBalancesEvent)),
+		EventDef: sc.NewOption[primitives.MetadataDefinitionVariant](
+			primitives.NewMetadataDefinitionVariantStr(
+				"Balances",
+				sc.Sequence[primitives.MetadataTypeDefinitionField]{
+					primitives.NewMetadataTypeDefinitionFieldWithName(
+						metadata.TypesBalancesEvent,
+						"pallet_balances::Event<Runtime>",
+					),
+				},
+				moduleId,
+				"Events.Balances",
+			),
+		),
+		Constants: sc.Sequence[primitives.MetadataModuleConstant]{
+			primitives.NewMetadataModuleConstant(
+				"ExistentialDeposit",
+				sc.ToCompact(metadata.PrimitiveTypesU128),
+				sc.BytesToSequenceU8(target.constants.ExistentialDeposit.Bytes()),
+				"The minimum amount required to keep an account open. MUST BE GREATER THAN ZERO!",
+			),
+			primitives.NewMetadataModuleConstant(
+				"MaxLocks",
+				sc.ToCompact(metadata.PrimitiveTypesU32),
+				sc.BytesToSequenceU8(target.constants.MaxLocks.Bytes()),
+				"The maximum number of locks that should exist on an account.  Not strictly enforced, but used for weight estimation.",
+			),
+			primitives.NewMetadataModuleConstant(
+				"MaxReserves",
+				sc.ToCompact(metadata.PrimitiveTypesU32),
+				sc.BytesToSequenceU8(target.constants.MaxReserves.Bytes()),
+				"The maximum number of named reserves that can exist on an account.",
+			),
+		},
+		Error: sc.NewOption[sc.Compact](sc.ToCompact(metadata.TypesBalancesErrors)),
+		ErrorDef: sc.NewOption[primitives.MetadataDefinitionVariant](
+			primitives.NewMetadataDefinitionVariantStr(
+				"Balances",
+				sc.Sequence[primitives.MetadataTypeDefinitionField]{
+					primitives.NewMetadataTypeDefinitionField(metadata.TypesBalancesErrors),
+				},
+				moduleId,
+				"Errors.Balances",
+			),
+		),
+		Index: moduleId,
+	}
+
+	expectMetadataModule := primitives.MetadataModule{
+		Version:   primitives.ModuleVersion14,
+		ModuleV14: expectedMetadataV14,
+	}
+
+	resultMetadataModule := target.Metadata()
+	resultTypes := mdGenerator.GetMetadataTypes()
+
+	assert.Equal(t, expectedMetadataTypes, resultTypes)
+	assert.Equal(t, expectMetadataModule, resultMetadataModule)
 }

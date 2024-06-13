@@ -10,10 +10,10 @@ import (
 
 type callTransferKeepAlive struct {
 	primitives.Callable
-	module Module
+	module module
 }
 
-func newCallTransferKeepAlive(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallTransferKeepAlive(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
 	return callTransferKeepAlive{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,

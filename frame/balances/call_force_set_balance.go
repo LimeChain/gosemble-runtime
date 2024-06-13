@@ -59,7 +59,7 @@ func (c callForceSetBalance) Args() sc.VaryingData {
 }
 
 func (c callForceSetBalance) BaseWeight() primitives.Weight {
-	return callForceSetBalanceCreatingWeight(c.module.constants.DbWeight).Max(callForceSetBalanceKillingWeight(c.module.constants.DbWeight))
+	return callForceSetBalanceCreatingWeight(c.module.DbWeight()).Max(callForceSetBalanceKillingWeight(c.module.DbWeight()))
 }
 
 func (_ callForceSetBalance) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -106,18 +106,19 @@ func (c callForceSetBalance) Dispatch(origin primitives.RuntimeOrigin, args sc.V
 }
 
 func (c callForceSetBalance) setBalance(who primitives.AccountId, newFree sc.U128) error {
-	wipeOut := newFree.Lt(c.module.Config.ExistentialDeposit)
+	wipeOut := newFree.Lt(c.module.ExistentialDeposit())
 	if wipeOut {
 		newFree = constants.Zero
 	}
 
-	result, err := c.module.mutateAccountHandlingDust(who, func(accountData *primitives.AccountData, bool bool) (sc.Encodable, error) {
-		oldFree := accountData.Free
-		accountData.Free = newFree
+	result, err := c.module.MutateAccountHandlingDust(who,
+		func(accountData *primitives.AccountData, bool bool) (sc.Encodable, error) {
+			oldFree := accountData.Free
+			accountData.Free = newFree
 
-		return oldFree, nil
-	})
-
+			return oldFree, nil
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -127,16 +128,16 @@ func (c callForceSetBalance) setBalance(who primitives.AccountId, newFree sc.U12
 	}
 
 	if newFree.Gt(oldFree) {
-		if err := newPositiveImbalance(newFree.Sub(oldFree), c.module.storage.TotalIssuance).Drop(); err != nil {
+		if err := newPositiveImbalance(newFree.Sub(oldFree), c.module.TotalIssuance()).Drop(); err != nil {
 			return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 		}
 	} else if newFree.Lt(oldFree) {
-		if err := newNegativeImbalance(oldFree.Sub(newFree), c.module.storage.TotalIssuance).Drop(); err != nil {
+		if err := newNegativeImbalance(oldFree.Sub(newFree), c.module.TotalIssuance()).Drop(); err != nil {
 			return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 		}
 	}
 
-	c.module.Config.StoredMap.DepositEvent(newEventBalanceSet(c.ModuleId, who, newFree))
+	c.module.DepositEvent(newEventBalanceSet(c.ModuleId, who, newFree))
 
 	return nil
 }

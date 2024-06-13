@@ -62,7 +62,7 @@ func (c callForceUnreserve) Args() sc.VaryingData {
 }
 
 func (c callForceUnreserve) BaseWeight() primitives.Weight {
-	return callForceUnreserveWeight(c.module.constants.DbWeight)
+	return callForceUnreserveWeight(c.module.DbWeight())
 }
 
 func (_ callForceUnreserve) WeighData(baseWeight primitives.Weight) primitives.Weight {
@@ -101,7 +101,7 @@ func (c callForceUnreserve) Dispatch(origin primitives.RuntimeOrigin, args sc.Va
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid u128 value in callForceUnreserve")
 	}
 
-	_, err = c.module.unreserve(who, value)
+	_, err = c.module.Unreserve(who, value)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, err
 	}

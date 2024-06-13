@@ -9,10 +9,10 @@ import (
 
 type callUpgradeAccounts struct {
 	primitives.Callable
-	module Module
+	module module
 }
 
-func newCallUpgradeAccounts(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallUpgradeAccounts(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
 	return callUpgradeAccounts{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
