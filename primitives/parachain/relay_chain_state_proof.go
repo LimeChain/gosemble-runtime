@@ -2,7 +2,6 @@ package parachain
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
@@ -12,10 +11,6 @@ import (
 	"github.com/LimeChain/gosemble/primitives/io"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/LimeChain/gosemble/utils/decoder"
-)
-
-var (
-	errRootNodeNotFound = errors.New("root node not found in proof")
 )
 
 var (

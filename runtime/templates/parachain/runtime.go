@@ -20,7 +20,7 @@ import (
 	"github.com/LimeChain/gosemble/execution/extrinsic"
 	"github.com/LimeChain/gosemble/execution/types"
 	"github.com/LimeChain/gosemble/frame/aura"
-	aura_ext "github.com/LimeChain/gosemble/frame/aura-ext"
+	"github.com/LimeChain/gosemble/frame/aura_ext"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/executive"
 	"github.com/LimeChain/gosemble/frame/grandpa"

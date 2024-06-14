@@ -2,12 +2,13 @@ package parachain
 
 import (
 	"bytes"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
-// / Ancestor of the block being currently executed, not yet included
-// / into the relay chain.
+// Ancestor of the block being currently executed, not yet included
+// into the relay chain.
 type Ancestor struct {
 	UsedBandwidth         UsedBandwidth
 	ParaHeadHash          sc.Option[types.H256]

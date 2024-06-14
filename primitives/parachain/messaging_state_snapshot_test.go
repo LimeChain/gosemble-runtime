@@ -3,9 +3,10 @@ package parachain
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/LimeChain/gosemble/constants"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
-	"testing"
 )
 
 func Test_MessagingStateSnapshot_Encode(t *testing.T) {

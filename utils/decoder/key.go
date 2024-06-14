@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	"github.com/ChainSafe/gossamer/pkg/trie/codec"
 )
 

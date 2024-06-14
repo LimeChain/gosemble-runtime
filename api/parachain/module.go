@@ -9,7 +9,7 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/execution/types"
-	aura_ext "github.com/LimeChain/gosemble/frame/aura-ext"
+	"github.com/LimeChain/gosemble/frame/aura_ext"
 	"github.com/LimeChain/gosemble/frame/parachain_system"
 	"github.com/LimeChain/gosemble/primitives/hashing"
 	"github.com/LimeChain/gosemble/primitives/io"

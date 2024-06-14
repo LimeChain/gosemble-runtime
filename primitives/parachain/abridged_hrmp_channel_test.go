@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/ChainSafe/gossamer/lib/common"
 	sc "github.com/LimeChain/goscale"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"github.com/stretchr/testify/assert"
 )
 
 var (

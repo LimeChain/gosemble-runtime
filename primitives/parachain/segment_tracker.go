@@ -3,8 +3,9 @@ package parachain
 import (
 	"bytes"
 	"errors"
-	sc "github.com/LimeChain/goscale"
 	"reflect"
+
+	sc "github.com/LimeChain/goscale"
 )
 
 type SegmentTracker struct {

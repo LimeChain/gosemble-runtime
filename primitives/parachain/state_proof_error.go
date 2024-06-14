@@ -2,6 +2,7 @@ package parachain
 
 import (
 	"errors"
+
 	sc "github.com/LimeChain/goscale"
 )
 

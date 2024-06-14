@@ -39,7 +39,7 @@ In addition to functional modules, which are useful for any blockchain, there ar
 
 | Name                                                                                          | Description                                                                           |
 |-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| [aura_ext](https://github.com/limechain/gosemble/tree/develop/frame/aura-ext)                 | Provides AURA Consensus for parachains.                                               |
+| [aura_ext](https://github.com/limechain/gosemble/tree/develop/frame/aura_ext)                 | Provides AURA Consensus for parachains.                                               |
 | [parachain_info](https://github.com/limechain/gosemble/tree/develop/frame/parachain_info)     | Stores the parachain id.                                                              |
 | [parachain_system](https://github.com/limechain/gosemble/tree/develop/frame/parachain_system) | Provides basic functionality for cumulus-based parachains. Does not process messages. |
 
