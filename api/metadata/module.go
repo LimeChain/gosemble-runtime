@@ -281,6 +281,14 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
 				primitives.NewMetadataTypeDefinitionField(metadata.TypesFixedSequence32U8)})),
 
+		primitives.NewMetadataType(
+			metadata.TypesCompactU128,
+			"compact U128",
+			primitives.NewMetadataTypeDefinitionCompact(
+				sc.ToCompact(metadata.PrimitiveTypesU128),
+			),
+		),
+
 		primitives.NewMetadataTypeWithPath(metadata.TypesAddress32, "Address32", sc.Sequence[sc.Str]{"sp_core", "crypto", "AccountId32"}, primitives.NewMetadataTypeDefinitionComposite(
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{primitives.NewMetadataTypeDefinitionFieldWithName(metadata.TypesFixedSequence32U8, "[u8; 32]")},
 		)),
@@ -337,8 +345,8 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			sc.Sequence[primitives.MetadataTypeDefinitionField]{
 				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "free", "Balance"),
 				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "reserved", "Balance"),
-				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "misc_frozen", "Balance"),
-				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "fee_frozen", "Balance"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "frozen", "Balance"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU128, "flags", "ExtraFlags"),
 			},
 		)),
 		primitives.NewMetadataTypeWithPath(metadata.TypesAccountInfo, "AccountInfo", sc.Sequence[sc.Str]{"frame_system", "AccountInfo"}, primitives.NewMetadataTypeDefinitionComposite(
@@ -591,17 +599,17 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 		primitives.NewMetadataTypeWithPath(metadata.TypesTokenError, "TokenError", sc.Sequence[sc.Str]{"sp_runtime", "TokenError"}, primitives.NewMetadataTypeDefinitionVariant(
 			sc.Sequence[primitives.MetadataDefinitionVariant]{
 				primitives.NewMetadataDefinitionVariant(
-					"NoFunds",
+					"FundsUnavailable",
 					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-					primitives.TokenErrorNoFunds,
-					"TokenError.NoFunds"),
+					primitives.TokenErrorFundsUnavailable,
+					"TokenError.FundsUnavailable"),
 				primitives.NewMetadataDefinitionVariant(
-					"WouldDie",
+					"OnlyProvider",
 					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
-					primitives.TokenErrorWouldDie,
-					"TokenError.WouldDie"),
+					primitives.TokenErrorOnlyProvider,
+					"TokenError.OnlyProvider"),
 				primitives.NewMetadataDefinitionVariant(
-					"Mandatory",
+					"BelowMinimum",
 					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
 					primitives.TokenErrorBelowMinimum,
 					"TokenError.BelowMinimum"),
@@ -625,6 +633,21 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
 					primitives.TokenErrorUnsupported,
 					"TokenError.Unsupported"),
+				primitives.NewMetadataDefinitionVariant(
+					"CannotCreateHold",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					primitives.TokenErrorCannotCreateHold,
+					"TokenError.CannotCreateHold"),
+				primitives.NewMetadataDefinitionVariant(
+					"NotExpendable",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					primitives.TokenErrorNotExpendable,
+					"TokenError.NotExpendable"),
+				primitives.NewMetadataDefinitionVariant(
+					"Blocked",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					primitives.TokenErrorBlocked,
+					"TokenError.Blocked"),
 			})),
 		primitives.NewMetadataTypeWithPath(metadata.TypesArithmeticError, "ArithmeticError", sc.Sequence[sc.Str]{"sp_arithmetic", "ArithmeticError"}, primitives.NewMetadataTypeDefinitionVariant(
 			sc.Sequence[primitives.MetadataDefinitionVariant]{

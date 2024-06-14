@@ -18,10 +18,10 @@ var (
 
 var (
 	targetAccountData = AccountData{
-		Free:       sc.NewU128(1),
-		Reserved:   sc.NewU128(2),
-		MiscFrozen: sc.NewU128(3),
-		FeeFrozen:  sc.NewU128(4),
+		Free:     sc.NewU128(1),
+		Reserved: sc.NewU128(2),
+		Frozen:   sc.NewU128(3),
+		Flags:    ExtraFlags{sc.NewU128(4)},
 	}
 )
 

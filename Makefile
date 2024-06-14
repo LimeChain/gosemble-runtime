@@ -168,6 +168,13 @@ start-network-babe:
 	cd ../../../..; \
 	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/substrate-node --dev --execution=wasm
 
+start-network:
+	cp build/runtime.wasm polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
+	cd polkadot-sdk/substrate/bin/node-template/node; \
+	cargo build --release; \
+	cd ../../../..; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
+
 # gossamer node configuration
 CHAIN_SPEC_PLAIN = ../testdata/chain-spec/plain.json
 CHAIN_SPEC_UPDATED = ../testdata/chain-spec/plain-updated.json

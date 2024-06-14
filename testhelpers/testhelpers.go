@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/LimeChain/gosemble/frame/sudo"
-
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/lib/crypto/secp256k1"
@@ -19,6 +17,7 @@ import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/session"
+	"github.com/LimeChain/gosemble/frame/sudo"
 	"github.com/LimeChain/gosemble/frame/system"
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
 	babetypes "github.com/LimeChain/gosemble/primitives/babe"
@@ -145,26 +144,10 @@ var (
 	dispatchOutcome, _             = primitives.NewDispatchOutcome(nil)
 	dispatchOutcomeBadOriginErr, _ = primitives.NewDispatchOutcome(primitives.NewDispatchErrorBadOrigin())
 
-	dispatchOutcomeCustomModuleErr, _ = primitives.NewDispatchOutcome(
-		primitives.NewDispatchErrorModule(
-			primitives.CustomModuleError{
-				Index: BalancesIndex,
-				Err:   sc.U32(balances.ErrorInsufficientBalance),
-			}))
-
-	dispatchOutcomeExistentialDepositErr, _ = primitives.NewDispatchOutcome(
-		primitives.NewDispatchErrorModule(
-			primitives.CustomModuleError{
-				Index: BalancesIndex,
-				Err:   sc.U32(balances.ErrorExistentialDeposit),
-			}))
-
-	dispatchOutcomeKeepAliveErr, _ = primitives.NewDispatchOutcome(
-		primitives.NewDispatchErrorModule(
-			primitives.CustomModuleError{
-				Index: BalancesIndex,
-				Err:   sc.U32(balances.ErrorKeepAlive),
-			}))
+	dispatchOutcomeTokenErrorFundsUnavailable, _ = primitives.NewDispatchOutcome(
+		primitives.NewDispatchErrorToken(primitives.NewTokenErrorFundsUnavailable()))
+	dispatchOutcomeTokenErrorBelowMinimum, _ = primitives.NewDispatchOutcome(
+		primitives.NewDispatchErrorToken(primitives.NewTokenErrorBelowMinimum()))
 
 	dispatchOutcomeSessionNoKeysErr, _ = primitives.NewDispatchOutcome(
 		primitives.NewDispatchErrorModule(
@@ -180,15 +163,14 @@ var (
 				Err:   sc.U32(sudo.ErrorRequireSudo),
 			}))
 
-	ApplyExtrinsicResultOutcome, _               = primitives.NewApplyExtrinsicResult(dispatchOutcome)
-	ApplyExtrinsicResultExhaustsResourcesErr, _  = primitives.NewApplyExtrinsicResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
-	ApplyExtrinsicResultBadOriginErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeBadOriginErr)
-	ApplyExtrinsicResultBadProofErr, _           = primitives.NewApplyExtrinsicResult(invalidTransactionBadProofErr.(primitives.TransactionValidityError))
-	ApplyExtrinsicResultCustomModuleErr, _       = primitives.NewApplyExtrinsicResult(dispatchOutcomeCustomModuleErr)
-	ApplyExtrinsicResultExistentialDepositErr, _ = primitives.NewApplyExtrinsicResult(dispatchOutcomeExistentialDepositErr)
-	ApplyExtrinsicResultKeepAliveErr, _          = primitives.NewApplyExtrinsicResult(dispatchOutcomeKeepAliveErr)
-	ApplyExtrinsicResultSessionNoKeysErr, _      = primitives.NewApplyExtrinsicResult(dispatchOutcomeSessionNoKeysErr)
-	ApplyExtrinsicResultSudoRequireSudoErr, _    = primitives.NewApplyExtrinsicResult(dispatchOutcomeSudoRequireSudoErr)
+	ApplyExtrinsicResultOutcome, _                    = primitives.NewApplyExtrinsicResult(dispatchOutcome)
+	ApplyExtrinsicResultExhaustsResourcesErr, _       = primitives.NewApplyExtrinsicResult(invalidTransactionExhaustsResourcesErr.(primitives.TransactionValidityError))
+	ApplyExtrinsicResultBadOriginErr, _               = primitives.NewApplyExtrinsicResult(dispatchOutcomeBadOriginErr)
+	ApplyExtrinsicResultBadProofErr, _                = primitives.NewApplyExtrinsicResult(invalidTransactionBadProofErr.(primitives.TransactionValidityError))
+	ApplyExtrinsicResultTokenErrorFundsUnavailable, _ = primitives.NewApplyExtrinsicResult(dispatchOutcomeTokenErrorFundsUnavailable)
+	ApplyExtrinsicResultExistentialDepositErr, _      = primitives.NewApplyExtrinsicResult(dispatchOutcomeTokenErrorBelowMinimum)
+	ApplyExtrinsicResultSessionNoKeysErr, _           = primitives.NewApplyExtrinsicResult(dispatchOutcomeSessionNoKeysErr)
+	ApplyExtrinsicResultSudoRequireSudoErr, _         = primitives.NewApplyExtrinsicResult(dispatchOutcomeSudoRequireSudoErr)
 )
 
 var (
@@ -310,7 +292,7 @@ func SetStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byt
 			Free:       scale.MustNewUint128(freeBalance),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(primitives.FlagsNewLogic),
 		},
 	}
 
@@ -323,6 +305,12 @@ func SetStorageAccountInfo(t *testing.T, storage *runtime.Storage, account []byt
 	assert.NoError(t, err)
 
 	err = (*storage).Put(keyStorageAccount, bytesStorage)
+	assert.NoError(t, err)
+
+	// Set TotalIssuance as well
+	keyTotalIssuance := append(KeyBalancesHash, KeyTotalIssuanceHash...)
+
+	err = (*storage).Put(keyTotalIssuance, sc.NewU128(freeBalance).Bytes())
 	assert.NoError(t, err)
 
 	return keyStorageAccount, accountInfo

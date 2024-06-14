@@ -2,37 +2,35 @@ package balances
 
 import (
 	"bytes"
-	"errors"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/frame/balances/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
 type callForceTransfer struct {
 	primitives.Callable
-	transfer
+	module module
 }
 
-func newCallForceTransfer(moduleId sc.U8, functionId sc.U8, storedMap primitives.StoredMap, constants *consts, mutator accountMutator) primitives.Call {
-	call := callForceTransfer{
+func newCallForceTransfer(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
+	return callForceTransfer{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
 			FunctionId: functionId,
-			Arguments:  sc.NewVaryingData(types.MultiAddress{}, types.MultiAddress{}, sc.Compact{Number: sc.U128{}}),
+			Arguments:  sc.NewVaryingData(primitives.MultiAddress{}, primitives.MultiAddress{}, sc.Compact{Number: sc.U128{}}),
 		},
-		transfer: newTransfer(moduleId, storedMap, constants, mutator),
+		module: module,
 	}
-
-	return call
 }
 
 func (c callForceTransfer) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, error) {
-	source, err := types.DecodeMultiAddress(buffer)
+	from, err := primitives.DecodeMultiAddress(buffer)
 	if err != nil {
 		return nil, err
 	}
-	dest, err := types.DecodeMultiAddress(buffer)
+
+	dest, err := primitives.DecodeMultiAddress(buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -40,11 +38,13 @@ func (c callForceTransfer) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, er
 	if err != nil {
 		return nil, err
 	}
+
 	c.Arguments = sc.NewVaryingData(
-		source,
+		from,
 		dest,
 		value,
 	)
+
 	return c, nil
 }
 
@@ -68,53 +68,59 @@ func (c callForceTransfer) Args() sc.VaryingData {
 	return c.Callable.Args()
 }
 
-func (c callForceTransfer) BaseWeight() types.Weight {
-	return callForceTransferWeight(c.constants.DbWeight)
+func (c callForceTransfer) BaseWeight() primitives.Weight {
+	return callForceTransferWeight(c.module.constants.DbWeight)
 }
 
-func (_ callForceTransfer) WeighData(baseWeight types.Weight) types.Weight {
-	return types.WeightFromParts(baseWeight.RefTime, 0)
+func (_ callForceTransfer) WeighData(baseWeight primitives.Weight) primitives.Weight {
+	return primitives.WeightFromParts(baseWeight.RefTime, 0)
 }
 
-func (_ callForceTransfer) ClassifyDispatch(baseWeight types.Weight) types.DispatchClass {
-	return types.NewDispatchClassNormal()
+func (_ callForceTransfer) ClassifyDispatch(baseWeight primitives.Weight) primitives.DispatchClass {
+	return primitives.NewDispatchClassNormal()
 }
 
-func (_ callForceTransfer) PaysFee(baseWeight types.Weight) types.Pays {
-	return types.PaysYes
-}
-
-func (c callForceTransfer) Dispatch(origin types.RuntimeOrigin, args sc.VaryingData) (types.PostDispatchInfo, error) {
-	valueCompact, ok := args[2].(sc.Compact)
-	if !ok {
-		return types.PostDispatchInfo{}, errors.New("invalid Compact value when dispatching call_force_transfer")
-	}
-	value, ok := valueCompact.Number.(sc.U128)
-	if !ok {
-		return types.PostDispatchInfo{}, errors.New("invalid Compact field number when dispatching call_force_transfer")
-	}
-	return types.PostDispatchInfo{}, c.forceTransfer(origin, args[0].(types.MultiAddress), args[1].(types.MultiAddress), value)
+func (_ callForceTransfer) PaysFee(baseWeight primitives.Weight) primitives.Pays {
+	return primitives.PaysYes
 }
 
 func (_ callForceTransfer) Docs() string {
-	return "Exactly as `transfer`, except the origin must be root and the source account may be specified."
+	return "Exactly as `transfer_allow_death`, except the origin must be root and the source account may be specified."
 }
 
-// forceTransfer transfers liquid free balance from `source` to `dest`.
-// Can only be called by ROOT.
-func (c callForceTransfer) forceTransfer(origin types.RawOrigin, source types.MultiAddress, dest types.MultiAddress, value sc.U128) error {
+func (c callForceTransfer) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
 	if !origin.IsRootOrigin() {
-		return types.NewDispatchErrorBadOrigin()
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorBadOrigin()
 	}
 
-	sourceAddress, err := types.Lookup(source)
-	if err != nil {
-		return types.NewDispatchErrorCannotLookup()
-	}
-	destinationAddress, err := types.Lookup(dest)
-	if err != nil {
-		return types.NewDispatchErrorCannotLookup()
+	fromMultiAddress, ok := args[0].(primitives.MultiAddress)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid from value in callForceTransfer")
 	}
 
-	return c.transfer.trans(sourceAddress, destinationAddress, value, types.ExistenceRequirementAllowDeath)
+	from, err := primitives.Lookup(fromMultiAddress)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorCannotLookup()
+	}
+
+	toMultiAddress, ok := args[1].(primitives.MultiAddress)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid to value in callForceTransfer")
+	}
+
+	to, err := primitives.Lookup(toMultiAddress)
+	if err != nil {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorCannotLookup()
+	}
+
+	valueCompact, ok := args[2].(sc.Compact)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid compact value in callForceTransfer")
+	}
+	value, ok := valueCompact.Number.(sc.U128)
+	if !ok {
+		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther("invalid u128 value in callForceTransfer")
+	}
+
+	return primitives.PostDispatchInfo{}, c.module.transfer(from, to, value, types.PreservationExpendable)
 }

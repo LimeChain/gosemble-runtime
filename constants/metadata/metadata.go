@@ -53,6 +53,7 @@ const (
 
 	TypesBalancesEvent
 	TypesBalanceStatus
+	TypesBalancesAdjustDirection
 	TypesVecTopics
 	TypesLastRuntimeUpgradeInfo
 	TypesSystemErrors

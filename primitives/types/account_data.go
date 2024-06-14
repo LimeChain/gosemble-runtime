@@ -2,25 +2,33 @@ package types
 
 import (
 	"bytes"
-
 	sc "github.com/LimeChain/goscale"
 )
 
 type Balance = sc.U128
 
+func DefaultAccountData() AccountData {
+	return AccountData{
+		Free:     Balance{},
+		Reserved: Balance{},
+		Frozen:   Balance{},
+		Flags:    DefaultExtraFlags,
+	}
+}
+
 type AccountData struct {
-	Free       Balance
-	Reserved   Balance
-	MiscFrozen Balance
-	FeeFrozen  Balance
+	Free     Balance
+	Reserved Balance
+	Frozen   Balance
+	Flags    ExtraFlags
 }
 
 func (ad AccountData) Encode(buffer *bytes.Buffer) error {
 	return sc.EncodeEach(buffer,
 		ad.Free,
 		ad.Reserved,
-		ad.MiscFrozen,
-		ad.FeeFrozen,
+		ad.Frozen,
+		ad.Flags,
 	)
 }
 
@@ -37,22 +45,22 @@ func DecodeAccountData(buffer *bytes.Buffer) (AccountData, error) {
 	if err != nil {
 		return AccountData{}, err
 	}
-	misc, err := sc.DecodeU128(buffer)
+	frozen, err := sc.DecodeU128(buffer)
 	if err != nil {
 		return AccountData{}, err
 	}
-	fee, err := sc.DecodeU128(buffer)
+	flags, err := sc.DecodeU128(buffer)
 	if err != nil {
 		return AccountData{}, err
 	}
 	return AccountData{
-		Free:       free,
-		Reserved:   reserved,
-		MiscFrozen: misc,
-		FeeFrozen:  fee,
+		Free:     free,
+		Reserved: reserved,
+		Frozen:   frozen,
+		Flags:    ExtraFlags{flags},
 	}, nil
 }
 
 func (ad AccountData) Total() sc.U128 {
-	return ad.Free.Add(ad.Reserved)
+	return sc.SaturatingAddU128(ad.Free, ad.Reserved)
 }

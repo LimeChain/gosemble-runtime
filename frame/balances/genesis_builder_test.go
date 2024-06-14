@@ -5,18 +5,29 @@ import (
 	"testing"
 
 	sc "github.com/LimeChain/goscale"
-	"github.com/LimeChain/gosemble/mocks"
 	"github.com/LimeChain/gosemble/primitives/types"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	validGcJson             = "{\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",1]]}}"
-	accId, _                = types.NewAccountId(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
+	accountId, _            = types.NewAccountId(sc.BytesToSequenceU8(signature.TestKeyringPairAlice.PublicKey)...)
 	balanceOne              = sc.NewU128(uint64(1))
 	balanceOverMaxUint64, _ = sc.NewU128FromString("184467440737095516150")
 )
+
+func Test_GenesisConfig_CreateDefaultConfig(t *testing.T) {
+	target := setupModule()
+
+	expectedGc := []byte("{\"balances\":{\"balances\":[]}}")
+
+	gc, err := target.CreateDefaultConfig()
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedGc, gc)
+}
 
 func Test_GenesisConfig_BuildConfig(t *testing.T) {
 	for _, tt := range []struct {
@@ -68,38 +79,29 @@ func Test_GenesisConfig_BuildConfig(t *testing.T) {
 			gcJson:      "{\"balances\":{\"balances\":[[\"5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY\",0]]}}",
 			expectedErr: errBalanceBelowExistentialDeposit,
 		},
-		{
-			name:               "TryMutateExists error",
-			gcJson:             validGcJson,
-			tryMutateExistsErr: errors.New("err"),
-			expectedErr:        errors.New("err"),
-		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			target := setupModule()
-			mockTotalIssuance := new(mocks.StorageValue[sc.U128])
-			target.storage.TotalIssuance = mockTotalIssuance
 
-			mockStoredMap.On("TryMutateExists", accId, mockTypeMutateAccountData).Return(tt.balance, tt.tryMutateExistsErr)
+			data := types.AccountData{
+				Free:     tt.balance,
+				Reserved: sc.NewU128(0),
+				Frozen:   sc.NewU128(0),
+				Flags:    types.DefaultExtraFlags,
+			}
+
+			mockStoredMap.On("IncProviders", accountId).Return(primitives.IncRefStatus(0), nil)
+			mockStoredMap.On("Insert", accountId, data).Return(sc.Empty{}, nil)
 			mockTotalIssuance.On("Put", tt.balance).Return()
 
 			err := target.BuildConfig([]byte(tt.gcJson))
-			assert.Equal(t, tt.expectedErr, err)
 
+			assert.Equal(t, tt.expectedErr, err)
 			if tt.shouldAssertCalled {
+				mockStoredMap.AssertCalled(t, "IncProviders", accountId)
+				mockStoredMap.AssertCalled(t, "Insert", accountId, data)
 				mockTotalIssuance.AssertCalled(t, "Put", tt.balance)
-				mockStoredMap.AssertCalled(t, "TryMutateExists", accId, mockTypeMutateAccountData)
 			}
 		})
 	}
-}
-
-func Test_GenesisConfig_CreateDefaultConfig(t *testing.T) {
-	target := setupModule()
-
-	expectedGc := []byte("{\"balances\":{\"balances\":[]}}")
-
-	gc, err := target.CreateDefaultConfig()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedGc, gc)
 }

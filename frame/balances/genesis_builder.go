@@ -21,6 +21,7 @@ type genesisConfigAccountBalance struct {
 	AccountId types.AccountId
 	Balance   types.Balance
 }
+
 type GenesisConfig struct {
 	Balances []genesisConfigAccountBalance
 }
@@ -77,14 +78,15 @@ func (gc *GenesisConfig) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
-func (m Module) CreateDefaultConfig() ([]byte, error) {
+
+func (m module) CreateDefaultConfig() ([]byte, error) {
 	gc := &genesisConfigJsonStruct{}
 	gc.BalancesGenesisConfig.Balances = [][2]interface{}{}
 
 	return json.Marshal(gc)
 }
 
-func (m Module) BuildConfig(config []byte) error {
+func (m module) BuildConfig(config []byte) error {
 	gc := GenesisConfig{}
 	if err := json.Unmarshal(config, &gc); err != nil {
 		return err
@@ -102,13 +104,17 @@ func (m Module) BuildConfig(config []byte) error {
 
 		totalIssuance = totalIssuance.Add(b.Balance)
 
-		_, err := m.Config.StoredMap.TryMutateExists(
-			b.AccountId,
-			func(maybeAccount *types.AccountData) (sc.Encodable, error) {
-				oldFree, oldReserved := updateAccount(maybeAccount, b.Balance, sc.NewU128(0))
-				return sc.NewVaryingData(oldFree, oldReserved), nil
-			},
-		)
+		_, err := m.Config.StoredMap.IncProviders(b.AccountId)
+		if err != nil {
+			return err
+		}
+
+		_, err = m.Config.StoredMap.Insert(b.AccountId, types.AccountData{
+			Free:     b.Balance,
+			Reserved: sc.NewU128(0),
+			Frozen:   sc.NewU128(0),
+			Flags:    types.DefaultExtraFlags,
+		})
 		if err != nil {
 			return err
 		}

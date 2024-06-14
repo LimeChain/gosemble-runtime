@@ -6,8 +6,11 @@ import (
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/primitives/types"
+	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,17 +26,21 @@ func BenchmarkBalancesForceTransfer(b *testing.B) {
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
-			Producers:   0,
+			Producers:   1,
 			Sufficients: 0,
 			Data: gossamertypes.AccountData{
 				Free:       scale.MustNewUint128(big.NewInt(balance)),
 				Reserved:   scale.MustNewUint128(big.NewInt(0)),
 				MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-				FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+				FreeFrozen: scale.MustNewUint128(primitives.FlagsNewLogic),
 			},
 		}
 
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
+		assert.NoError(b, err)
+
+		keyTotalIssuance := append(testhelpers.KeyBalancesHash, testhelpers.KeyTotalIssuanceHash...)
+		err = (*i.Storage()).Put(keyTotalIssuance, sc.NewU128(balance).Bytes())
 		assert.NoError(b, err)
 
 		err = i.ExecuteExtrinsic(

@@ -23,7 +23,7 @@ func Test_Balances_ForceFree_BadOrigin(t *testing.T) {
 
 	alice, err := ctypes.NewMultiAddressFromAccountID(signature.TestKeyringPairAlice.PublicKey)
 
-	call, err := ctypes.NewCall(metadata, "Balances.force_free", alice, ctypes.NewU128(*big.NewInt(10000000000)))
+	call, err := ctypes.NewCall(metadata, "Balances.force_unreserve", alice, ctypes.NewU128(*big.NewInt(10000000000)))
 	assert.NoError(t, err)
 
 	// Create the extrinsic

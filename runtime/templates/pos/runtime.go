@@ -254,8 +254,8 @@ func initializeModules() []primitives.Module {
 	balancesModule := balances.New(
 		BalancesIndex,
 		balances.NewConfig(DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
-		logger,
 		mdGenerator,
+		logger,
 	)
 
 	tpmModule := transaction_payment.New(

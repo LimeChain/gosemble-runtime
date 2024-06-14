@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/LimeChain/gosemble/primitives/types"
 	"math/big"
 	"testing"
 
@@ -84,7 +85,7 @@ func Test_Balances_TransferAll_Success_AllowDeath(t *testing.T) {
 			Free:       scale.MustNewUint128(big.NewInt(0).Sub(balance, queryInfo.PartialFee.ToBigInt())),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 
@@ -104,7 +105,7 @@ func Test_Balances_TransferAll_Success_AllowDeath(t *testing.T) {
 			Free:       scale.MustNewUint128(big.NewInt(0)),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 
@@ -145,7 +146,7 @@ func Test_Balances_TransferAll_Success_KeepAlive(t *testing.T) {
 	balance, ok := big.NewInt(0).SetString("500000000000000", 10)
 	assert.True(t, ok)
 
-	testhelpers.SetStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
+	keyStorageAccountAlice, aliceAccountInfo := testhelpers.SetStorageAccountInfo(t, storage, signature.TestKeyringPairAlice.PublicKey, balance, 0)
 
 	// Sign the transaction using Alice's default account
 	err = ext.Sign(signature.TestKeyringPairAlice, o)
@@ -163,61 +164,60 @@ func Test_Balances_TransferAll_Success_KeepAlive(t *testing.T) {
 	_, err = rt.Exec("Core_initialize_block", encodedHeader)
 	assert.NoError(t, err)
 
+	queryInfo := testhelpers.GetQueryInfo(t, rt, extEnc.Bytes())
+
 	res, err := rt.Exec("BlockBuilder_apply_extrinsic", extEnc.Bytes())
 	assert.NoError(t, err)
 
-	// TODO: remove once tx payments are implemented
-	assert.Equal(t, testhelpers.ApplyExtrinsicResultKeepAliveErr.Bytes(), res)
+	assert.Equal(t,
+		testhelpers.ApplyExtrinsicResultOutcome.Bytes(),
+		res,
+	)
 
-	// TODO: Uncomment once tx payments are implemented, this will be successfully executed,
-	// for now it fails due to nothing reserved in account executor
-	//assert.Equal(t,
-	//	primitives.NewApplyExtrinsicResult(primitives.NewDispatchOutcome(nil)).Bytes(),
-	//	res,
-	//)
+	bobHash, _ := common.Blake2b128(bob.AsID[:])
+	keyStorageAccountBob := append(testhelpers.KeySystemHash, testhelpers.KeyAccountHash...)
+	keyStorageAccountBob = append(keyStorageAccountBob, bobHash...)
+	keyStorageAccountBob = append(keyStorageAccountBob, bob.AsID[:]...)
+	bytesStorageBob := (*storage).Get(keyStorageAccountBob)
 
-	//bobHash, _ := common.Blake2b128(bob.AsID[:])
-	//keyStorageAccountBob := append(keySystemHash, keyAccountHash...)
-	//keyStorageAccountBob = append(keyStorageAccountBob, bobHash...)
-	//keyStorageAccountBob = append(keyStorageAccountBob, bob.AsID[:]...)
-	//bytesStorageBob := storage.Get(keyStorageAccountBob)
-	//
-	//expectedBobAccountInfo := gossamertypes.AccountInfo{
-	//	Nonce:       0,
-	//	Consumers:   0,
-	//	Producers:   1,
-	//	Sufficients: 0,
-	//	Data: gossamertypes.AccountData{
-	//		Free:       scale.MustNewUint128(mockBalance),
-	//		Reserved:   scale.MustNewUint128(big.NewInt(0)),
-	//		MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-	//		FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
-	//	},
-	//}
-	//
-	//bobAccountInfo := gossamertypes.AccountInfo{}
-	//
-	//err = scale.Unmarshal(bytesStorageBob, &bobAccountInfo)
-	//assert.NoError(t, err)
-	//
-	//assert.Equal(t, expectedBobAccountInfo, bobAccountInfo)
-	//
-	//expectedAliceAccountInfo := gossamertypes.AccountInfo{
-	//	Nonce:       1,
-	//	Consumers:   0,
-	//	Producers:   0,
-	//	Sufficients: 0,
-	//	Data: gossamertypes.AccountData{
-	//		Free:       scale.MustNewUint128(big.NewInt(0)),
-	//		Reserved:   scale.MustNewUint128(big.NewInt(0)),
-	//		MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-	//		FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
-	//	},
-	//}
-	//
-	//bytesAliceStorage := storage.Get(keyStorageAccountAlice)
-	//err = scale.Unmarshal(bytesAliceStorage, &aliceAccountInfo)
-	//assert.NoError(t, err)
-	//
-	//assert.Equal(t, expectedAliceAccountInfo, aliceAccountInfo)
+	transferDiff := new(big.Int).Sub(balance, queryInfo.PartialFee.ToBigInt())
+	expectedBobBalance := new(big.Int).Sub(transferDiff, BalancesExistentialDeposit.ToBigInt())
+	expectedBobAccountInfo := gossamertypes.AccountInfo{
+		Nonce:       0,
+		Consumers:   0,
+		Producers:   1,
+		Sufficients: 0,
+		Data: gossamertypes.AccountData{
+			Free:       scale.MustNewUint128(expectedBobBalance),
+			Reserved:   scale.MustNewUint128(big.NewInt(0)),
+			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
+		},
+	}
+
+	bobAccountInfo := gossamertypes.AccountInfo{}
+
+	err = scale.Unmarshal(bytesStorageBob, &bobAccountInfo)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedBobAccountInfo, bobAccountInfo)
+
+	expectedAliceAccountInfo := gossamertypes.AccountInfo{
+		Nonce:       1,
+		Consumers:   0,
+		Producers:   1,
+		Sufficients: 0,
+		Data: gossamertypes.AccountData{
+			Free:       scale.MustNewUint128(BalancesExistentialDeposit.ToBigInt()),
+			Reserved:   scale.MustNewUint128(big.NewInt(0)),
+			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
+		},
+	}
+
+	bytesAliceStorage := (*storage).Get(keyStorageAccountAlice)
+	err = scale.Unmarshal(bytesAliceStorage, &aliceAccountInfo)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedAliceAccountInfo, aliceAccountInfo)
 }
