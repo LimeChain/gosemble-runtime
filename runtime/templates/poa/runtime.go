@@ -31,6 +31,7 @@ import (
 	"github.com/LimeChain/gosemble/frame/transaction_payment"
 	txExtensions "github.com/LimeChain/gosemble/frame/transaction_payment/extensions"
 	"github.com/LimeChain/gosemble/hooks"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
 	sessiontypes "github.com/LimeChain/gosemble/primitives/session"
 	"github.com/LimeChain/gosemble/primitives/staking"
@@ -113,12 +114,14 @@ var (
 )
 
 var (
-	logger      = log.NewLogger()
-	mdGenerator = primitives.NewMetadataTypeGenerator()
+	logger              = log.NewLogger()
+	mdGenerator         = primitives.NewMetadataTypeGenerator()
+	ioStorage           = io.NewStorage()
+	ioTransactionBroker = io.NewTransactionBroker()
 	// Modules contains all the modules used by the runtime.
-	modules = initializeModules()
-	extra   = newSignedExtra()
-	decoder = types.NewRuntimeDecoder(modules, extra, SudoIndex, logger)
+	modules = initializeModules(ioStorage, ioTransactionBroker)
+	extra   = newSignedExtra(modules)
+	decoder = types.NewRuntimeDecoder(modules, extra, SudoIndex, ioStorage, ioTransactionBroker, logger)
 )
 
 func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength) {
@@ -135,10 +138,10 @@ func initializeBlockDefaults() (primitives.BlockWeights, primitives.BlockLength)
 	return weights, length
 }
 
-func initializeModules() []primitives.Module {
+func initializeModules(storage io.Storage, transactionBroker io.TransactionBroker) []primitives.Module {
 	systemModule := system.New(
 		SystemIndex,
-		system.NewConfig(primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion, maxConsumers),
+		system.NewConfig(storage, primitives.BlockHashCount{U32: sc.U32(constants.BlockHashCount)}, blockWeights, blockLength, DbWeight, RuntimeVersion, maxConsumers),
 		mdGenerator,
 		logger,
 	)
@@ -146,6 +149,7 @@ func initializeModules() []primitives.Module {
 	auraModule := aura.New(
 		AuraIndex,
 		aura.NewConfig(
+			storage,
 			primitives.PublicKeySr25519,
 			DbWeight,
 			TimestampMinimumPeriod,
@@ -161,7 +165,7 @@ func initializeModules() []primitives.Module {
 
 	timestampModule := timestamp.New(
 		TimestampIndex,
-		timestamp.NewConfig(auraModule, DbWeight, TimestampMinimumPeriod),
+		timestamp.NewConfig(storage, auraModule, DbWeight, TimestampMinimumPeriod),
 		mdGenerator,
 	)
 
@@ -170,13 +174,14 @@ func initializeModules() []primitives.Module {
 	periodicSession := session.NewPeriodicSessions(Period, Offset)
 	sessionModule := session.New(
 		SessionIndex,
-		session.NewConfig(DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
+		session.NewConfig(storage, DbWeight, blockWeights, systemModule, periodicSession, handler, session.DefaultManager{}),
 		mdGenerator,
 		logger)
 
 	grandpaModule := grandpa.New(
 		GrandpaIndex,
 		grandpa.NewConfig(
+			storage,
 			DbWeight,
 			primitives.PublicKeyEd25519,
 			GrandpaMaxAuthorities,
@@ -193,20 +198,20 @@ func initializeModules() []primitives.Module {
 
 	balancesModule := balances.New(
 		BalancesIndex,
-		balances.NewConfig(DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
+		balances.NewConfig(storage, DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
 		mdGenerator,
 		logger,
 	)
 
 	tpmModule := transaction_payment.New(
 		TxPaymentsIndex,
-		transaction_payment.NewConfig(OperationalFeeMultiplier, WeightToFee, LengthToFee, blockWeights),
+		transaction_payment.NewConfig(storage, OperationalFeeMultiplier, WeightToFee, LengthToFee, blockWeights),
 		mdGenerator,
 	)
 
-	sudoModule := sudo.New(SudoIndex, sudo.NewConfig(DbWeight, systemModule), mdGenerator, logger)
+	sudoModule := sudo.New(SudoIndex, sudo.NewConfig(storage, DbWeight, systemModule), mdGenerator, logger)
 
-	testableModule := tm.New(TestableIndex, mdGenerator)
+	testableModule := tm.New(TestableIndex, storage, transactionBroker, mdGenerator)
 
 	return []primitives.Module{
 		systemModule,
@@ -221,7 +226,7 @@ func initializeModules() []primitives.Module {
 	}
 }
 
-func newSignedExtra() primitives.SignedExtra {
+func newSignedExtra(modules []primitives.Module) primitives.SignedExtra {
 	systemModule := primitives.MustGetModule(SystemIndex, modules).(system.Module)
 	balancesModule := primitives.MustGetModule(BalancesIndex, modules).(balances.Module)
 	txPaymentModule := primitives.MustGetModule(TxPaymentsIndex, modules).(transaction_payment.Module)
@@ -513,6 +518,8 @@ func BenchmarkDispatch(dataPtr int32, dataLen int32) int64 {
 		SystemIndex,
 		modules,
 		decoder,
+		ioStorage,
+		ioTransactionBroker,
 		logger,
 	).BenchmarkDispatch(dataPtr, dataLen)
 }
@@ -523,6 +530,8 @@ func BenchmarkHook(dataPtr int32, dataLen int32) int64 {
 		SystemIndex,
 		modules,
 		decoder,
+		ioStorage,
+		ioTransactionBroker,
 		logger,
 	).BenchmarkHook(dataPtr, dataLen)
 }

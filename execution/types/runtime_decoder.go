@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	sc "github.com/LimeChain/goscale"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
+	"github.com/LimeChain/gosemble/primitives/parachain"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -18,6 +20,7 @@ var (
 
 type RuntimeDecoder interface {
 	DecodeBlock(buffer *bytes.Buffer) (primitives.Block, error)
+	DecodeParachainBlockData(blockData sc.Sequence[sc.U8]) (parachain.BlockData, error)
 	DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (primitives.UncheckedExtrinsic, error)
 	DecodeCall(buffer *bytes.Buffer) (primitives.Call, error)
 }
@@ -27,18 +30,22 @@ type SudoDecoder interface {
 }
 
 type runtimeDecoder struct {
-	modules   []types.Module
-	extra     primitives.SignedExtra
-	sudoIndex sc.U8 // Used for additional decoding related to Sudo calls. Default is 0 and not considered a valid sudo index.
-	logger    log.RuntimeLogger
+	modules           []types.Module
+	extra             primitives.SignedExtra
+	sudoIndex         sc.U8
+	storage           io.Storage
+	transactionBroker io.TransactionBroker
+	logger            log.RuntimeLogger
 }
 
-func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, sudoIndex sc.U8, logger log.RuntimeLogger) RuntimeDecoder {
+func NewRuntimeDecoder(modules []types.Module, extra primitives.SignedExtra, sudoIndex sc.U8, storage io.Storage, transactionBroker io.TransactionBroker, logger log.RuntimeLogger) RuntimeDecoder {
 	return runtimeDecoder{
-		modules:   modules,
-		extra:     extra,
-		sudoIndex: sudoIndex,
-		logger:    logger,
+		modules:           modules,
+		extra:             extra,
+		sudoIndex:         sudoIndex,
+		storage:           storage,
+		transactionBroker: transactionBroker,
+		logger:            logger,
 	}
 }
 
@@ -63,6 +70,25 @@ func (rd runtimeDecoder) DecodeBlock(buffer *bytes.Buffer) (primitives.Block, er
 	}
 
 	return NewBlock(header, extrinsics), nil
+}
+
+func (rd runtimeDecoder) DecodeParachainBlockData(blockData sc.Sequence[sc.U8]) (parachain.BlockData, error) {
+	buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(blockData))
+
+	block, err := rd.DecodeBlock(buffer)
+	if err != nil {
+		return parachain.BlockData{}, err
+	}
+
+	compactProofs, err := parachain.DecodeStorageProof(buffer)
+	if err != nil {
+		return parachain.BlockData{}, err
+	}
+
+	return parachain.BlockData{
+		Block:        block,
+		CompactProof: compactProofs,
+	}, nil
 }
 
 func (rd runtimeDecoder) DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (primitives.UncheckedExtrinsic, error) {
@@ -106,7 +132,7 @@ func (rd runtimeDecoder) DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (primiti
 		return nil, errInvalidLengthPrefix
 	}
 
-	return NewUncheckedExtrinsic(sc.U8(version), extSignature, function, extra, rd.logger), nil
+	return NewUncheckedExtrinsic(sc.U8(version), extSignature, function, extra, rd.storage, rd.transactionBroker, rd.logger), nil
 }
 
 func (rd runtimeDecoder) DecodeCall(buffer *bytes.Buffer) (primitives.Call, error) {

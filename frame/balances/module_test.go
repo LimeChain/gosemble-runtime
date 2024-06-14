@@ -53,6 +53,7 @@ var (
 )
 
 var (
+	mockStorage                   *mocks.IoStorage
 	mockStoredMap                 *mocks.StoredMap
 	mockTotalIssuance             *mocks.StorageValue[sc.U128]
 	mockCall                      = new(mocks.Call)
@@ -65,10 +66,11 @@ var (
 )
 
 func setupModule() module {
+	mockStorage = new(mocks.IoStorage)
 	mockStoredMap = new(mocks.StoredMap)
 	mockTotalIssuance = new(mocks.StorageValue[sc.U128])
 
-	config := NewConfig(dbWeight, maxLocks, maxReserves, existentialDeposit, mockStoredMap)
+	config := NewConfig(mockStorage, dbWeight, maxLocks, maxReserves, existentialDeposit, mockStoredMap)
 	target = New(moduleId, config, mdGenerator, logger).(module)
 	target.storage.TotalIssuance = mockTotalIssuance
 

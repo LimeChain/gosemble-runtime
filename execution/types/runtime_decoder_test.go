@@ -61,10 +61,12 @@ var (
 func Test_RuntimeDecoder_New(t *testing.T) {
 	target := setupRuntimeDecoder(defaultSudoIndex)
 	expect := runtimeDecoder{
-		modules:   []primitives.Module{mockModuleOne},
-		extra:     mockSignedExtra,
-		sudoIndex: sc.U8(0),
-		logger:    logger,
+		modules:           []primitives.Module{mockModuleOne},
+		extra:             mockSignedExtra,
+		sudoIndex:         sc.U8(0),
+		storage:           mockStorage,
+		transactionBroker: mockTransactionBroker,
+		logger:            logger,
 	}
 
 	assert.Equal(t, expect, target)
@@ -106,7 +108,7 @@ func Test_RuntimeDecoder_DecodeBlock_Single_Extrinsic(t *testing.T) {
 	assert.NoError(t, err)
 
 	extrinsics := sc.Sequence[primitives.UncheckedExtrinsic]{
-		NewUncheckedExtrinsic(sc.U8(signedExtrinsicVersion), extrinsicSignature, mockCallOne, mockSignedExtra, logger),
+		NewUncheckedExtrinsic(sc.U8(signedExtrinsicVersion), extrinsicSignature, mockCallOne, mockSignedExtra, mockStorage, mockTransactionBroker, logger),
 	}
 
 	expectedBlock := NewBlock(header, extrinsics)
@@ -158,7 +160,7 @@ func Test_RuntimeDecoder_DecodeBlock_Multiple_Extrinsics(t *testing.T) {
 
 	extrinsics := sc.Sequence[primitives.UncheckedExtrinsic]{}
 	for i := 0; i < totalExtrinsicsInBlock; i++ {
-		extrinsics = append(extrinsics, NewUncheckedExtrinsic(sc.U8(signedExtrinsicVersion), extrinsicSignature, mockCallOne, mockSignedExtra, logger))
+		extrinsics = append(extrinsics, NewUncheckedExtrinsic(sc.U8(signedExtrinsicVersion), extrinsicSignature, mockCallOne, mockSignedExtra, mockStorage, mockTransactionBroker, logger))
 	}
 
 	expectedBlock := NewBlock(header, extrinsics)
@@ -200,7 +202,7 @@ func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_Unsigned(t *testing.T) {
 	result, err := target.DecodeUncheckedExtrinsic(buff)
 	assert.NoError(t, err)
 
-	expectedUnsignedExtrinsic := NewUncheckedExtrinsic(version, sc.Option[primitives.ExtrinsicSignature]{}, mockCallOne, mockSignedExtra, logger)
+	expectedUnsignedExtrinsic := NewUncheckedExtrinsic(version, sc.Option[primitives.ExtrinsicSignature]{}, mockCallOne, mockSignedExtra, mockStorage, mockTransactionBroker, logger)
 
 	assert.Equal(t, expectedUnsignedExtrinsic.IsSigned(), result.IsSigned())
 
@@ -230,7 +232,7 @@ func Test_RuntimeDecoder_DecodeUncheckedExtrinsic_Signed(t *testing.T) {
 	result, err := target.DecodeUncheckedExtrinsic(buff)
 	assert.NoError(t, err)
 
-	expectedSignedExtrinsicsBytesAfterDecode := NewUncheckedExtrinsic(sc.U8(signedExtrinsicVersion), extrinsicSignature, mockCallOne, mockSignedExtra, logger)
+	expectedSignedExtrinsicsBytesAfterDecode := NewUncheckedExtrinsic(sc.U8(signedExtrinsicVersion), extrinsicSignature, mockCallOne, mockSignedExtra, mockStorage, mockTransactionBroker, logger)
 
 	assert.Equal(t, expectedSignedExtrinsicsBytesAfterDecode.IsSigned(), result.IsSigned())
 
@@ -417,6 +419,8 @@ func Test_RuntimeDecoder_DecodeCall_Sudo(t *testing.T) {
 }
 
 func setupRuntimeDecoder(sudoIndex sc.U8) RuntimeDecoder {
+	mockStorage = new(mocks.IoStorage)
+	mockTransactionBroker = new(mocks.IoTransactionBroker)
 	mockModuleOne = new(mocks.Module)
 
 	mockCallOne = new(mocks.Call)
@@ -433,5 +437,5 @@ func setupRuntimeDecoder(sudoIndex sc.U8) RuntimeDecoder {
 
 	apis := []primitives.Module{mockModuleOne}
 
-	return NewRuntimeDecoder(apis, mockSignedExtra, sudoIndex, logger)
+	return NewRuntimeDecoder(apis, mockSignedExtra, sudoIndex, mockStorage, mockTransactionBroker, logger)
 }

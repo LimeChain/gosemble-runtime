@@ -39,7 +39,7 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 
 	module := Module{
 		index:          index,
-		storage:        newStorage(),
+		storage:        newStorage(config.Storage),
 		eventDepositor: config.EventDepositor,
 		mdGenerator:    mdGenerator,
 		logger:         logger,

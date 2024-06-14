@@ -14,7 +14,7 @@ const AuthoringVersion = 1
 const SpecVersion = 100
 const ImplVersion = 1
 const TransactionVersion = 1
-const StateVersion = 1
+const StateVersion = 0
 const StorageVersion = 0
 
 const BlockHashCount = sc.U64(2400)

@@ -56,6 +56,18 @@ func Test_CreateDefaultConfig(t *testing.T) {
 	mockMemoryUtils.AssertCalled(t, "BytesToOffsetAndSize", genesisSequence)
 }
 
+func Test_CreateDefaultConfig_Empty(t *testing.T) {
+	genesisSequence := sc.BytesToSequenceU8([]byte("{}"))
+	setup()
+	mockModule.On("CreateDefaultConfig").Return([]byte{}, nil)
+	mockMemoryUtils.On("BytesToOffsetAndSize", genesisSequence.Bytes()).Return(int64(0))
+
+	target.CreateDefaultConfig()
+
+	mockModule.AssertCalled(t, "CreateDefaultConfig")
+	mockMemoryUtils.AssertCalled(t, "BytesToOffsetAndSize", genesisSequence.Bytes())
+}
+
 func Test_CreateDefaultConfig_Error(t *testing.T) {
 	setup()
 	mockModule.On("CreateDefaultConfig").Return(genesis, errors.New("err"))

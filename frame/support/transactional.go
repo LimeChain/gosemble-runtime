@@ -32,11 +32,11 @@ type transactional[T sc.Encodable] struct {
 	logger            log.RuntimeLogger
 }
 
-func NewTransactional[T sc.Encodable](logger log.RuntimeLogger) Transactional[T] {
-	storageVal := NewSimpleStorageValue(keyTransactionLevel, sc.DecodeU32)
+func NewTransactional[T sc.Encodable](storage io.Storage, transactionBroker io.TransactionBroker, logger log.RuntimeLogger) Transactional[T] {
+	storageVal := NewSimpleStorageValue(storage, keyTransactionLevel, sc.DecodeU32)
 	return transactional[T]{
 		storage:           storageVal,
-		transactionBroker: io.NewTransactionBroker(),
+		transactionBroker: transactionBroker,
 		logger:            logger,
 	}
 }

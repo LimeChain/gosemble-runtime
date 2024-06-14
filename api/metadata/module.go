@@ -281,6 +281,24 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
 				primitives.NewMetadataTypeDefinitionField(metadata.TypesFixedSequence32U8)})),
 
+		primitives.NewMetadataTypeWithParam(metadata.TypesOptionH256, "Option<H256>", sc.Sequence[sc.Str]{"Option"}, primitives.NewMetadataTypeDefinitionVariant(
+			sc.Sequence[primitives.MetadataDefinitionVariant]{
+				primitives.NewMetadataDefinitionVariant(
+					"None",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					optionNoneIdx,
+					""),
+				primitives.NewMetadataDefinitionVariant(
+					"Some",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionField(metadata.TypesH256),
+					},
+					optionSomeIdx,
+					""),
+			}),
+			primitives.NewMetadataTypeParameter(metadata.TypesH256, "T"),
+		),
+
 		primitives.NewMetadataType(
 			metadata.TypesCompactU128,
 			"compact U128",
@@ -861,6 +879,24 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 			primitives.NewMetadataTypeParameter(metadata.TypesSequenceU8, "T"),
 		),
 
+		primitives.NewMetadataTypeWithParam(metadata.TypesOptionU32, "Option<U32>", sc.Sequence[sc.Str]{"Option"}, primitives.NewMetadataTypeDefinitionVariant(
+			sc.Sequence[primitives.MetadataDefinitionVariant]{
+				primitives.NewMetadataDefinitionVariant(
+					"None",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{},
+					optionNoneIdx,
+					""),
+				primitives.NewMetadataDefinitionVariant(
+					"Some",
+					sc.Sequence[primitives.MetadataTypeDefinitionField]{
+						primitives.NewMetadataTypeDefinitionField(metadata.PrimitiveTypesU32),
+					},
+					optionSomeIdx,
+					""),
+			}),
+			primitives.NewMetadataTypeParameter(metadata.PrimitiveTypesU32, "T"),
+		),
+
 		primitives.NewMetadataType(metadata.TypesSequenceSequenceU8, "[][]byte", primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.TypesSequenceU8))),
 
 		primitives.NewMetadataType(
@@ -903,6 +939,31 @@ func (m Module) basicTypes() sc.Sequence[primitives.MetadataType] {
 					primitives.NewMetadataTypeDefinitionFieldWithNames(typesCompactU64, "proof_size", "u64"),
 				},
 			),
+		),
+		primitives.NewMetadataTypeWithPath(
+			metadata.TypesParachainOutboundHrmpMessage,
+			"parachain primitives outbound hrmp messages",
+			sc.Sequence[sc.Str]{"parachain", "primitives", "OutboundHrmpMessages"},
+			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU32, "id", "Id"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceU8, "data", "Data"),
+			}),
+		),
+		primitives.NewMetadataType(metadata.TypesParachainOutboundHrmpMessages,
+			"[]OutboundHrmpMessage",
+			primitives.NewMetadataTypeDefinitionSequence(sc.ToCompact(metadata.TypesParachainOutboundHrmpMessage)),
+		),
+		primitives.NewMetadataTypeWithPath(
+			metadata.TypesParachainValidationResult,
+			"parachain primitives validationResult", sc.Sequence[sc.Str]{"parachain", "primitives", "ValidationResult"},
+			primitives.NewMetadataTypeDefinitionComposite(sc.Sequence[primitives.MetadataTypeDefinitionField]{
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceSequenceU8, "upward_messages", "UpdwardMessages"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesParachainOutboundHrmpMessages, "horizontal_messages", "HorizontalMessages"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesOptionSequenceU8, "validation_code", "ValidationCode"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU32, "processed_downward_messages", "ProcessedDownwardMessages"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.PrimitiveTypesU32, "hrmp_watermark", "HrmpWatermark"),
+				primitives.NewMetadataTypeDefinitionFieldWithNames(metadata.TypesSequenceU8, "head_data", "HeadData"),
+			}),
 		),
 
 		// 161

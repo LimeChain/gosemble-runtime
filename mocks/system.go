@@ -247,6 +247,10 @@ func (m *SystemModule) Insert(who primitives.AccountId, data primitives.AccountD
 	return args.Get(0).(sc.Encodable), args.Get(1).(error)
 }
 
+func (m *SystemModule) UpdateCodeInStorage(code sc.Sequence[sc.U8]) {
+	m.Called(code)
+}
+
 func (m *SystemModule) Metadata() primitives.MetadataModule {
 	args := m.Called()
 	return args.Get(0).(primitives.MetadataModule)
@@ -392,6 +396,15 @@ func (m *SystemModule) StorageAllExtrinsicsLen() (sc.U32, error) {
 
 func (m *SystemModule) StorageAllExtrinsicsLenSet(value sc.U32) {
 	m.Called(value)
+}
+
+func (m *SystemModule) StorageParentHash() (types.Blake2bHash, error) {
+	args := m.Called()
+	if args.Get(1) == nil {
+		return args.Get(0).(types.Blake2bHash), args.Get(1).(error)
+	}
+
+	return args.Get(0).(types.Blake2bHash), nil
 }
 
 func (m *SystemModule) StorageCodeSet(codeBlob sc.Sequence[sc.U8]) {

@@ -28,6 +28,7 @@ const (
 
 var (
 	target                       module
+	mockStorage                  *mocks.IoStorage
 	mockSystemModule             *mocks.SystemModule
 	mockSessionModule            *mocks.SessionModule
 	mockEquivocationReportSystem *mocks.EquivocationReportSystem
@@ -82,6 +83,7 @@ var (
 )
 
 func setup() {
+	mockStorage = new(mocks.IoStorage)
 	mockSystemModule = new(mocks.SystemModule)
 	mockSessionModule = new(mocks.SessionModule)
 	mockEquivocationReportSystem = new(mocks.EquivocationReportSystem)
@@ -95,6 +97,7 @@ func setup() {
 	mockStorageState = new(mocks.StorageValue[StoredState])
 
 	config := NewConfig(
+		mockStorage,
 		dbWeight,
 		primitives.PublicKeyEd25519,
 		maxAuthorities,

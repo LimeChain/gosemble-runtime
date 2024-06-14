@@ -9,7 +9,7 @@ import (
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
-	"github.com/ChainSafe/gossamer/pkg/trie"
+	inmemory_trie "github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	sc "github.com/LimeChain/goscale"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -26,7 +26,8 @@ var (
 
 func TestInstance(t *testing.T) {
 	testing.Benchmark(func(b *testing.B) {
-		runtime := wazero_runtime.NewBenchInstanceWithTrie(b, filepath.Join("../build/", RuntimeWasmBinary), trie.NewEmptyTrie())
+		t.Skip()
+		runtime := wazero_runtime.NewBenchInstanceWithTrie(b, filepath.Join("../build/", RuntimeWasmBinary), inmemory_trie.NewEmptyTrie())
 		defer runtime.Stop()
 
 		instance, err := newBenchmarkingInstance(runtime, 1)

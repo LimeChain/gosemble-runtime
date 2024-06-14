@@ -4,6 +4,7 @@ import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/hooks"
+	"github.com/LimeChain/gosemble/primitives/io"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -18,10 +19,10 @@ type Module struct {
 	storage *storage
 }
 
-func New(index sc.U8) Module {
+func New(index sc.U8, storage io.Storage) Module {
 	return Module{
 		index:   index,
-		storage: newStorage(),
+		storage: newStorage(storage),
 	}
 }
 
@@ -43,6 +44,10 @@ func (m Module) PreDispatch(_ primitives.Call) (sc.Empty, error) {
 
 func (m Module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
 	return primitives.ValidTransaction{}, primitives.NewTransactionValidityError(primitives.NewUnknownTransactionNoUnsignedValidator())
+}
+
+func (m Module) StorageParaId() (sc.U32, error) {
+	return m.storage.ParachainId.Get()
 }
 
 func (m Module) Metadata() primitives.MetadataModule {

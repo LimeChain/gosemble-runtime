@@ -9,7 +9,7 @@ import (
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
 	"github.com/ChainSafe/gossamer/pkg/scale"
-	"github.com/ChainSafe/gossamer/pkg/trie"
+	inmemory_trie "github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
@@ -20,7 +20,7 @@ var (
 
 func BenchmarkOverheadBlockExecutionWeight(t *testing.B) {
 	// todo set heapPages and dbCache when Gossamer starts supporting db caching
-	runtime := wazero_runtime.NewBenchInstanceWithTrie(t, Config.WasmRuntime, trie.NewEmptyTrie())
+	runtime := wazero_runtime.NewBenchInstanceWithTrie(t, Config.WasmRuntime, inmemory_trie.NewEmptyTrie())
 	defer runtime.Stop()
 
 	instance, err := newBenchmarkingInstance(runtime, Config.Overhead.Repeat)
@@ -45,7 +45,7 @@ func BenchmarkOverheadBlockExecutionWeight(t *testing.B) {
 
 func BenchmarkOverheadBaseExtrinsicWeight(t *testing.B) {
 	// todo set heapPages and dbCache when Gossamer starts supporting db caching
-	runtime := wazero_runtime.NewBenchInstanceWithTrie(t, Config.WasmRuntime, trie.NewEmptyTrie())
+	runtime := wazero_runtime.NewBenchInstanceWithTrie(t, Config.WasmRuntime, inmemory_trie.NewEmptyTrie())
 	defer runtime.Stop()
 
 	instance, err := newBenchmarkingInstance(runtime, Config.Overhead.Repeat)

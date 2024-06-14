@@ -72,7 +72,7 @@ func New(index sc.U8, config *Config, logger log.RuntimeLogger, mdGenerator *pri
 		index:                    index,
 		config:                   config,
 		constants:                newConstants(config.MaxAuthorities, config.MaxNominators, config.MaxSetIdSessionEntries),
-		storage:                  newStorage(),
+		storage:                  newStorage(config.Storage),
 		functions:                functions,
 		keyOwnerProof:            config.KeyOwnerProof,
 		equivocationReportSystem: config.EquivocationReportSystem,

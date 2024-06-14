@@ -87,6 +87,8 @@ var (
 )
 
 func setup(signature types.MultiSignature) {
+	mockStorage = new(mocks.IoStorage)
+	mockTransactionBroker = new(mocks.IoTransactionBroker)
 	mockCall = new(mocks.Call)
 	mockSignedExtra = new(mocks.SignedExtra)
 	mocksSignedPayload = new(mocks.SignedPayload)
@@ -105,6 +107,8 @@ func setup(signature types.MultiSignature) {
 
 	targetSigned = newTestSignedExtrinsic(
 		extrinsicSignature,
+		mockStorage,
+		mockTransactionBroker,
 		mockCall,
 		mockSignedExtra,
 		mocksSignedPayload,
@@ -119,6 +123,8 @@ func newTestUnsignedExtrinsic(call types.Call) uncheckedExtrinsic {
 
 func newTestSignedExtrinsic(
 	signature sc.Option[types.ExtrinsicSignature],
+	storage io.Storage,
+	txBroker io.TransactionBroker,
 	call types.Call,
 	extra types.SignedExtra,
 	signedPayload types.SignedPayload,
@@ -129,7 +135,7 @@ func newTestSignedExtrinsic(
 		return signedPayload, nil
 	}
 
-	uxt := NewUncheckedExtrinsic(version, signature, call, extra, logger).(uncheckedExtrinsic)
+	uxt := NewUncheckedExtrinsic(version, signature, call, extra, storage, txBroker, logger).(uncheckedExtrinsic)
 	uxt.initializePayload = initializer
 	uxt.crypto = crypto
 	uxt.hashing = hashing
@@ -235,7 +241,7 @@ func Test_IsSigned(t *testing.T) {
 
 func Test_Check_UnsignedUncheckedExtrinsic(t *testing.T) {
 	setup(signatureEd25519)
-	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](nil), mockCall, types.SignedExtra(nil), logger).(checkedExtrinsic)
+	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](nil), mockCall, types.SignedExtra(nil), mockStorage, mockTransactionBroker, logger).(checkedExtrinsic)
 
 	result, err := targetUnsigned.Check()
 
@@ -311,7 +317,7 @@ func Test_Check_SignedUncheckedExtrinsic_LongEncoding_BadProofError(t *testing.T
 
 func Test_Check_SignedUncheckedExtrinsic_Success(t *testing.T) {
 	setup(signatureEd25519)
-	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](signerAccountId), mockCall, mockSignedExtra, logger).(checkedExtrinsic)
+	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](signerAccountId), mockCall, mockSignedExtra, mockStorage, mockTransactionBroker, logger).(checkedExtrinsic)
 
 	mocksSignedPayload.On("Bytes").Return(encodedPayloadBytes)
 	mockCrypto.On("Ed25519Verify", signatureBytes, encodedPayloadBytes, signerAddressBytes).Return(true)
@@ -331,7 +337,7 @@ func Test_Check_SignedUncheckedExtrinsic_Success(t *testing.T) {
 
 func Test_Check_SignedUncheckedExtrinsic_Success_Sr25519(t *testing.T) {
 	setup(signatureSr25519)
-	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](signerAccountId), mockCall, mockSignedExtra, logger).(checkedExtrinsic)
+	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](signerAccountId), mockCall, mockSignedExtra, mockStorage, mockTransactionBroker, logger).(checkedExtrinsic)
 
 	mocksSignedPayload.On("Bytes").Return(encodedPayloadBytes)
 	mockCrypto.On("Sr25519Verify", signatureBytes, encodedPayloadBytes, signerAddressBytes).Return(true)
@@ -355,7 +361,7 @@ func Test_SignedUncheckedExtrinsic_Check_Ecdsa_Success(t *testing.T) {
 		HasError: false,
 		Value:    ecdsaPublicKey,
 	}
-	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](signerAccountId), mockCall, mockSignedExtra, logger).(checkedExtrinsic)
+	expect := NewCheckedExtrinsic(sc.NewOption[types.AccountId](signerAccountId), mockCall, mockSignedExtra, mockStorage, mockTransactionBroker, logger).(checkedExtrinsic)
 
 	mocksSignedPayload.On("Bytes").Return(encodedPayloadBytes)
 	mockHashing.On("Blake256", encodedPayloadBytes).Return(encodedPayloadBytes)

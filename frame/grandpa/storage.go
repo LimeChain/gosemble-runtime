@@ -33,18 +33,18 @@ type storage struct {
 	NextForced    support.StorageValue[sc.U64]
 }
 
-func newStorage() *storage {
+func newStorage(s io.Storage) *storage {
 	hashing := io.NewHashing()
 
 	return &storage{
-		Authorities: support.NewSimpleStorageValue(keyAuthorities, primitives.DecodeAuthorityList),
+		Authorities: support.NewSimpleStorageValue(s, keyAuthorities, primitives.DecodeAuthorityList),
 		// Authorities:   support.NewHashStorageValue(keyGrandpa, keyAuthorities, primitives.DecodeAuthorityList),
-		CurrentSetId:  support.NewHashStorageValue(keyGrandpa, keyCurrentSetId, sc.DecodeU64),
-		Stalled:       support.NewHashStorageValue(keyGrandpa, keyStalled, primitives.DecodeTuple2U64),
-		PendingChange: support.NewHashStorageValue(keyGrandpa, keyPendingChange, DecodeStoredPendingChange),
-		State:         support.NewHashStorageValueWithDefault(keyGrandpa, keyState, DecodeStoredState, defaultState()),
-		SetIdSession:  support.NewHashStorageMap[sc.U64, sc.U32](keyGrandpa, keySetIdSession, hashing.Twox64, sc.DecodeU32),
-		NextForced:    support.NewHashStorageValue(keyGrandpa, keyNextForced, sc.DecodeU64),
+		CurrentSetId:  support.NewHashStorageValue(s, keyGrandpa, keyCurrentSetId, sc.DecodeU64),
+		Stalled:       support.NewHashStorageValue(s, keyGrandpa, keyStalled, primitives.DecodeTuple2U64),
+		PendingChange: support.NewHashStorageValue(s, keyGrandpa, keyPendingChange, DecodeStoredPendingChange),
+		State:         support.NewHashStorageValueWithDefault(s, keyGrandpa, keyState, DecodeStoredState, defaultState()),
+		SetIdSession:  support.NewHashStorageMap[sc.U64, sc.U32](s, keyGrandpa, keySetIdSession, hashing.Twox64, sc.DecodeU32),
+		NextForced:    support.NewHashStorageValue(s, keyGrandpa, keyNextForced, sc.DecodeU64),
 	}
 }
 

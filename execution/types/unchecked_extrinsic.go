@@ -41,11 +41,13 @@ type uncheckedExtrinsic struct {
 	initializePayload PayloadInitializer
 	crypto            io.Crypto
 	hashing           io.Hashing
+	storage           io.Storage
+	transactionBroker io.TransactionBroker
 	logger            log.RuntimeLogger
 }
 
 // NewUncheckedExtrinsic returns a new instance of an unchecked extrinsic.
-func NewUncheckedExtrinsic(version sc.U8, signature sc.Option[primitives.ExtrinsicSignature], function primitives.Call, extra primitives.SignedExtra, logger log.RuntimeLogger) primitives.UncheckedExtrinsic {
+func NewUncheckedExtrinsic(version sc.U8, signature sc.Option[primitives.ExtrinsicSignature], function primitives.Call, extra primitives.SignedExtra, storage io.Storage, transactionBroker io.TransactionBroker, logger log.RuntimeLogger) primitives.UncheckedExtrinsic {
 	return uncheckedExtrinsic{
 		version:           version,
 		signature:         signature,
@@ -54,6 +56,8 @@ func NewUncheckedExtrinsic(version sc.U8, signature sc.Option[primitives.Extrins
 		initializePayload: primitives.NewSignedPayload,
 		crypto:            io.NewCrypto(),
 		hashing:           io.NewHashing(),
+		storage:           storage,
+		transactionBroker: transactionBroker,
 		logger:            logger,
 	}
 }
@@ -138,10 +142,10 @@ func (uxt uncheckedExtrinsic) Check() (primitives.CheckedExtrinsic, error) {
 			return nil, primitives.NewTransactionValidityError(primitives.NewInvalidTransactionBadProof())
 		}
 
-		return NewCheckedExtrinsic(sc.NewOption[primitives.AccountId](signerAddress), uxt.function, extra, uxt.logger), nil
+		return NewCheckedExtrinsic(sc.NewOption[primitives.AccountId](signerAddress), uxt.function, extra, uxt.storage, uxt.transactionBroker, uxt.logger), nil
 	}
 
-	return NewCheckedExtrinsic(sc.NewOption[primitives.AccountId](nil), uxt.function, uxt.extra, uxt.logger), nil
+	return NewCheckedExtrinsic(sc.NewOption[primitives.AccountId](nil), uxt.function, uxt.extra, uxt.storage, uxt.transactionBroker, uxt.logger), nil
 }
 
 func (uxt uncheckedExtrinsic) verify(signature primitives.MultiSignature, msg sc.Sequence[sc.U8], signer primitives.AccountId) (bool, error) {

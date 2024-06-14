@@ -336,9 +336,8 @@ func setupHashStorageMap() HashStorageMap[sc.U64, sc.U32] {
 	mockHashing = new(mocks.IoHashing)
 	mockStorage = new(mocks.IoStorage)
 
-	target := NewHashStorageMap[sc.U64, sc.U32](prefix, name, mockHashing.Twox64, decodeFunc).(HashStorageMap[sc.U64, sc.U32])
+	target := NewHashStorageMap[sc.U64, sc.U32](mockStorage, prefix, name, mockHashing.Twox64, decodeFunc).(HashStorageMap[sc.U64, sc.U32])
 	target.hashing = mockHashing
-	target.storage = mockStorage
 
 	return target
 }

@@ -59,6 +59,7 @@ type Module interface {
 	IncConsumersWithoutLimit(who primitives.AccountId) error
 	IncProviders(who primitives.AccountId) (primitives.IncRefStatus, error)
 	Insert(who primitives.AccountId, data primitives.AccountData) (sc.Encodable, error)
+	UpdateCodeInStorage(code sc.Sequence[sc.U8])
 
 	TryMutateExists(who primitives.AccountId, f func(who *primitives.AccountData) (sc.Encodable, error)) (sc.Encodable, error)
 	Metadata() primitives.MetadataModule
@@ -90,6 +91,8 @@ type Module interface {
 	StorageAllExtrinsicsLen() (sc.U32, error)
 	StorageAllExtrinsicsLenSet(value sc.U32)
 
+	StorageParentHash() (types.Blake2bHash, error)
+
 	StorageCodeSet(codeBlob sc.Sequence[sc.U8])
 }
 
@@ -113,9 +116,8 @@ type module struct {
 
 func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
 	functions := make(map[sc.U8]primitives.Call)
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 	constants := newConstants(config.BlockHashCount, config.BlockWeights, config.BlockLength, config.DbWeight, *config.Version)
-	ioStorage := io.NewStorage()
 	ioHashing := io.NewHashing()
 
 	moduleInstance := module{
@@ -125,7 +127,7 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 		constants:   constants,
 		functions:   functions,
 		trie:        io.NewTrie(),
-		ioStorage:   ioStorage,
+		ioStorage:   config.Storage,
 		ioHashing:   ioHashing,
 		ioMisc:      io.NewMisc(),
 		mdGenerator: mdGenerator,
@@ -140,9 +142,9 @@ func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenera
 	functions[functionSetHeapPagesIndex] = newCallSetHeapPages(index, functionSetHeapPagesIndex, config.DbWeight, storage.HeapPages, moduleInstance)
 	functions[functionSetCodeIndex] = newCallSetCode(index, functionSetCodeIndex, config.DbWeight, *constants, defaultOnSetCode, moduleInstance)
 	functions[functionSetCodeWithoutChecksIndex] = newCallSetCodeWithoutChecks(index, functionSetCodeWithoutChecksIndex, config.DbWeight, *constants, defaultOnSetCode)
-	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, config.DbWeight, ioStorage)
-	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, config.DbWeight, ioStorage)
-	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, config.DbWeight, ioStorage)
+	functions[functionSetStorageIndex] = newCallSetStorage(index, functionSetStorageIndex, config.DbWeight, config.Storage)
+	functions[functionKillStorageIndex] = newCallKillStorage(index, functionKillStorageIndex, config.DbWeight, config.Storage)
+	functions[functionKillPrefixIndex] = newCallKillPrefix(index, functionKillPrefixIndex, config.DbWeight, config.Storage)
 	functions[functionRemarkWithEventIndex] = newCallRemarkWithEvent(index, functionRemarkWithEventIndex, config.DbWeight, ioHashing, moduleInstance)
 	functions[functionAuthorizeUpgradeIndex] = newCallAuthorizeUpgrade(index, functionAuthorizeUpgradeIndex, config.DbWeight, moduleInstance)
 	functions[functionAuthorizeUpgradeWithoutChecksIndex] = newCallAuthorizeUpgradeWithoutChecks(index, functionAuthorizeUpgradeWithoutChecksIndex, config.DbWeight, moduleInstance)
@@ -265,6 +267,10 @@ func (m module) StorageAllExtrinsicsLen() (sc.U32, error) {
 
 func (m module) StorageAllExtrinsicsLenSet(value sc.U32) {
 	m.storage.AllExtrinsicsLen.Put(value)
+}
+
+func (m module) StorageParentHash() (types.Blake2bHash, error) {
+	return m.storage.ParentHash.Get()
 }
 
 func (m module) StorageCodeSet(codeBlob sc.Sequence[sc.U8]) {
@@ -585,6 +591,17 @@ func updateAccount(account *types.AccountData, data primitives.AccountData) {
 	account.Reserved = data.Reserved
 	account.Frozen = data.Frozen
 	account.Flags = data.Flags
+}
+
+// UpdateCodeInStorage writes code to the storage and emit related events and digest items.
+//
+// Note this function almost never should be used directly. It is exposed
+// for `OnSetCode` implementations that defer actual code being written to
+// the storage (for instance in case of parachains).
+func (m module) UpdateCodeInStorage(code sc.Sequence[sc.U8]) {
+	m.storage.Code.Put(code)
+	m.DepositLog(primitives.NewDigestItemRuntimeEnvironmentUpgrade())
+	m.DepositEvent(newEventCodeUpdated(m.Index))
 }
 
 func (m module) decrementProviders(who primitives.AccountId, maybeAccount *sc.Option[primitives.AccountInfo]) (sc.Encodable, error) {

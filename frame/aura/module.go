@@ -54,7 +54,7 @@ type Module struct {
 }
 
 func New(index sc.U8, config *Config, mdGenerator *primitives.MetadataTypeGenerator, logger log.RuntimeLogger) Module {
-	storage := newStorage()
+	storage := newStorage(config.Storage)
 
 	return Module{
 		index:              index,

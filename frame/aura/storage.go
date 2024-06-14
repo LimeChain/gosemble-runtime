@@ -3,6 +3,7 @@ package aura
 import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/support"
+	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/types"
 )
 
@@ -17,9 +18,9 @@ type storage struct {
 	CurrentSlot support.StorageValue[sc.U64]
 }
 
-func newStorage() *storage {
+func newStorage(s io.Storage) *storage {
 	return &storage{
-		Authorities: support.NewHashStorageValue(keyAura, keyAuthorities, types.DecodeSequenceSr25519PublicKey),
-		CurrentSlot: support.NewHashStorageValue(keyAura, keyCurrentSlot, sc.DecodeU64),
+		Authorities: support.NewHashStorageValue(s, keyAura, keyAuthorities, types.DecodeSequenceSr25519PublicKey),
+		CurrentSlot: support.NewHashStorageValue(s, keyAura, keyCurrentSlot, sc.DecodeU64),
 	}
 }

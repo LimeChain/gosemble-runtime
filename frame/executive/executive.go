@@ -172,7 +172,6 @@ func (m module) FinalizeBlock() (primitives.Header, error) {
 	if err != nil {
 		return primitives.Header{}, err
 	}
-
 	err = m.idleAndFinalizeHook(blockNumber)
 	if err != nil {
 		return primitives.Header{}, err

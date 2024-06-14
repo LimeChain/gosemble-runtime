@@ -1,12 +1,13 @@
 package parachain_info
 
 import (
+	"testing"
+
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/mocks"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (
@@ -18,6 +19,7 @@ var (
 )
 
 var (
+	mockStorage            *mocks.IoStorage
 	mockStorageParachainId *mocks.StorageValue[sc.U32]
 )
 
@@ -88,9 +90,10 @@ func Test_Module_Metadata(t *testing.T) {
 }
 
 func setup() Module {
+	mockStorage = new(mocks.IoStorage)
 	mockStorageParachainId = new(mocks.StorageValue[sc.U32])
 
-	target := New(moduleId)
+	target := New(moduleId, mockStorage)
 	target.storage.ParachainId = mockStorageParachainId
 
 	return target

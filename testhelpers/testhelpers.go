@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
@@ -13,7 +14,7 @@ import (
 	"github.com/ChainSafe/gossamer/lib/runtime"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
 	"github.com/ChainSafe/gossamer/pkg/scale"
-	"github.com/ChainSafe/gossamer/pkg/trie"
+	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/frame/balances"
 	"github.com/LimeChain/gosemble/frame/session"
@@ -32,6 +33,7 @@ import (
 
 const RuntimeWasm = "../../../build/runtime-benchmarks.wasm"
 const RuntimeWasmSpecVersion101 = "../../../testdata/runtimes/gosemble_poa_template_spec_version_101.wasm"
+const ParachainWasm = "../../../build/parachain.wasm"
 
 const (
 	SystemIndex sc.U8 = iota
@@ -111,7 +113,7 @@ var (
 
 var (
 	ParentHash     = common.MustHexToHash("0x0f6d3477739f8a65886135f58c83ff7c2d4a8300a010dfc8b4c5d65ba37920bb")
-	StateRoot      = common.MustHexToHash("0xd9e8bf89bda43fb46914321c371add19b81ff92ad6923e8f189b52578074b073")
+	StateRoot      = common.MustHexToHash("0x14cf3fe7f5666e63d0981d80c69b6b8bebbb7c94e3eeacaeca27ae6cfa328631")
 	ExtrinsicsRoot = common.MustHexToHash("0x105165e71964828f2b8d1fd89904602cfb9b8930951d87eb249aa2d7c4b51ee7")
 	BlockNumber    = uint64(1)
 	SealDigest     = gossamertypes.SealDigest{
@@ -185,8 +187,19 @@ var (
 // and use the "Client" type instead
 
 func NewRuntimeInstance(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
-	tt := trie.NewEmptyTrie()
+	tt := inmemory.NewEmptyTrie()
 	runtime := wazero_runtime.NewTestInstance(t, RuntimeWasm, wazero_runtime.TestWithTrie(tt))
+	return runtime, &runtime.Context.Storage
+}
+
+func NewParachainRuntimeInstance(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
+	tt := inmemory.NewEmptyTrie()
+	runtime := wazero_runtime.NewTestInstance(t, ParachainWasm, wazero_runtime.TestWithTrie(tt))
+	return runtime, &runtime.Context.Storage
+}
+
+func NewParachainRuntimeInstanceWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
+	runtime := wazero_runtime.NewTestInstance(t, ParachainWasm, wazero_runtime.TestWithTrie(trie))
 	return runtime, &runtime.Context.Storage
 }
 
@@ -409,6 +422,37 @@ func SignExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyP
 	e.Version |= ctypes.ExtrinsicBitSigned
 
 	return nil
+}
+
+func ExtractConsensusDigests(t *testing.T, sequence sc.Sequence[types.DigestItem], consensusEngineId []byte) sc.Sequence[types.DigestItem] {
+	var seal *primitives.DigestSeal
+	digestItems := sc.Sequence[primitives.DigestItem]{}
+	for _, digestItem := range sequence {
+		if !digestItem.IsSeal() {
+			digestItems = append(digestItems, digestItem)
+			continue
+		}
+
+		s, err := digestItem.AsSeal()
+		if err != nil {
+			panic(err)
+		}
+		if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(s.ConsensusEngineId), consensusEngineId) {
+			if seal != nil {
+				panic(err)
+			}
+			seal = &s
+			continue
+		}
+
+		digestItems = append(digestItems, digestItem)
+	}
+
+	if seal == nil {
+		t.Fatal("could not find an AuRa seal digest")
+	}
+
+	return digestItems
 }
 
 func AssertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account []byte, expectedKey []byte) {

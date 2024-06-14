@@ -68,7 +68,7 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 		manager:      config.Manager,
 		logger:       logger,
 	}
-	module.storage = newStorage(module)
+	module.storage = newStorage(config.Storage, module)
 
 	functions[functionSetKeys] = newCallSetKeys(index, functionSetKeys, config.DbWeight, module, config.Handler)
 	functions[functionPurgeKeys] = newCallPurgeKeys(index, functionPurgeKeys, config.DbWeight, module)

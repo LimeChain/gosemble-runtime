@@ -17,13 +17,13 @@ type HashStorageMap[K, V sc.Encodable] struct {
 	hashing     io.Hashing
 }
 
-func NewHashStorageMap[K, V sc.Encodable](prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error)) StorageMap[K, V] {
-	return NewHashStorageMapWithDefault[K, V](prefix, name, keyHashFunc, decodeFunc, nil)
+func NewHashStorageMap[K, V sc.Encodable](storage io.Storage, prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error)) StorageMap[K, V] {
+	return NewHashStorageMapWithDefault[K, V](storage, prefix, name, keyHashFunc, decodeFunc, nil)
 }
 
-func NewHashStorageMapWithDefault[K, V sc.Encodable](prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error), defaultValue *V) StorageMap[K, V] {
+func NewHashStorageMapWithDefault[K, V sc.Encodable](storage io.Storage, prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error), defaultValue *V) StorageMap[K, V] {
 	return HashStorageMap[K, V]{
-		newBaseStorage[V](decodeFunc, defaultValue),
+		newBaseStorage[V](storage, decodeFunc, defaultValue),
 		prefix,
 		name,
 		keyHashFunc,

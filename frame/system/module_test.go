@@ -158,6 +158,7 @@ var (
 )
 
 var (
+	mockStorage                   *mocks.IoStorage
 	mockStorageAccount            *mocks.StorageMap[primitives.AccountId, primitives.AccountInfo]
 	mockStorageBlockWeight        *mocks.StorageValue[primitives.ConsumedWeight]
 	mockStorageBlockHash          *mocks.StorageMap[sc.U64, primitives.Blake2bHash]
@@ -2086,11 +2087,11 @@ func Test_DoApplyAuthorizeUpgrade_Success(t *testing.T) {
 }
 
 func setupModule() module {
-	config := NewConfig(primitives.BlockHashCount{U32: sc.U32(blockHashCount)}, blockWeights, blockLength, dbWeight, &version, maxConsumers)
+	initMockStorage()
+
+	config := NewConfig(mockStorage, primitives.BlockHashCount{U32: sc.U32(blockHashCount)}, blockWeights, blockLength, dbWeight, &version, maxConsumers)
 
 	target := New(moduleId, config, mdGenerator, log.NewLogger()).(module)
-
-	initMockStorage()
 
 	target.storage.Account = mockStorageAccount
 	target.storage.BlockWeight = mockStorageBlockWeight
@@ -2120,6 +2121,7 @@ func setupModule() module {
 }
 
 func initMockStorage() {
+	mockStorage = new(mocks.IoStorage)
 	mockStorageAccount = new(mocks.StorageMap[primitives.AccountId, primitives.AccountInfo])
 	mockStorageBlockWeight = new(mocks.StorageValue[primitives.ConsumedWeight])
 	mockStorageBlockHash = new(mocks.StorageMap[sc.U64, primitives.Blake2bHash])

@@ -23,6 +23,7 @@ var (
 )
 
 var (
+	mockStorage                    *mocks.IoStorage
 	mockSystemModule               *mocks.SystemModule
 	mockEventHandler               *mocks.AuthorshipEventHandler
 	mockFindAccountFromAuthorIndex *mocks.FindAccountFromAuthorIndex
@@ -34,12 +35,14 @@ var (
 var target module
 
 func setup() {
+	mockStorage = new(mocks.IoStorage)
 	mockSystemModule = new(mocks.SystemModule)
 	mockFindAccountFromAuthorIndex = new(mocks.FindAccountFromAuthorIndex)
 	mockEventHandler = new(mocks.AuthorshipEventHandler)
 	mockStorageAuthor = new(mocks.StorageValue[primitives.AccountId])
 
 	config := NewConfig(
+		mockStorage,
 		mockFindAccountFromAuthorIndex,
 		mockEventHandler,
 		mockSystemModule,

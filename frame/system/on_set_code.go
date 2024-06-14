@@ -2,14 +2,14 @@ package system
 
 import (
 	sc "github.com/LimeChain/goscale"
-	primitives "github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/hooks"
 )
 
 type defaultOnSetCode struct {
 	module Module
 }
 
-func NewDefaultOnSetCode(module Module) defaultOnSetCode {
+func NewDefaultOnSetCode(module Module) hooks.OnSetCode {
 	return defaultOnSetCode{module}
 }
 
@@ -20,17 +20,6 @@ func NewDefaultOnSetCode(module Module) defaultOnSetCode {
 // It's unlikely that this needs to be customized, unless you are writing a parachain using
 // `Cumulus`, where the actual code change is deferred.
 func (d defaultOnSetCode) SetCode(codeBlob sc.Sequence[sc.U8]) error {
-	d.updateCodeInStorage(codeBlob)
+	d.module.UpdateCodeInStorage(codeBlob)
 	return nil
-}
-
-// Write code to the storage and emit related events and digest items.
-//
-// Note this function almost never should be used directly. It is exposed
-// for `OnSetCode` implementations that defer actual code being written to
-// the storage (for instance in case of parachains).
-func (d defaultOnSetCode) updateCodeInStorage(codeBlob sc.Sequence[sc.U8]) {
-	d.module.StorageCodeSet(codeBlob)
-	d.module.DepositLog(primitives.NewDigestItemRuntimeEnvironmentUpgrade())
-	d.module.DepositEvent(primitives.NewEvent(d.module.GetIndex(), EventCodeUpdated))
 }

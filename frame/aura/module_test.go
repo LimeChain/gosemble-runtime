@@ -3,14 +3,14 @@ package aura
 import (
 	"bytes"
 	"errors"
-	"github.com/LimeChain/gosemble/constants"
-	"github.com/LimeChain/gosemble/primitives/log"
 	"io"
 	"testing"
 
 	sc "github.com/LimeChain/goscale"
+	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/constants/metadata"
 	"github.com/LimeChain/gosemble/mocks"
+	"github.com/LimeChain/gosemble/primitives/log"
 	"github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -54,6 +54,7 @@ var (
 		Write: 7 * weightRefTimePerNanos,
 	}
 	module                 Module
+	mockStorage            *mocks.IoStorage
 	mockLogDepositor       *mocks.LogDepositor
 	mockStorageDigest      *mocks.StorageValue[types.Digest]
 	mockStorageCurrentSlot *mocks.StorageValue[sc.U64]
@@ -158,12 +159,14 @@ var (
 )
 
 func setup(minimumPeriod sc.U64) {
+	mockStorage = new(mocks.IoStorage)
 	mockLogDepositor = new(mocks.LogDepositor)
 	mockStorageDigest = new(mocks.StorageValue[types.Digest])
 	mockStorageCurrentSlot = new(mocks.StorageValue[sc.U64])
 	mockStorageAuthorities = new(mocks.StorageValue[sc.Sequence[types.Sr25519PublicKey]])
 
 	config := NewConfig(
+		mockStorage,
 		keyType,
 		dbWeight,
 		minimumPeriod,

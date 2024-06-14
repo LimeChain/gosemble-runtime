@@ -172,14 +172,16 @@ var (
 
 var (
 	target                module
+	mockStorage           *mocks.IoStorage
 	mockCall              *mocks.Call
 	mockNextFeeMultiplier *mocks.StorageValue[sc.U128]
 )
 
 func setup() {
+	mockStorage = new(mocks.IoStorage)
 	mockNextFeeMultiplier = new(mocks.StorageValue[sc.U128])
 
-	config := NewConfig(operationalFeeMultiplier, weightToFee, lengthToFee, blockWeights)
+	config := NewConfig(mockStorage, operationalFeeMultiplier, weightToFee, lengthToFee, blockWeights)
 	target = New(moduleId, config, mdGenerator).(module)
 	target.storage.NextFeeMultiplier = mockNextFeeMultiplier
 }
