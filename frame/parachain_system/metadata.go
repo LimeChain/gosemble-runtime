@@ -12,7 +12,7 @@ const (
 	optionSomeIdx
 )
 
-func (m Module) metadataTypes() sc.Sequence[primitives.MetadataType] {
+func (m module) metadataTypes() sc.Sequence[primitives.MetadataType] {
 	return sc.Sequence[primitives.MetadataType]{
 		primitives.NewMetadataTypeWithPath(
 			metadata.TypesHrmpChannelUpdate,

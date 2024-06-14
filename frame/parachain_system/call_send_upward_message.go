@@ -10,10 +10,10 @@ import (
 
 type callSendUpwardMessage struct {
 	primitives.Callable
-	module Module
+	module module
 }
 
-func newCallSendUpwardMessage(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallSendUpwardMessage(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
 	return callSendUpwardMessage{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,

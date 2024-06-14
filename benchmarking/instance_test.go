@@ -6,11 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	inmemory_trie "github.com/ChainSafe/gossamer/pkg/trie/inmemory"
-
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
+	inmemory_trie "github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	sc "github.com/LimeChain/goscale"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"

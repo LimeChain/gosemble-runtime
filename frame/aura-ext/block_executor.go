@@ -13,7 +13,11 @@ import (
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
 
-type BlockExecutor struct {
+type BlockExecutor interface {
+	ExecuteBlock(block primitives.Block) error
+}
+
+type blockExecutor struct {
 	ioCrypto        io.Crypto
 	ioHashing       io.Hashing
 	module          Module
@@ -21,7 +25,7 @@ type BlockExecutor struct {
 }
 
 func NewBlockExecutor(module Module, executiveModule executive.Module) BlockExecutor {
-	return BlockExecutor{
+	return blockExecutor{
 		ioCrypto:        io.NewCrypto(),
 		ioHashing:       io.NewHashing(),
 		module:          module,
@@ -29,7 +33,7 @@ func NewBlockExecutor(module Module, executiveModule executive.Module) BlockExec
 	}
 }
 
-func (be BlockExecutor) ExecuteBlock(block primitives.Block) error {
+func (be blockExecutor) ExecuteBlock(block primitives.Block) error {
 	header := block.Header()
 
 	authorities, err := be.module.storage.Authorities.Get()

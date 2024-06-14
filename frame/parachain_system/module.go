@@ -32,8 +32,15 @@ var (
 	errInherentDataNotCorrectlyEncoded = errors.New("Parachain system inherent data not correctly encoded.")
 )
 
-type Module struct {
-	primitives.DefaultInherentProvider
+type Module interface {
+	primitives.Module
+
+	StorageNewValidationCodeBytes() (sc.Option[sc.Sequence[sc.U8]], error)
+	ScheduleCodeUpgrade(code sc.Sequence[sc.U8]) error
+	CollectCollationInfo(header primitives.Header) (parachain.CollationInfo, error)
+}
+
+type module struct {
 	hooks.DefaultDispatchModule
 	index       sc.U8
 	constants   consts
@@ -49,7 +56,7 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 	constants := newConstants(config.DbWeight)
 	functions := make(map[sc.U8]primitives.Call)
 
-	module := Module{
+	module := module{
 		index:       index,
 		constants:   constants,
 		config:      config,
@@ -67,27 +74,27 @@ func New(index sc.U8, config Config, mdGenerator *primitives.MetadataTypeGenerat
 	return module
 }
 
-func (m Module) GetIndex() sc.U8 {
+func (m module) GetIndex() sc.U8 {
 	return m.index
 }
 
-func (m Module) name() sc.Str {
+func (m module) name() sc.Str {
 	return name
 }
 
-func (m Module) Functions() map[sc.U8]primitives.Call {
+func (m module) Functions() map[sc.U8]primitives.Call {
 	return m.functions
 }
 
-func (m Module) PreDispatch(_ primitives.Call) (sc.Empty, error) {
+func (m module) PreDispatch(_ primitives.Call) (sc.Empty, error) {
 	return sc.Empty{}, nil
 }
 
-func (m Module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
+func (m module) ValidateUnsigned(_ primitives.TransactionSource, _ primitives.Call) (primitives.ValidTransaction, error) {
 	return primitives.DefaultValidTransaction(), nil
 }
 
-func (m Module) CreateInherent(inherent primitives.InherentData) (sc.Option[primitives.Call], error) {
+func (m module) CreateInherent(inherent primitives.InherentData) (sc.Option[primitives.Call], error) {
 	inherentData := inherent.Get(inherentIdentifier)
 
 	if inherentData == nil {
@@ -95,12 +102,12 @@ func (m Module) CreateInherent(inherent primitives.InherentData) (sc.Option[prim
 	}
 
 	buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(inherentData))
-	data, err := DecodeParachainInherentData(buffer)
+	data, err := parachain.DecodeInherentData(buffer)
 	if err != nil {
 		return sc.Option[primitives.Call]{}, errInherentDataNotCorrectlyEncoded
 	}
 
-	data, err = m.DropProcessedMessagesFromInherent(data)
+	data, err = m.dropProcessedMessagesFromInherent(data)
 	if err != nil {
 		return sc.Option[primitives.Call]{}, err
 	}
@@ -110,7 +117,7 @@ func (m Module) CreateInherent(inherent primitives.InherentData) (sc.Option[prim
 	return sc.NewOption[primitives.Call](function), nil
 }
 
-func (m Module) CheckInherent(call primitives.Call, inherent primitives.InherentData) error {
+func (m module) CheckInherent(call primitives.Call, inherent primitives.InherentData) error {
 	if !m.IsInherent(call) {
 		return NewInherentErrorInvalid()
 	}
@@ -118,13 +125,13 @@ func (m Module) CheckInherent(call primitives.Call, inherent primitives.Inherent
 	return nil
 }
 
-func (m Module) InherentIdentifier() [8]byte { return inherentIdentifier }
+func (m module) InherentIdentifier() [8]byte { return inherentIdentifier }
 
-func (m Module) IsInherent(call primitives.Call) bool {
+func (m module) IsInherent(call primitives.Call) bool {
 	return call.ModuleIndex() == m.index && call.FunctionIndex() == FunctionSetValidationData
 }
 
-func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
+func (m module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 	weight := primitives.WeightZero()
 
 	didSetValidationCode, err := m.storage.DidSetValidationCode.Get()
@@ -192,7 +199,7 @@ func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 	return weight, nil
 }
 
-func (m Module) OnFinalize(_ sc.U64) error {
+func (m module) OnFinalize(_ sc.U64) error {
 	m.storage.DidSetValidationCode.Clear()
 	m.storage.UpgradeRestrictionSignal.Clear()
 
@@ -252,12 +259,12 @@ func (m Module) OnFinalize(_ sc.U64) error {
 	return nil
 }
 
-func (m Module) StorageNewValidationCodeBytes() (sc.Option[sc.Sequence[sc.U8]], error) {
+func (m module) StorageNewValidationCodeBytes() (sc.Option[sc.Sequence[sc.U8]], error) {
 	return m.storage.NewValidationCode.GetBytes()
 }
 
 // ScheduleCodeUpgrade contains logic for parachain upgrade functionality.
-func (m Module) ScheduleCodeUpgrade(code sc.Sequence[sc.U8]) error {
+func (m module) ScheduleCodeUpgrade(code sc.Sequence[sc.U8]) error {
 	if !m.storage.ValidationData.Exists() {
 		return primitives.NewDispatchErrorModule(primitives.CustomModuleError{
 			Index:   m.index,
@@ -313,8 +320,55 @@ func (m Module) ScheduleCodeUpgrade(code sc.Sequence[sc.U8]) error {
 	return nil
 }
 
-// MaybeDropIncludedAncestors drops blocks from the unincluded segment with respect to the latest parachain head.
-func (m Module) MaybeDropIncludedAncestors(storageProof parachain.RelayChainStateProof, capacity parachain.UnincludedSegmentCapacity) (primitives.Weight, error) {
+func (m module) CollectCollationInfo(header primitives.Header) (parachain.CollationInfo, error) {
+	hrmpWatermark, err := m.storage.HrmpWatermark.Get()
+	if err != nil {
+		return parachain.CollationInfo{}, err
+	}
+
+	horizontalMessages, err := m.storage.HrmpOutboundMessages.Get()
+	if err != nil {
+		return parachain.CollationInfo{}, err
+	}
+
+	upwardMessages, err := m.storage.UpwardMessages.Get()
+	if err != nil {
+		return parachain.CollationInfo{}, err
+	}
+
+	processedDownwardMessages, err := m.storage.ProcessedDownwardMessages.Get()
+	if err != nil {
+		return parachain.CollationInfo{}, err
+	}
+
+	newValidationCode, err := m.storage.NewValidationCode.GetBytes()
+	if err != nil {
+		return parachain.CollationInfo{}, err
+	}
+
+	bytesHeadData, err := m.storage.CustomValidationHeadData.GetBytes()
+	if err != nil {
+		return parachain.CollationInfo{}, err
+	}
+	var headData sc.Sequence[sc.U8]
+	if bytesHeadData.HasValue {
+		headData = bytesHeadData.Value
+	} else {
+		headData = sc.BytesToSequenceU8(header.Bytes())
+	}
+
+	return parachain.CollationInfo{
+		UpwardMessages:            upwardMessages,
+		HorizontalMessages:        horizontalMessages,
+		ValidationCode:            newValidationCode,
+		ProcessedDownwardMessages: processedDownwardMessages,
+		HrmpWatermark:             hrmpWatermark,
+		HeadData:                  headData,
+	}, nil
+}
+
+// maybeDropIncludedAncestors drops blocks from the unincluded segment with respect to the latest parachain head.
+func (m module) maybeDropIncludedAncestors(storageProof parachain.RelayChainStateProof, capacity parachain.UnincludedSegmentCapacity) (primitives.Weight, error) {
 	weightUsed := primitives.WeightZero()
 
 	// if the unincluded segment length is non-zero, then the parachain head must be present.
@@ -414,57 +468,10 @@ func (m Module) MaybeDropIncludedAncestors(storageProof parachain.RelayChainStat
 	return weightUsed, nil
 }
 
-func (m Module) CollectCollationInfo(header primitives.Header) (CollationInfo, error) {
-	hrmpWatermark, err := m.storage.HrmpWatermark.Get()
-	if err != nil {
-		return CollationInfo{}, err
-	}
-
-	horizontalMessages, err := m.storage.HrmpOutboundMessages.Get()
-	if err != nil {
-		return CollationInfo{}, err
-	}
-
-	upwardMessages, err := m.storage.UpwardMessages.Get()
-	if err != nil {
-		return CollationInfo{}, err
-	}
-
-	processedDownwardMessages, err := m.storage.ProcessedDownwardMessages.Get()
-	if err != nil {
-		return CollationInfo{}, err
-	}
-
-	newValidationCode, err := m.storage.NewValidationCode.GetBytes()
-	if err != nil {
-		return CollationInfo{}, err
-	}
-
-	bytesHeadData, err := m.storage.CustomValidationHeadData.GetBytes()
-	if err != nil {
-		return CollationInfo{}, err
-	}
-	var headData sc.Sequence[sc.U8]
-	if bytesHeadData.HasValue {
-		headData = bytesHeadData.Value
-	} else {
-		headData = sc.BytesToSequenceU8(header.Bytes())
-	}
-
-	return CollationInfo{
-		UpwardMessages:            upwardMessages,
-		HorizontalMessages:        horizontalMessages,
-		ValidationCode:            newValidationCode,
-		ProcessedDownwardMessages: processedDownwardMessages,
-		HrmpWatermark:             hrmpWatermark,
-		HeadData:                  headData,
-	}, nil
-}
-
-func (m Module) DropProcessedMessagesFromInherent(parachainInherent ParachainInherentData) (ParachainInherentData, error) {
+func (m module) dropProcessedMessagesFromInherent(parachainInherent parachain.InherentData) (parachain.InherentData, error) {
 	relayChainBlockNumber, err := m.storage.LastRelayChainBlockNumber.Get()
 	if err != nil {
-		return ParachainInherentData{}, err
+		return parachain.InherentData{}, err
 	}
 
 	downwardMessages := sc.Sequence[parachain.InboundDownwardMessage]{}
@@ -476,7 +483,7 @@ func (m Module) DropProcessedMessagesFromInherent(parachainInherent ParachainInh
 
 	horizontalMessages := parachainInherent.HorizontalMessages.UnprocessedMessages(relayChainBlockNumber)
 
-	return ParachainInherentData{
+	return parachain.InherentData{
 		ValidationData:     parachainInherent.ValidationData,
 		RelayChainState:    parachainInherent.RelayChainState,
 		DownwardMessages:   downwardMessages,
@@ -484,7 +491,7 @@ func (m Module) DropProcessedMessagesFromInherent(parachainInherent ParachainInh
 	}, nil
 }
 
-func (m Module) enqueueInboundDownwardMessages(expectedDmqMqcHead primitives.H256, downwardMessages sc.Sequence[parachain.InboundDownwardMessage]) (primitives.Weight, error) {
+func (m module) enqueueInboundDownwardMessages(expectedDmqMqcHead primitives.H256, downwardMessages sc.Sequence[parachain.InboundDownwardMessage]) (primitives.Weight, error) {
 	dmCount := len(downwardMessages)
 
 	dmqHead, err := m.storage.LastDmqMqcHead.Get()
@@ -535,7 +542,7 @@ func (m Module) enqueueInboundDownwardMessages(expectedDmqMqcHead primitives.H25
 }
 
 // enqueueInboundHorizontalMessages processes all inbound horizontal messages relayed by the collator.
-func (m Module) enqueueInboundHorizontalMessages(
+func (m module) enqueueInboundHorizontalMessages(
 	ingressChannels sc.Sequence[parachain.Channel],
 	horizontalMessages parachain.HorizontalMessages,
 	relayParentNumber parachain.RelayChainBlockNumber) (primitives.Weight, error) {
@@ -547,7 +554,7 @@ func (m Module) enqueueInboundHorizontalMessages(
 
 // adjustEgressBandwidthLimits adjusts the `RelevantMessagingState` according to the bandwidth limits in the
 // unincluded segment.
-func (m Module) adjustEgressBandwidthLimits() error {
+func (m module) adjustEgressBandwidthLimits() error {
 	bytesUnincludedSegment, err := m.storage.AggregatedUnincludedSegment.GetBytes()
 	if err != nil {
 		return err
@@ -579,7 +586,7 @@ func (m Module) adjustEgressBandwidthLimits() error {
 // Checks host configuration to see if message is too big.
 // Increases the delivery fee factor if the queue is sufficiently (see
 // [`ump_constants::THRESHOLD_FACTOR`]) congested.
-func (m Module) sendUpwardMessage(data sc.Sequence[sc.U8]) error {
+func (m module) sendUpwardMessage(data sc.Sequence[sc.U8]) error {
 	bytesHostConfiguration, err := m.storage.HostConfiguration.GetBytes()
 	if err != nil {
 		return primitives.NewDispatchErrorOther(sc.Str(err.Error()))
@@ -626,7 +633,7 @@ func (m Module) sendUpwardMessage(data sc.Sequence[sc.U8]) error {
 	return nil
 }
 
-func (m Module) increaseFeeFactor(messageSizeFactor int) error {
+func (m module) increaseFeeFactor(messageSizeFactor int) error {
 	deliveryFactor, err := m.storage.UpwardDeliveryFeeFactor.Get()
 	if err != nil {
 		return err
@@ -640,12 +647,12 @@ func (m Module) increaseFeeFactor(messageSizeFactor int) error {
 	return nil
 }
 
-func (m Module) notifyPolkadotOfPendingUpgrade(code sc.Sequence[sc.U8]) {
+func (m module) notifyPolkadotOfPendingUpgrade(code sc.Sequence[sc.U8]) {
 	m.storage.NewValidationCode.Put(code)
 	m.storage.DidSetValidationCode.Put(true)
 }
 
-func (m Module) Metadata() primitives.MetadataModule {
+func (m module) Metadata() primitives.MetadataModule {
 	dataV14 := primitives.MetadataModuleV14{
 		Name:    m.name(),
 		Storage: m.metadataStorage(),
@@ -690,7 +697,7 @@ func (m Module) Metadata() primitives.MetadataModule {
 	}
 }
 
-func (m Module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
+func (m module) metadataStorage() sc.Option[primitives.MetadataModuleStorage] {
 	return sc.NewOption[primitives.MetadataModuleStorage](primitives.MetadataModuleStorage{
 		Prefix: m.name(),
 		Items: sc.Sequence[primitives.MetadataModuleStorageEntry]{

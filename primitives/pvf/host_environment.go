@@ -6,28 +6,37 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/LimeChain/gosemble/primitives/io"
+
 	"github.com/ChainSafe/gossamer/lib/runtime/storage"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/log"
 )
 
-type HostEnvironment struct {
+type HostEnvironment interface {
+	io.Storage
+	io.TransactionBroker
+
+	SetTrieState(state *storage.TrieState)
+}
+
+type hostEnvironment struct {
 	trieState *storage.TrieState
 	logger    log.RuntimeLogger
 }
 
-func NewHostEnvironment(logger log.RuntimeLogger) *HostEnvironment {
-	return &HostEnvironment{
+func NewHostEnvironment(logger log.RuntimeLogger) HostEnvironment {
+	return &hostEnvironment{
 		logger:    logger,
 		trieState: nil,
 	}
 }
 
-func (he *HostEnvironment) SetTrieState(state *storage.TrieState) {
+func (he *hostEnvironment) SetTrieState(state *storage.TrieState) {
 	he.trieState = state
 }
 
-func (he HostEnvironment) Append(key []byte, value []byte) {
+func (he hostEnvironment) Append(key []byte, value []byte) {
 	cp := make([]byte, len(value))
 	copy(cp, value)
 
@@ -37,14 +46,14 @@ func (he HostEnvironment) Append(key []byte, value []byte) {
 	}
 }
 
-func (he HostEnvironment) Clear(key []byte) {
+func (he hostEnvironment) Clear(key []byte) {
 	err := he.trieState.Delete(key)
 	if err != nil {
 		he.logger.Critical(err.Error())
 	}
 }
 
-func (he HostEnvironment) ClearPrefix(prefix []byte, limitBytes []byte) {
+func (he hostEnvironment) ClearPrefix(prefix []byte, limitBytes []byte) {
 	he.logger.Debugf("prefix: 0x%x", prefix)
 
 	limitOption, err := sc.DecodeOption[sc.U32](bytes.NewBuffer(limitBytes))
@@ -70,7 +79,7 @@ func (he HostEnvironment) ClearPrefix(prefix []byte, limitBytes []byte) {
 	// TODO: func signature is not valid
 }
 
-func (he HostEnvironment) Exists(key []byte) bool {
+func (he hostEnvironment) Exists(key []byte) bool {
 	he.logger.Debugf("key: 0x%x", key)
 
 	value := he.trieState.Get(key)
@@ -81,7 +90,7 @@ func (he HostEnvironment) Exists(key []byte) bool {
 	return false
 }
 
-func (he HostEnvironment) Get(key []byte) (sc.Option[sc.Sequence[sc.U8]], error) {
+func (he hostEnvironment) Get(key []byte) (sc.Option[sc.Sequence[sc.U8]], error) {
 	value := he.trieState.Get(key)
 	he.logger.Debugf("value: 0x%x", value)
 
@@ -92,7 +101,7 @@ func (he HostEnvironment) Get(key []byte) (sc.Option[sc.Sequence[sc.U8]], error)
 	return sc.NewOption[sc.Sequence[sc.U8]](sc.BytesToSequenceU8(value)), nil
 }
 
-func (he HostEnvironment) NextKey(key []byte) (sc.Option[sc.Sequence[sc.U8]], error) {
+func (he hostEnvironment) NextKey(key []byte) (sc.Option[sc.Sequence[sc.U8]], error) {
 	next := he.trieState.NextKey(key)
 	he.logger.Debugf(
 		"key: 0x%x; next key 0x%x",
@@ -105,7 +114,7 @@ func (he HostEnvironment) NextKey(key []byte) (sc.Option[sc.Sequence[sc.U8]], er
 	return sc.NewOption[sc.Sequence[sc.U8]](sc.BytesToSequenceU8(next)), nil
 }
 
-func (he HostEnvironment) Read(key []byte, valueOut []byte, offset int32) (sc.Option[sc.U32], error) {
+func (he hostEnvironment) Read(key []byte, valueOut []byte, offset int32) (sc.Option[sc.U32], error) {
 	he.logger.Debugf(
 		"READ key 0x%x has value 0x%x",
 		key, valueOut)
@@ -132,7 +141,7 @@ func (he HostEnvironment) Read(key []byte, valueOut []byte, offset int32) (sc.Op
 	return sc.NewOption[sc.U32](sc.U32(len(data))), nil
 }
 
-func (he HostEnvironment) Root(version int32) []byte {
+func (he hostEnvironment) Root(version int32) []byte {
 	root, err := he.trieState.Root()
 	if err != nil {
 		he.logger.Criticalf("failed to get storage root: %s", err)
@@ -141,7 +150,7 @@ func (he HostEnvironment) Root(version int32) []byte {
 	return root[:]
 }
 
-func (he HostEnvironment) Set(key []byte, value []byte) {
+func (he hostEnvironment) Set(key []byte, value []byte) {
 	cp := make([]byte, len(value))
 	copy(cp, value)
 
@@ -154,19 +163,19 @@ func (he HostEnvironment) Set(key []byte, value []byte) {
 	}
 }
 
-func (he HostEnvironment) Start() {
+func (he hostEnvironment) Start() {
 	he.trieState.StartTransaction()
 }
 
-func (he HostEnvironment) Commit() {
+func (he hostEnvironment) Commit() {
 	he.trieState.CommitTransaction()
 }
 
-func (he HostEnvironment) Rollback() {
+func (he hostEnvironment) Rollback() {
 	he.trieState.RollbackTransaction()
 }
 
-func (he HostEnvironment) storageAppend(key, valueToAppend []byte) (err error) {
+func (he hostEnvironment) storageAppend(key, valueToAppend []byte) (err error) {
 	// this function assumes the item in storage is a SCALE encoded array of items
 	// the valueToAppend is a new item, so it appends the item and increases the length prefix by 1
 	currentValue := he.trieState.Get(key)

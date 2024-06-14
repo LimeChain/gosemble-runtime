@@ -94,9 +94,7 @@ func (m Module) OnInitialize(_ sc.U64) (primitives.Weight, error) {
 				Slot:     slot.Slot,
 				Authored: slot.Authored + 1,
 			})
-		}
-
-		if slot.Slot < newSlot {
+		} else if slot.Slot < newSlot {
 			m.storage.SlotInfo.Put(SlotInfo{
 				Slot:     newSlot,
 				Authored: 1,

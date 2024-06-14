@@ -30,7 +30,7 @@ type Module struct {
 	parachainSystem parachain_system.Module
 	blockExecutor   aura_ext.BlockExecutor
 	runtimeDecoder  types.RuntimeDecoder
-	hostEnvironment *pvf.HostEnvironment
+	hostEnvironment pvf.HostEnvironment
 	hashing         io.Hashing
 	logger          log.RuntimeLogger
 	memUtils        utils.WasmMemoryTranslator
@@ -40,7 +40,7 @@ func New(
 	parachainSystem parachain_system.Module,
 	blockExecutor aura_ext.BlockExecutor,
 	runtimeDecoder types.RuntimeDecoder,
-	hostEnvironment *pvf.HostEnvironment,
+	hostEnvironment pvf.HostEnvironment,
 	logger log.RuntimeLogger) Module {
 	return Module{
 		parachainSystem: parachainSystem,
@@ -73,7 +73,7 @@ func (m Module) ValidateBlock(dataPtr int32, dataLen int32) int64 {
 		m.logger.Critical(err.Error())
 	}
 
-	blockData, err := DecodeParachainBlockData(m.runtimeDecoder, validationData.BlockData)
+	blockData, err := m.runtimeDecoder.DecodeParachainBlockData(validationData.BlockData)
 	if err != nil {
 		m.logger.Critical(err.Error())
 	}
@@ -103,6 +103,9 @@ func (m Module) ValidateBlock(dataPtr int32, dataLen int32) int64 {
 	}
 
 	database, err := db.NewMemoryDBFromProof(blockData.CompactProof.ToBytes())
+	if err != nil {
+		m.logger.Critical(err.Error())
+	}
 	trie, err := parachain.BuildTrie(parentHeader.StateRoot.Bytes(), database)
 	if err != nil {
 		m.logger.Critical(err.Error())
@@ -133,23 +136,23 @@ func (m Module) ValidateBlock(dataPtr int32, dataLen int32) int64 {
 	return m.memUtils.BytesToOffsetAndSize(result.Bytes())
 }
 
-func (m Module) extractParachainInherentData(block primitives.Block) (parachain_system.ParachainInherentData, error) {
+func (m Module) extractParachainInherentData(block primitives.Block) (parachain.InherentData, error) {
 	for _, extrinsic := range block.Extrinsics() {
 		if extrinsic.IsSigned() {
 			continue
 		}
 		call := extrinsic.Function()
 		if call.ModuleIndex() == m.parachainSystem.GetIndex() && call.FunctionIndex() == parachain_system.FunctionSetValidationData {
-			parachainInherentData, ok := call.Args()[0].(parachain_system.ParachainInherentData)
+			parachainInherentData, ok := call.Args()[0].(parachain.InherentData)
 			if !ok {
-				return parachain_system.ParachainInherentData{}, errors.New("cannot cast to ParachainInherentData")
+				return parachain.InherentData{}, errors.New("cannot cast to ParachainInherentData")
 			}
 
 			return parachainInherentData, nil
 		}
 	}
 
-	return parachain_system.ParachainInherentData{}, errors.New("not found")
+	return parachain.InherentData{}, errors.New("not found")
 }
 
 func validateValidationData(validationData parachain.PersistedValidationData, relayChainBlockNumber sc.U32, relayParentStorageRoot primitives.H256, parentHead sc.Sequence[sc.U8]) error {
@@ -165,23 +168,4 @@ func validateValidationData(validationData parachain.PersistedValidationData, re
 	}
 
 	return nil
-}
-
-func DecodeParachainBlockData(runtimeDecoder types.RuntimeDecoder, blockData sc.Sequence[sc.U8]) (parachain.BlockData, error) {
-	buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(blockData))
-
-	block, err := runtimeDecoder.DecodeBlock(buffer)
-	if err != nil {
-		return parachain.BlockData{}, err
-	}
-
-	compactProofs, err := parachain.DecodeStorageProof(buffer)
-	if err != nil {
-		return parachain.BlockData{}, err
-	}
-
-	return parachain.BlockData{
-		Block:        block,
-		CompactProof: compactProofs,
-	}, nil
 }

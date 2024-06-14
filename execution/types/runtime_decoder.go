@@ -8,6 +8,7 @@ import (
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/io"
 	"github.com/LimeChain/gosemble/primitives/log"
+	"github.com/LimeChain/gosemble/primitives/parachain"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 )
@@ -19,6 +20,7 @@ var (
 
 type RuntimeDecoder interface {
 	DecodeBlock(buffer *bytes.Buffer) (primitives.Block, error)
+	DecodeParachainBlockData(blockData sc.Sequence[sc.U8]) (parachain.BlockData, error)
 	DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (primitives.UncheckedExtrinsic, error)
 	DecodeCall(buffer *bytes.Buffer) (primitives.Call, error)
 }
@@ -68,6 +70,25 @@ func (rd runtimeDecoder) DecodeBlock(buffer *bytes.Buffer) (primitives.Block, er
 	}
 
 	return NewBlock(header, extrinsics), nil
+}
+
+func (rd runtimeDecoder) DecodeParachainBlockData(blockData sc.Sequence[sc.U8]) (parachain.BlockData, error) {
+	buffer := bytes.NewBuffer(sc.SequenceU8ToBytes(blockData))
+
+	block, err := rd.DecodeBlock(buffer)
+	if err != nil {
+		return parachain.BlockData{}, err
+	}
+
+	compactProofs, err := parachain.DecodeStorageProof(buffer)
+	if err != nil {
+		return parachain.BlockData{}, err
+	}
+
+	return parachain.BlockData{
+		Block:        block,
+		CompactProof: compactProofs,
+	}, nil
 }
 
 func (rd runtimeDecoder) DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (primitives.UncheckedExtrinsic, error) {

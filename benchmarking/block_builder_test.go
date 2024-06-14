@@ -6,9 +6,8 @@ import (
 	"testing"
 	"time"
 
-	inmemory_trie "github.com/ChainSafe/gossamer/pkg/trie/inmemory"
-
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
+	inmemory_trie "github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	sc "github.com/LimeChain/goscale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"

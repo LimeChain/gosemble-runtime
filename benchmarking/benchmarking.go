@@ -3,11 +3,11 @@ package benchmarking
 import (
 	"bytes"
 	"fmt"
-	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	"testing"
 
 	"github.com/ChainSafe/gossamer/lib/runtime"
 	wazero_runtime "github.com/ChainSafe/gossamer/lib/runtime/wazero"
+	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
 	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/primitives/benchmarking"
 	benchmarkingtypes "github.com/LimeChain/gosemble/primitives/benchmarking"

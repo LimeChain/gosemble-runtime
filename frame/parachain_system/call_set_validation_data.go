@@ -11,10 +11,10 @@ import (
 
 type callSetValidationData struct {
 	primitives.Callable
-	module Module
+	module module
 }
 
-func newCallSetValidationData(moduleId sc.U8, functionId sc.U8, module Module) primitives.Call {
+func newCallSetValidationData(moduleId sc.U8, functionId sc.U8, module module) primitives.Call {
 	return callSetValidationData{
 		Callable: primitives.Callable{
 			ModuleId:   moduleId,
@@ -38,7 +38,7 @@ func newCallSetValidationDataWithArgs(moduleId sc.U8, functionId sc.U8, args sc.
 }
 
 func (c callSetValidationData) DecodeArgs(buffer *bytes.Buffer) (primitives.Call, error) {
-	data, err := DecodeParachainInherentData(buffer)
+	data, err := parachain.DecodeInherentData(buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (_ callSetValidationData) PaysFee(baseWeight primitives.Weight) primitives.
 }
 
 func (c callSetValidationData) Dispatch(origin primitives.RuntimeOrigin, args sc.VaryingData) (primitives.PostDispatchInfo, error) {
-	data, ok := args[0].(ParachainInherentData)
+	data, ok := args[0].(parachain.InherentData)
 	if !ok {
 		return primitives.PostDispatchInfo{}, errors.New("couldn't dispatch call set validation data value")
 	}
@@ -86,7 +86,7 @@ func (c callSetValidationData) Dispatch(origin primitives.RuntimeOrigin, args sc
 	return c.setValidationData(origin, data)
 }
 
-func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin, data ParachainInherentData) (primitives.PostDispatchInfo, error) {
+func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin, data parachain.InherentData) (primitives.PostDispatchInfo, error) {
 	if !origin.IsNoneOrigin() {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorBadOrigin()
 	}
@@ -121,7 +121,7 @@ func (c callSetValidationData) setValidationData(origin primitives.RuntimeOrigin
 
 	totalWeight = totalWeight.Add(consensusHookWeight)
 
-	weight, err := c.module.MaybeDropIncludedAncestors(relayStateProof, capacity)
+	weight, err := c.module.maybeDropIncludedAncestors(relayStateProof, capacity)
 	if err != nil {
 		return primitives.PostDispatchInfo{}, primitives.NewDispatchErrorOther(sc.Str(err.Error()))
 	}

@@ -3,6 +3,8 @@ package mocks
 import (
 	"bytes"
 
+	sc "github.com/LimeChain/goscale"
+	"github.com/LimeChain/gosemble/primitives/parachain"
 	"github.com/LimeChain/gosemble/primitives/types"
 	primitives "github.com/LimeChain/gosemble/primitives/types"
 	"github.com/stretchr/testify/mock"
@@ -20,6 +22,16 @@ func (m *RuntimeDecoder) DecodeBlock(buffer *bytes.Buffer) (types.Block, error) 
 	}
 
 	return args.Get(0).(types.Block), args.Get(1).(error)
+}
+
+func (m *RuntimeDecoder) DecodeParachainBlockData(blockData sc.Sequence[sc.U8]) (parachain.BlockData, error) {
+	args := m.Called(blockData)
+
+	if args.Get(1) == nil {
+		return args.Get(0).(parachain.BlockData), nil
+	}
+
+	return args.Get(0).(parachain.BlockData), args.Get(1).(error)
 }
 
 func (m *RuntimeDecoder) DecodeUncheckedExtrinsic(buffer *bytes.Buffer) (types.UncheckedExtrinsic, error) {

@@ -3,6 +3,7 @@ package parachain
 import (
 	"bytes"
 	"errors"
+
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/trie/db"
 	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
@@ -26,7 +27,16 @@ var (
 	keyActiveConfig            = common.MustHexToBytes("0x06de3d8a54d27e44a9d5ce189618f22db4b49d95320d9021994c850f25b8e385")
 )
 
-type RelayChainStateProof struct {
+type RelayChainStateProof interface {
+	ReadSlot() (sc.U64, error)
+	ReadUpgradeGoAheadSignal() (sc.Option[sc.U8], error)
+	ReadRestrictionSignal() (sc.Option[sc.U8], error)
+	ReadAbridgedHostConfiguration() (AbridgedHostConfiguration, error)
+	ReadIncludedParaHeadHash() sc.Option[sc.FixedSequence[sc.U8]]
+	ReadMessagingStateSnapshot(ahc AbridgedHostConfiguration) (MessagingStateSnapshot, error)
+}
+
+type relayChainStateProof struct {
 	ParachainId sc.U32
 	Trie        *inmemory.InMemoryTrie
 	hashing     io.Hashing
@@ -35,22 +45,22 @@ type RelayChainStateProof struct {
 func NewRelayChainStateProof(parachainId sc.U32, relayChainHash primitives.H256, proof StorageProof, hashing io.Hashing) (RelayChainStateProof, error) {
 	database, err := db.NewMemoryDBFromProof(proof.ToBytes())
 	if err != nil {
-		return RelayChainStateProof{}, err
+		return relayChainStateProof{}, err
 	}
 
 	trie, err := BuildTrie(relayChainHash.Bytes(), database)
 	if err != nil {
-		return RelayChainStateProof{}, err
+		return relayChainStateProof{}, err
 	}
 
-	return RelayChainStateProof{
+	return relayChainStateProof{
 		ParachainId: parachainId,
 		Trie:        trie,
 		hashing:     hashing,
 	}, nil
 }
 
-func (rlcsp RelayChainStateProof) ReadSlot() (sc.U64, error) {
+func (rlcsp relayChainStateProof) ReadSlot() (sc.U64, error) {
 	value := rlcsp.Trie.Get(keyCurrentSlot)
 	if value == nil {
 		return 0, NewErrorStateProofSlot(ReadEntryErrorProof)
@@ -64,7 +74,7 @@ func (rlcsp RelayChainStateProof) ReadSlot() (sc.U64, error) {
 	return currentSlot, nil
 }
 
-func (rlcsp RelayChainStateProof) ReadUpgradeGoAheadSignal() (sc.Option[sc.U8], error) {
+func (rlcsp relayChainStateProof) ReadUpgradeGoAheadSignal() (sc.Option[sc.U8], error) {
 	hashParachainId := rlcsp.hashing.Twox64(rlcsp.ParachainId.Bytes())
 
 	key := append(keyPrefixGoAhead, hashParachainId...)
@@ -83,7 +93,7 @@ func (rlcsp RelayChainStateProof) ReadUpgradeGoAheadSignal() (sc.Option[sc.U8], 
 	return sc.NewOption[sc.U8](goAhead), nil
 }
 
-func (rlcsp RelayChainStateProof) ReadRestrictionSignal() (sc.Option[sc.U8], error) {
+func (rlcsp relayChainStateProof) ReadRestrictionSignal() (sc.Option[sc.U8], error) {
 	hashParachainId := rlcsp.hashing.Twox64(rlcsp.ParachainId.Bytes())
 
 	key := append(keyPrefixRestrictionSignal, hashParachainId...)
@@ -102,7 +112,7 @@ func (rlcsp RelayChainStateProof) ReadRestrictionSignal() (sc.Option[sc.U8], err
 	return sc.NewOption[sc.U8](goAhead), nil
 }
 
-func (rlcsp RelayChainStateProof) ReadAbridgedHostConfiguration() (AbridgedHostConfiguration, error) {
+func (rlcsp relayChainStateProof) ReadAbridgedHostConfiguration() (AbridgedHostConfiguration, error) {
 	value := rlcsp.Trie.Get(keyActiveConfig)
 	if value == nil {
 		return AbridgedHostConfiguration{}, NewErrorStateProofConfig(ReadEntryErrorProof)
@@ -116,7 +126,7 @@ func (rlcsp RelayChainStateProof) ReadAbridgedHostConfiguration() (AbridgedHostC
 	return ahc, nil
 }
 
-func (rlcsp RelayChainStateProof) ReadIncludedParaHeadHash() sc.Option[sc.FixedSequence[sc.U8]] {
+func (rlcsp relayChainStateProof) ReadIncludedParaHeadHash() sc.Option[sc.FixedSequence[sc.U8]] {
 	hashParachainId := rlcsp.hashing.Twox64(rlcsp.ParachainId.Bytes())
 
 	key := append(keyPrefixParaHead, hashParachainId...)
@@ -137,7 +147,7 @@ func (rlcsp RelayChainStateProof) ReadIncludedParaHeadHash() sc.Option[sc.FixedS
 	return sc.NewOption[sc.FixedSequence[sc.U8]](sc.BytesToFixedSequenceU8(paraHeadHash))
 }
 
-func (rlcsp RelayChainStateProof) ReadMessagingStateSnapshot(ahc AbridgedHostConfiguration) (MessagingStateSnapshot, error) {
+func (rlcsp relayChainStateProof) ReadMessagingStateSnapshot(ahc AbridgedHostConfiguration) (MessagingStateSnapshot, error) {
 	// TODO: read and populate messaging state snapshot from the state proof.
 
 	return MessagingStateSnapshot{

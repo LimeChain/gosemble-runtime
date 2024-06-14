@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/ChainSafe/gossamer/pkg/trie/inmemory"
@@ -207,6 +208,17 @@ var (
 func NewRuntimeInstance(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
 	tt := inmemory.NewEmptyTrie()
 	runtime := wazero_runtime.NewTestInstance(t, RuntimeWasm, wazero_runtime.TestWithTrie(tt))
+	return runtime, &runtime.Context.Storage
+}
+
+func NewParachainRuntimeInstance(t *testing.T) (*wazero_runtime.Instance, *runtime.Storage) {
+	tt := inmemory.NewEmptyTrie()
+	runtime := wazero_runtime.NewTestInstance(t, ParachainWasm, wazero_runtime.TestWithTrie(tt))
+	return runtime, &runtime.Context.Storage
+}
+
+func NewParachainRuntimeInstanceWithTrie(t *testing.T, trie *inmemory.InMemoryTrie) (*wazero_runtime.Instance, *runtime.Storage) {
+	runtime := wazero_runtime.NewTestInstance(t, ParachainWasm, wazero_runtime.TestWithTrie(trie))
 	return runtime, &runtime.Context.Storage
 }
 
@@ -423,6 +435,37 @@ func SignExtrinsicSecp256k1(e *ctypes.Extrinsic, o ctypes.SignatureOptions, keyP
 	e.Version |= ctypes.ExtrinsicBitSigned
 
 	return nil
+}
+
+func ExtractConsensusDigests(t *testing.T, sequence sc.Sequence[types.DigestItem], consensusEngineId []byte) sc.Sequence[types.DigestItem] {
+	var seal *primitives.DigestSeal
+	digestItems := sc.Sequence[primitives.DigestItem]{}
+	for _, digestItem := range sequence {
+		if !digestItem.IsSeal() {
+			digestItems = append(digestItems, digestItem)
+			continue
+		}
+
+		s, err := digestItem.AsSeal()
+		if err != nil {
+			panic(err)
+		}
+		if reflect.DeepEqual(sc.FixedSequenceU8ToBytes(s.ConsensusEngineId), consensusEngineId) {
+			if seal != nil {
+				panic(err)
+			}
+			seal = &s
+			continue
+		}
+
+		digestItems = append(digestItems, digestItem)
+	}
+
+	if seal == nil {
+		t.Fatal("could not find an AuRa seal digest")
+	}
+
+	return digestItems
 }
 
 func AssertSessionNextKeys(t assert.TestingT, storage *runtime.Storage, account []byte, expectedKey []byte) {
