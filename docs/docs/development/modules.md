@@ -37,9 +37,11 @@ These modules provide features than can be useful for your blockchain and can be
 
 In addition to functional modules, which are useful for any blockchain, there are modules that provide features specifically for blockchain integration with a relay chain.
 
-| Name                                                                                      | Description              |
-|-------------------------------------------------------------------------------------------|--------------------------|
-| [parachain_info](https://github.com/limechain/gosemble/tree/develop/frame/parachain_info) | Stores the parachain id. |
+| Name                                                                                          | Description                                                                           |
+|-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| [aura_ext](https://github.com/limechain/gosemble/tree/develop/frame/aura-ext)                 | Provides AURA Consensus for parachains.                                               |
+| [parachain_info](https://github.com/limechain/gosemble/tree/develop/frame/parachain_info)     | Stores the parachain id.                                                              |
+| [parachain_system](https://github.com/limechain/gosemble/tree/develop/frame/parachain_system) | Provides basic functionality for cumulus-based parachains. Does not process messages. |
 
 
 ## Structure

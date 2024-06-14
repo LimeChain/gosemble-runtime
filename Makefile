@@ -168,6 +168,11 @@ start-network-babe:
 	cd ../../../..; \
 	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/substrate-node --dev --execution=wasm
 
+parachain-build:
+	cp $(BUILD_PATH)/parachain.wasm polkadot-sdk/cumulus/polkadot-parachain/src/chain_spec/runtime.wasm; \
+	cd polkadot-sdk; \
+	cargo build --release -p polkadot-parachain-bin
+
 # gossamer node configuration
 CHAIN_SPEC_PLAIN = ../testdata/chain-spec/plain.json
 CHAIN_SPEC_UPDATED = ../testdata/chain-spec/plain-updated.json
