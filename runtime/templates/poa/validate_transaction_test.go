@@ -360,12 +360,12 @@ func Test_ValidateTransaction_NoUnsignedValidator(t *testing.T) {
 			args:     []any{[]byte{}},
 		},
 		{
-			callName: "Balances.transfer",
+			callName: "Balances.transfer_allow_death",
 			args:     []any{alice, amount},
 		},
 		{
-			callName: "Balances.set_balance",
-			args:     []any{alice, amount, amount},
+			callName: "Balances.force_set_balance",
+			args:     []any{alice, amount},
 		},
 		{
 			callName: "Balances.force_transfer",
@@ -380,7 +380,7 @@ func Test_ValidateTransaction_NoUnsignedValidator(t *testing.T) {
 			args:     []any{alice, ctypes.NewBool(false)},
 		},
 		{
-			callName: "Balances.force_free",
+			callName: "Balances.force_unreserve",
 			args:     []any{alice, ctypes.NewU128(*big.NewInt(amount.Int64()))},
 		},
 	}

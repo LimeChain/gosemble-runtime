@@ -275,6 +275,7 @@ func (m Module) originAndMaybeAccount(benchmarkConfig benchmarking.BenchmarkConf
 
 func (m Module) whitelistWellKnownKeys() {
 	keySystemHash := m.hashing.Twox128([]byte("System"))
+	keyBalancesHash := m.hashing.Twox128([]byte("Balances"))
 	keyBlockWeight := m.hashing.Twox128([]byte("BlockWeight"))
 	keyExecutionPhaseHash := m.hashing.Twox128([]byte("ExecutionPhase"))
 	keyEventCountHash := m.hashing.Twox128([]byte("EventCount"))
@@ -282,7 +283,7 @@ func (m Module) whitelistWellKnownKeys() {
 	keyNumberHash := m.hashing.Twox128([]byte("Number"))
 	keyTotalIssuanceHash := m.hashing.Twox128([]byte("TotalIssuance"))
 
-	benchmarking.SetWhitelist(append(keySystemHash, keyTotalIssuanceHash...))
+	benchmarking.SetWhitelist(append(keyBalancesHash, keyTotalIssuanceHash...))
 	benchmarking.SetWhitelist(append(keySystemHash, keyBlockWeight...))
 	benchmarking.SetWhitelist(append(keySystemHash, keyNumberHash...))
 	benchmarking.SetWhitelist(append(keySystemHash, keyExecutionPhaseHash...))

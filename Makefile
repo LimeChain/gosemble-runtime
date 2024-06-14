@@ -168,6 +168,13 @@ start-network-babe:
 	cd ../../../..; \
 	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/substrate-node --dev --execution=wasm
 
+start-network:
+	cp build/runtime.wasm polkadot-sdk/substrate/bin/node-template/runtime.wasm; \
+	cd polkadot-sdk/substrate/bin/node-template/node; \
+	cargo build --release; \
+	cd ../../../..; \
+	WASMTIME_BACKTRACE_DETAILS=1 RUST_LOG=runtime=trace ./target/release/node-template --dev --execution=wasm
+
 parachain-build:
 	cp $(BUILD_PATH)/parachain.wasm polkadot-sdk/cumulus/polkadot-parachain/src/chain_spec/runtime.wasm; \
 	cd polkadot-sdk; \

@@ -16,11 +16,11 @@ var value = uint64(existentialMultiplier * existentialAmount)
 
 // Coming from ROOT account. This always creates an account.
 func BenchmarkBalancesSetBalanceCreating(b *testing.B) {
-	benchmarkBalancesSetBalance(b, "../../../frame/balances/call_set_balance_creating_weight.go", value, value)
+	benchmarkBalancesSetBalance(b, "../../../frame/balances/call_force_set_balance_creating_weight.go", value, value)
 }
 
 func BenchmarkBalancesSetBalanceKilling(b *testing.B) {
-	benchmarkBalancesSetBalance(b, "../../../frame/balances/call_set_balance_killing_weight.go", value, 0)
+	benchmarkBalancesSetBalance(b, "../../../frame/balances/call_force_set_balance_killing_weight.go", value, 0)
 }
 
 func benchmarkBalancesSetBalance(b *testing.B, outputPath string, balance, amount uint64) {
@@ -41,10 +41,9 @@ func benchmarkBalancesSetBalance(b *testing.B, outputPath string, balance, amoun
 		assert.NoError(b, err)
 
 		err = i.ExecuteExtrinsic(
-			"Balances.set_balance",
+			"Balances.force_set_balance",
 			types.NewRawOriginRoot(),
 			aliceAddress,
-			ctypes.NewUCompactFromUInt(amount),
 			ctypes.NewUCompactFromUInt(amount),
 		)
 

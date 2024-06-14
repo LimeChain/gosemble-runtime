@@ -8,6 +8,7 @@ import (
 	"github.com/ChainSafe/gossamer/pkg/scale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +18,7 @@ func BenchmarkBalancesTransferKeepAlive(b *testing.B) {
 		accountInfo := gossamertypes.AccountInfo{
 			Nonce:       0,
 			Consumers:   0,
-			Producers:   0,
+			Producers:   1,
 			Sufficients: 0,
 			Data: gossamertypes.AccountData{
 				Free:       scale.MaxUint128,
@@ -28,6 +29,10 @@ func BenchmarkBalancesTransferKeepAlive(b *testing.B) {
 		}
 
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
+		assert.NoError(b, err)
+
+		keyTotalIssuance := append(testhelpers.KeyBalancesHash, testhelpers.KeyTotalIssuanceHash...)
+		err = (*i.Storage()).Put(keyTotalIssuance, scale.MaxUint128.Bytes())
 		assert.NoError(b, err)
 
 		transferAmount := existentialMultiplier * existentialAmount

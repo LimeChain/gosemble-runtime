@@ -17,14 +17,14 @@ func Test_TokenError(t *testing.T) {
 	}{
 		{
 			name:       "TokenErrorNoFunds",
-			newErr:     NewTokenErrorNoFunds(),
-			wantErr:    TokenError(sc.NewVaryingData(TokenErrorNoFunds)),
+			newErr:     NewTokenErrorFundsUnavailable(),
+			wantErr:    TokenError(sc.NewVaryingData(TokenErrorFundsUnavailable)),
 			wantErrMsg: "Funds are unavailable",
 		},
 		{
 			name:       "TokenErrorWouldDie",
-			newErr:     NewTokenErrorWouldDie(),
-			wantErr:    TokenError(sc.NewVaryingData(TokenErrorWouldDie)),
+			newErr:     NewTokenErrorOnlyProvider(),
+			wantErr:    TokenError(sc.NewVaryingData(TokenErrorOnlyProvider)),
 			wantErrMsg: "Account that must exist would die",
 		},
 		{
@@ -57,6 +57,24 @@ func Test_TokenError(t *testing.T) {
 			wantErr:    TokenError(sc.NewVaryingData(TokenErrorUnsupported)),
 			wantErrMsg: "Operation is not supported by the asset",
 		},
+		{
+			name:       "TokenErrorNotExpendable",
+			newErr:     NewTokenErrorCannotCreateHold(),
+			wantErr:    TokenError(sc.NewVaryingData(TokenErrorCannotCreateHold)),
+			wantErrMsg: "Account cannot be created for recording amount on hold",
+		},
+		{
+			name:       "TokenErrorCannotCreateHold",
+			newErr:     NewTokenErrorNotExpendable(),
+			wantErr:    TokenError(sc.NewVaryingData(TokenErrorNotExpendable)),
+			wantErrMsg: "Account that is desired to remain would die",
+		},
+		{
+			name:       "TokenErrorBlocked",
+			newErr:     NewTokenErrorBlocked(),
+			wantErr:    TokenError(sc.NewVaryingData(TokenErrorBlocked)),
+			wantErrMsg: "Account cannot receive the assets",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			buffer := &bytes.Buffer{}
@@ -79,7 +97,7 @@ func Test_DecodeTokenError_TypeError(t *testing.T) {
 	}{
 		{
 			name:    "invalid type",
-			errType: sc.U8(7),
+			errType: sc.U8(10),
 		},
 		{
 			name:    "nil",

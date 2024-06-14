@@ -13,5 +13,6 @@ const (
 
 var (
 	Zero       = sc.NewU128(0)
+	One        = sc.NewU128(1)
 	DefaultTip = Zero
 )

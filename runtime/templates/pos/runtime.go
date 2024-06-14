@@ -262,8 +262,8 @@ func initializeModules(storage io.Storage, transactionBroker io.TransactionBroke
 	balancesModule := balances.New(
 		BalancesIndex,
 		balances.NewConfig(storage, DbWeight, BalancesMaxLocks, BalancesMaxReserves, BalancesExistentialDeposit, systemModule),
-		logger,
 		mdGenerator,
+		logger,
 	)
 
 	tpmModule := transaction_payment.New(

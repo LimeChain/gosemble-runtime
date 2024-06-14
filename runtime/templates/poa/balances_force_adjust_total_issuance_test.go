@@ -2,30 +2,27 @@ package main
 
 import (
 	"bytes"
-	"math/big"
-	"testing"
-
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+	"github.com/LimeChain/gosemble/constants"
 	"github.com/LimeChain/gosemble/testhelpers"
 	cscale "github.com/centrifuge/go-substrate-rpc-client/v4/scale"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
+	"math/big"
+	"testing"
 )
 
-func Test_Balances_SetBalance_BadOrigin(t *testing.T) {
+func Test_Balances_ForceAdjustTotalIssuance_BadOrigin(t *testing.T) {
 	rt, storage := testhelpers.NewRuntimeInstance(t)
 	runtimeVersion, err := rt.Version()
 	assert.NoError(t, err)
 
 	metadata := testhelpers.RuntimeMetadata(t, rt)
 
-	bob, err := ctypes.NewMultiAddressFromHexAccountID(
-		"0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22")
-	assert.NoError(t, err)
-
-	call, err := ctypes.NewCall(metadata, "Balances.set_balance", bob, ctypes.NewUCompactFromUInt(10000000000), ctypes.NewUCompactFromUInt(10000000000))
+	issuance := big.NewInt(0).SetUint64(constants.Dollar)
+	call, err := ctypes.NewCall(metadata, "Balances.force_adjust_total_issuance", uint8(0), ctypes.NewUCompact(issuance))
 	assert.NoError(t, err)
 
 	// Create the extrinsic

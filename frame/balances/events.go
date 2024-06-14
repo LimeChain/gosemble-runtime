@@ -21,6 +21,18 @@ const (
 	EventDeposit
 	EventWithdraw
 	EventSlashed
+	EventMinted
+	EventBurned
+	EventSuspended
+	EventRestored
+	EventUpgraded
+	EventIssued
+	EventRescinded
+	EventLocked
+	EventUnlocked
+	EventFrozen
+	EventThawed
+	EventTotalIssuanceForced
 )
 
 var (
@@ -40,8 +52,8 @@ func newEventTransfer(moduleIndex sc.U8, from primitives.AccountId, to primitive
 	return primitives.NewEvent(moduleIndex, EventTransfer, from, to, amount)
 }
 
-func newEventBalanceSet(moduleIndex sc.U8, account primitives.AccountId, free primitives.Balance, reserved primitives.Balance) primitives.Event {
-	return primitives.NewEvent(moduleIndex, EventBalanceSet, account, free, reserved)
+func newEventBalanceSet(moduleIndex sc.U8, account primitives.AccountId, free primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventBalanceSet, account, free)
 }
 
 func newEventReserved(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
@@ -66,6 +78,54 @@ func newEventWithdraw(moduleIndex sc.U8, account primitives.AccountId, amount pr
 
 func newEventSlashed(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
 	return primitives.NewEvent(moduleIndex, EventSlashed, account, amount)
+}
+
+func newEventMinted(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventMinted, account, amount)
+}
+
+func newEventBurned(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventBurned, account, amount)
+}
+
+func newEventSuspended(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventSuspended, account, amount)
+}
+
+func newEventRestored(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventRestored, account, amount)
+}
+
+func newEventUpgraded(moduleIndex sc.U8, account primitives.AccountId) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventUpgraded, account)
+}
+
+func newEventIssued(moduleIndex sc.U8, account primitives.AccountId) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventIssued, account)
+}
+
+func newEventRescinded(moduleIndex sc.U8, account primitives.AccountId) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventRescinded, account)
+}
+
+func newEventLocked(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventLocked, account, amount)
+}
+
+func newEventUnlocked(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventUnlocked, account, amount)
+}
+
+func newEventFrozen(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventFrozen, account, amount)
+}
+
+func newEventThawed(moduleIndex sc.U8, account primitives.AccountId, amount primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventThawed, account, amount)
+}
+
+func newEventTotalIssuanceForced(moduleIndex sc.U8, old, new primitives.Balance) primitives.Event {
+	return primitives.NewEvent(moduleIndex, EventTotalIssuanceForced, old, new)
 }
 
 func DecodeEvent(moduleIndex sc.U8, buffer *bytes.Buffer) (primitives.Event, error) {
@@ -126,11 +186,7 @@ func DecodeEvent(moduleIndex sc.U8, buffer *bytes.Buffer) (primitives.Event, err
 		if err != nil {
 			return primitives.Event{}, err
 		}
-		reserved, err := sc.DecodeU128(buffer)
-		if err != nil {
-			return primitives.Event{}, err
-		}
-		return newEventBalanceSet(moduleIndex, account, free, reserved), nil
+		return newEventBalanceSet(moduleIndex, account, free), nil
 	case EventReserved:
 		account, err := primitives.DecodeAccountId(buffer)
 		if err != nil {
@@ -199,6 +255,16 @@ func DecodeEvent(moduleIndex sc.U8, buffer *bytes.Buffer) (primitives.Event, err
 			return primitives.Event{}, err
 		}
 		return newEventSlashed(moduleIndex, account, amount), nil
+	case EventTotalIssuanceForced:
+		old, err := sc.DecodeU128(buffer)
+		if err != nil {
+			return primitives.Event{}, err
+		}
+		new, err := sc.DecodeU128(buffer)
+		if err != nil {
+			return primitives.Event{}, err
+		}
+		return newEventTotalIssuanceForced(moduleIndex, old, new), nil
 	default:
 		return primitives.Event{}, errInvalidEventType
 	}

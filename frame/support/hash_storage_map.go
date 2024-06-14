@@ -18,8 +18,12 @@ type HashStorageMap[K, V sc.Encodable] struct {
 }
 
 func NewHashStorageMap[K, V sc.Encodable](storage io.Storage, prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error)) StorageMap[K, V] {
+	return NewHashStorageMapWithDefault[K, V](storage, prefix, name, keyHashFunc, decodeFunc, nil)
+}
+
+func NewHashStorageMapWithDefault[K, V sc.Encodable](storage io.Storage, prefix []byte, name []byte, keyHashFunc func([]byte) []byte, decodeFunc func(buffer *bytes.Buffer) (V, error), defaultValue *V) StorageMap[K, V] {
 	return HashStorageMap[K, V]{
-		newBaseStorage[V](storage, decodeFunc, nil),
+		newBaseStorage[V](storage, decodeFunc, defaultValue),
 		prefix,
 		name,
 		keyHashFunc,
@@ -29,7 +33,7 @@ func NewHashStorageMap[K, V sc.Encodable](storage io.Storage, prefix []byte, nam
 }
 
 func (hsm HashStorageMap[K, V]) Get(k K) (V, error) {
-	return hsm.baseStorage.getDecode(hsm.key(k))
+	return hsm.baseStorage.get(hsm.key(k))
 }
 
 func (hsm HashStorageMap[K, V]) Exists(k K) bool {

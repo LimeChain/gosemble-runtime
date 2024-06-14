@@ -8,8 +8,12 @@ const (
 	ErrorLiquidityRestrictions
 	ErrorInsufficientBalance
 	ErrorExistentialDeposit
-	ErrorKeepAlive
+	ErrorExpendability
 	ErrorExistingVestingSchedule
 	ErrorDeadAccount
 	ErrorTooManyReserves
+	ErrorTooManyHolds
+	ErrorTooManyFreezes
+	ErrorIssuanceDeactivated
+	ErrorDeltaZero
 )

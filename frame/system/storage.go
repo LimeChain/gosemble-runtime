@@ -54,9 +54,10 @@ type storage struct {
 
 func newStorage(s io.Storage) *storage {
 	hashing := io.NewHashing()
+	defaultAccountInfo := types.DefaultAccountInfo()
 
 	return &storage{
-		Account:            support.NewHashStorageMap[types.AccountId](s, keySystem, keyAccount, hashing.Blake128, types.DecodeAccountInfo),
+		Account:            support.NewHashStorageMapWithDefault[types.AccountId](s, keySystem, keyAccount, hashing.Blake128, types.DecodeAccountInfo, &defaultAccountInfo),
 		BlockWeight:        support.NewHashStorageValue(s, keySystem, keyBlockWeight, types.DecodeConsumedWeight),
 		BlockHash:          support.NewHashStorageMap[sc.U64, types.Blake2bHash](s, keySystem, keyBlockHash, hashing.Twox64, types.DecodeBlake2bHash),
 		BlockNumber:        support.NewHashStorageValue(s, keySystem, keyNumber, sc.DecodeU64),

@@ -7,23 +7,26 @@ import (
 )
 
 const (
-	TokenErrorNoFunds sc.U8 = iota
-	TokenErrorWouldDie
+	TokenErrorFundsUnavailable sc.U8 = iota
+	TokenErrorOnlyProvider
 	TokenErrorBelowMinimum
 	TokenErrorCannotCreate
 	TokenErrorUnknownAsset
 	TokenErrorFrozen
 	TokenErrorUnsupported
+	TokenErrorCannotCreateHold
+	TokenErrorNotExpendable
+	TokenErrorBlocked
 )
 
 type TokenError sc.VaryingData
 
-func NewTokenErrorNoFunds() TokenError {
-	return TokenError(sc.NewVaryingData(TokenErrorNoFunds))
+func NewTokenErrorFundsUnavailable() TokenError {
+	return TokenError(sc.NewVaryingData(TokenErrorFundsUnavailable))
 }
 
-func NewTokenErrorWouldDie() TokenError {
-	return TokenError(sc.NewVaryingData(TokenErrorWouldDie))
+func NewTokenErrorOnlyProvider() TokenError {
+	return TokenError(sc.NewVaryingData(TokenErrorOnlyProvider))
 }
 
 func NewTokenErrorBelowMinimum() TokenError {
@@ -46,6 +49,18 @@ func NewTokenErrorUnsupported() TokenError {
 	return TokenError(sc.NewVaryingData(TokenErrorUnsupported))
 }
 
+func NewTokenErrorCannotCreateHold() TokenError {
+	return TokenError(sc.NewVaryingData(TokenErrorCannotCreateHold))
+}
+
+func NewTokenErrorNotExpendable() TokenError {
+	return TokenError(sc.NewVaryingData(TokenErrorNotExpendable))
+}
+
+func NewTokenErrorBlocked() TokenError {
+	return TokenError(sc.NewVaryingData(TokenErrorBlocked))
+}
+
 func (err TokenError) Encode(buffer *bytes.Buffer) error {
 	return err[0].Encode(buffer)
 }
@@ -56,9 +71,9 @@ func (err TokenError) Error() string {
 	}
 
 	switch err[0] {
-	case TokenErrorNoFunds:
+	case TokenErrorFundsUnavailable:
 		return "Funds are unavailable"
-	case TokenErrorWouldDie:
+	case TokenErrorOnlyProvider:
 		return "Account that must exist would die"
 	case TokenErrorBelowMinimum:
 		return "Account cannot exist with the funds that would be given"
@@ -70,6 +85,12 @@ func (err TokenError) Error() string {
 		return "Funds exist but are frozen"
 	case TokenErrorUnsupported:
 		return "Operation is not supported by the asset"
+	case TokenErrorCannotCreateHold:
+		return "Account cannot be created for recording amount on hold"
+	case TokenErrorNotExpendable:
+		return "Account that is desired to remain would die"
+	case TokenErrorBlocked:
+		return "Account cannot receive the assets"
 	default:
 		return newTypeError("TokenError").Error()
 	}
@@ -82,10 +103,10 @@ func DecodeTokenError(buffer *bytes.Buffer) (TokenError, error) {
 	}
 
 	switch b {
-	case TokenErrorNoFunds:
-		return NewTokenErrorNoFunds(), nil
-	case TokenErrorWouldDie:
-		return NewTokenErrorWouldDie(), nil
+	case TokenErrorFundsUnavailable:
+		return NewTokenErrorFundsUnavailable(), nil
+	case TokenErrorOnlyProvider:
+		return NewTokenErrorOnlyProvider(), nil
 	case TokenErrorBelowMinimum:
 		return NewTokenErrorBelowMinimum(), nil
 	case TokenErrorCannotCreate:
@@ -96,6 +117,12 @@ func DecodeTokenError(buffer *bytes.Buffer) (TokenError, error) {
 		return NewTokenErrorFrozen(), nil
 	case TokenErrorUnsupported:
 		return NewTokenErrorUnsupported(), nil
+	case TokenErrorCannotCreateHold:
+		return NewTokenErrorCannotCreateHold(), nil
+	case TokenErrorNotExpendable:
+		return NewTokenErrorNotExpendable(), nil
+	case TokenErrorBlocked:
+		return NewTokenErrorBlocked(), nil
 	default:
 		return TokenError{}, newTypeError("TokenError")
 	}

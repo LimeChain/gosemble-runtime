@@ -48,10 +48,41 @@ func (m *StoredMap) TryMutateExists(who types.AccountId, f func(who *types.Accou
 	return args.Get(0).(sc.Encodable), args.Get(1).(error)
 }
 
-func (m *StoredMap) incProviders(who types.AccountId) (types.IncRefStatus, error) {
+func (m *StoredMap) DecConsumers(who types.AccountId) error {
+	args := m.Called(who)
+	return args.Get(0).(error)
+}
+
+func (m *StoredMap) DecProviders(who types.AccountId) (types.DecRefStatus, error) {
+	args := m.Called(who)
+	if args.Get(1) == nil {
+		return args.Get(0).(types.DecRefStatus), nil
+	}
+	return args.Get(0).(types.DecRefStatus), args.Get(1).(error)
+}
+
+func (m *StoredMap) IncConsumers(who types.AccountId) error {
+	args := m.Called(who)
+	return args.Get(0).(error)
+}
+
+func (m *StoredMap) IncConsumersWithoutLimit(who types.AccountId) error {
+	args := m.Called(who)
+	return args.Get(0).(error)
+}
+
+func (m *StoredMap) IncProviders(who types.AccountId) (types.IncRefStatus, error) {
 	args := m.Called(who)
 	if args.Get(1) == nil {
 		return args.Get(0).(types.IncRefStatus), nil
 	}
 	return args.Get(0).(types.IncRefStatus), args.Get(1).(error)
+}
+
+func (m *StoredMap) Insert(who types.AccountId, data types.AccountData) (sc.Encodable, error) {
+	args := m.Called(who, data)
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.Encodable), nil
+	}
+	return args.Get(0).(sc.Encodable), args.Get(1).(error)
 }

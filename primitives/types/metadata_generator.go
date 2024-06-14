@@ -69,6 +69,8 @@ func BuildMetadataTypesIdsMap() map[string]int {
 		"CodeUpgradeAuthorization":   metadata.TypesCodeUpgradeAuthorization,
 		"RuntimeVersion":             metadata.TypesRuntimeVersion,
 		"Weight":                     metadata.TypesWeight,
+		"AdjustedDirection":          metadata.TypesBalancesAdjustDirection,
+		"SequenceAddress32":          metadata.TypesSequenceAddress32,
 	}
 }
 

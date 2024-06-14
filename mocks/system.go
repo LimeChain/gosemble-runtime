@@ -202,6 +202,15 @@ func (m *SystemModule) DecConsumers(who primitives.AccountId) error {
 	return args[0].(error)
 }
 
+func (m *SystemModule) DecProviders(who primitives.AccountId) (primitives.DecRefStatus, error) {
+	args := m.Called(who)
+	if args[1] == nil {
+		return args[0].(primitives.DecRefStatus), nil
+	}
+
+	return args[0].(primitives.DecRefStatus), args[1].(error)
+}
+
 func (m *SystemModule) IncConsumers(who primitives.AccountId) error {
 	args := m.Called(who)
 	if args[0] == nil {
@@ -227,6 +236,15 @@ func (m *SystemModule) IncProviders(who primitives.AccountId) (primitives.IncRef
 	}
 
 	return args[0].(primitives.IncRefStatus), args[1].(error)
+}
+
+func (m *SystemModule) Insert(who primitives.AccountId, data primitives.AccountData) (sc.Encodable, error) {
+	args := m.Called(who, data)
+	if args.Get(1) == nil {
+		return args.Get(0).(sc.Encodable), nil
+	}
+
+	return args.Get(0).(sc.Encodable), args.Get(1).(error)
 }
 
 func (m *SystemModule) UpdateCodeInStorage(code sc.Sequence[sc.U8]) {

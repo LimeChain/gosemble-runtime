@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/LimeChain/gosemble/primitives/types"
+
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/lib/common"
 	"github.com/ChainSafe/gossamer/pkg/scale"
@@ -96,7 +98,7 @@ func Test_Sudo_SudoUncheckedWeight_Success(t *testing.T) {
 			Free:       scale.MustNewUint128(transferAmount),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 
@@ -120,7 +122,7 @@ func Test_Sudo_SudoUncheckedWeight_Success(t *testing.T) {
 			Free:       scale.MustNewUint128(expectedAliceFreeBalance),
 			Reserved:   scale.MustNewUint128(big.NewInt(0)),
 			MiscFrozen: scale.MustNewUint128(big.NewInt(0)),
-			FreeFrozen: scale.MustNewUint128(big.NewInt(0)),
+			FreeFrozen: scale.MustNewUint128(types.FlagsNewLogic),
 		},
 	}
 

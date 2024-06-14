@@ -6,8 +6,10 @@ import (
 
 	gossamertypes "github.com/ChainSafe/gossamer/dot/types"
 	"github.com/ChainSafe/gossamer/pkg/scale"
+	sc "github.com/LimeChain/goscale"
 	"github.com/LimeChain/gosemble/benchmarking"
 	"github.com/LimeChain/gosemble/primitives/types"
+	"github.com/LimeChain/gosemble/testhelpers"
 	ctypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,6 +35,10 @@ func BenchmarkBalancesTransferAllAllowDeath(b *testing.B) {
 		}
 
 		err := i.SetAccountInfo(aliceAccountIdBytes, accountInfo)
+		assert.NoError(b, err)
+
+		keyTotalIssuance := append(testhelpers.KeyBalancesHash, testhelpers.KeyTotalIssuanceHash...)
+		err = (*i.Storage()).Put(keyTotalIssuance, sc.NewU128(balance).Bytes())
 		assert.NoError(b, err)
 
 		err = i.ExecuteExtrinsic(
