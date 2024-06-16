@@ -169,5 +169,6 @@ nav:
   - Tutorials:
       - Start a Network: ./tutorials/start-a-network.md
       - Transfer funds: ./tutorials/transfer-funds.md
+      - Run a local Parachain: ./tutorials/run-local-parachain.md
   - Reference:
       - Resources: ./reference/resources.md

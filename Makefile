@@ -98,6 +98,10 @@ build-benchmarking: build-tinygo
 	@echo "Building \"$(RUNTIME_WASM_BENCHMARKS)\" (no-debug)"; \
 	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -tags benchmarking -o=$(BUILD_PATH)/$(RUNTIME_WASM_BENCHMARKS) $(RUNTIME_TEMPLATE_DIR)/runtime.go
 
+build-parachain-release: build-tinygo
+	@echo "Building parachain.wasm (no-debug)"; \
+	WASMOPT="$(CURRENT_DIR)/$(WASMOPT_PATH)" $(TINYGO_BUILD_COMMAND_NODEBUG) -o=$(BUILD_PATH)/parachain.wasm runtime/templates/parachain/runtime.go
+
 test-coverage:
 	@set -e; \
 	./scripts/coverage.sh
