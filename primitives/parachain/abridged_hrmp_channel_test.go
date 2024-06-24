@@ -3,7 +3,6 @@ package parachain
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/ChainSafe/gossamer/lib/common"
@@ -35,8 +34,6 @@ func Test_AbridgedHrmpChannel_Encode(t *testing.T) {
 	buffer := &bytes.Buffer{}
 
 	err := targetAbridgedHrmpChannel.Encode(buffer)
-
-	fmt.Println(hex.EncodeToString(buffer.Bytes()))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytesAbridgedHrmpChannel, buffer.Bytes())
